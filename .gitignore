@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Builds
+apps/*/out/
+apps/*/.next/
+api/bin/
+api/dist/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Tooling
+coverage/
+*.log
+.DS_Store
+.scannerwork/
+.sonar/
+
+# Go
+api/vendor/

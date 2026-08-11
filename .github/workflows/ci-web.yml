@@ -1,0 +1,41 @@
+name: ci-web
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/web/**", ".github/workflows/ci-web.yml"]
+  pull_request:
+    paths: ["apps/web/**"]
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "26"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --workspace=apps/web
+
+      - name: Test with coverage
+        run: npm run test:coverage --workspace=apps/web
+
+      - name: Build
+        run: npm run build --workspace=apps/web
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: apps/web

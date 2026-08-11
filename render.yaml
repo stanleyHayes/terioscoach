@@ -1,0 +1,52 @@
+# Render Blueprint — Terios Wellness Spa platform
+# Apply: Render Dashboard → Bluegrass → New Blueprint Instance → point at this repo.
+# Secrets (sync: false) are entered once in the Render dashboard, never committed.
+
+services:
+  # Go hexagonal API (REST + WebSocket signaling)
+  - type: web
+    name: terios-api
+    runtime: go
+    plan: starter
+    rootDir: api
+    buildCommand: go build -trimpath -ldflags="-s -w" -o bin/api ./cmd/api
+    startCommand: ./bin/api
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: terios
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL
+        value: 720h
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: Terios Wellness Spa <no-reply@terioswellness.com>
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: TURN_KEY_ID
+        sync: false
+      - key: TURN_API_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
