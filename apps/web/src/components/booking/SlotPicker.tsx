@@ -113,8 +113,13 @@ export function SlotPicker({
   const [raceStartAt, setRaceStartAt] = useState<string | null>(null);
 
   /* Load the selected day's slots (public endpoint, visitor tz). */
+  // The synchronous reset to "loading" is the point of this effect, not a
+  // slip: without it, changing day leaves yesterday's slots on screen
+  // while the new ones load, and a visitor taps one that was never
+  // offered for the day they are looking at.
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadState({ status: "loading" });
     getSlots({ serviceId, from: selectedDay, to: selectedDay, tz })
       .then((result) => {
@@ -130,8 +135,12 @@ export function SlotPicker({
 
   /* 409 slot_unavailable from the parent: show the race state and pull a
    * fresh slot list — the taken chip drops out of it. */
+  // The 409 arrives at the parent, which passes it down — so reacting to
+  // a prop is the only mechanism available here. Refetching is the whole
+  // response: the slot somebody else just took has to leave the list.
   useEffect(() => {
     if (conflictStartAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRaceStartAt(conflictStartAt);
       setRefreshIndex((index) => index + 1);
     }

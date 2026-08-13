@@ -16,10 +16,19 @@ export type TextInputSize = "sm" | "md" | "lg";
 export interface TextInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   label: string;
+  /**
+   * Hides the label visually while leaving it for a screen reader. For rows
+   * of repeated inputs ("Option 1", "Option 2") where the visible label
+   * would be noise — never an excuse to ship a field with no label at all.
+   */
+  labelHidden?: boolean;
   hint?: string;
   error?: string;
   size?: TextInputSize;
   leadingIcon?: ReactNode;
+  /** Classes for the field wrapper, when the field has to size itself in a
+   * flex row. `className` still styles the control. */
+  wrapperClassName?: string;
 }
 
 const controlSizes: Record<TextInputSize, string> = {
@@ -30,6 +39,7 @@ const controlSizes: Record<TextInputSize, string> = {
 
 export function TextInput({
   label,
+  labelHidden = false,
   hint,
   error,
   size = "md",
@@ -40,6 +50,7 @@ export function TextInput({
   disabled,
   readOnly,
   className,
+  wrapperClassName,
   ...rest
 }: TextInputProps) {
   const autoId = useId();
@@ -50,10 +61,13 @@ export function TextInput({
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={cn("flex flex-col gap-1.5", wrapperClassName)}>
       <label
         htmlFor={inputId}
-        className="text-sm font-medium tracking-[0.005em] text-ink"
+        className={cn(
+          "text-sm font-medium tracking-[0.005em] text-ink",
+          labelHidden && "sr-only",
+        )}
       >
         {label}
         {required ? (
@@ -86,7 +100,7 @@ export function TextInput({
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
-            "w-full rounded-md border bg-surface-raised px-3 text-ink caret-primary transition-colors duration-fast ease-out placeholder:text-ink-faint",
+            "w-full rounded-xl border bg-surface-raised px-3.5 text-ink caret-primary transition-[border-color,background-color,box-shadow] duration-fast ease-out placeholder:text-ink-faint",
             controlSizes[size],
             leadingIcon ? "pl-9" : undefined,
             isPassword && "pr-11",

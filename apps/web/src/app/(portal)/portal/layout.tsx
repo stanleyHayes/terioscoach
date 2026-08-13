@@ -1,11 +1,10 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { PortalNav } from "@/components/layout/PortalNav";
-import { buttonClasses } from "@/components/ui/Button";
+import { SiteNav } from "@/components/layout/SiteNav";
 import { useAuth } from "@/lib/auth";
 
 /** The booking flow (WEB-09) is portal-side but open to visitors: guests
@@ -68,23 +67,8 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
     }
     return (
       <>
-        <header className="sticky top-0 z-sticky border-b border-border bg-surface/92 backdrop-blur-md">
-          <nav
-            aria-label="Portal"
-            className="mx-auto flex h-[72px] max-w-[960px] items-center justify-between gap-8 px-6"
-          >
-            <Link
-              href="/"
-              className="font-display text-2xl font-medium tracking-[-0.01em] text-ink"
-            >
-              Terios Wellness
-            </Link>
-            <Link href="/login" className={buttonClasses({ variant: "ghost", size: "sm" })}>
-              Sign in
-            </Link>
-          </nav>
-        </header>
-        <main className="mx-auto w-full max-w-[960px] flex-1 px-6 pt-10 pb-16">
+        <SiteNav />
+        <main id="main-content" className="mx-auto w-full max-w-[1040px] flex-1 px-5 pt-8 pb-20 sm:px-6 lg:pt-12">
           {children}
         </main>
       </>
@@ -99,7 +83,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
         onSignOut={handleSignOut}
         signingOut={signingOut}
       />
-      <main className="mx-auto w-full max-w-[960px] flex-1 px-6 pt-10 pb-16">
+      <main id="main-content" className="mx-auto w-full max-w-[1040px] flex-1 px-5 pt-8 pb-20 sm:px-6 lg:pt-12">
         {children}
       </main>
     </>

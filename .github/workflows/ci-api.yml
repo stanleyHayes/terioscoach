@@ -33,7 +33,33 @@ jobs:
         run: go build ./...
 
       - name: Test with coverage
-        run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
+        # -coverpkg matters here. Without it Go credits a test only to
+        # its own package, so the HTTP tests — which drive the app and
+        # domain layers through the real router — appear to cover nothing
+        # but the transport. That reads as 48%; the truth is 68%.
+        run: >
+          go test ./... -race -covermode=atomic
+          -coverpkg=./internal/... -coverprofile=coverage.out
+
+      # A ratchet, matching the two apps: set just under what the suite
+      # achieves today. Raise it as coverage rises; never lower it to make
+      # a build pass.
+      - name: Coverage floor
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')
+          echo "total coverage: ${total}%"
+          awk -v t="$total" 'BEGIN { exit (t >= 65) ? 0 : 1 }' || {
+            echo "::error::coverage ${total}% is below the 65% floor"
+            exit 1
+          }
+
+      # Known CVEs in the module graph, checked against Go's own database.
+      # This is the LCH-01 open item: without it, a vulnerable dependency
+      # is found by whoever finds it first.
+      - name: Vulnerability scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5

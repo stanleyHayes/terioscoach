@@ -38,7 +38,7 @@ export function Badge({ tone, dot = true, children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-[3px]",
+        "terios-badge inline-flex items-center gap-1.5 rounded-full border border-current/10 px-2.5 py-1",
         "text-[11px] font-semibold uppercase tracking-[0.08em]",
         toneClasses[tone],
         className,

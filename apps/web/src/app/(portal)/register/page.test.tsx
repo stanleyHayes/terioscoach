@@ -4,9 +4,11 @@ import RegisterPage from "./page";
 
 const replaceMock = vi.fn();
 const registerMock = vi.fn();
+let searchParamsValue = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => searchParamsValue,
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => {
@@ -27,6 +29,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 afterEach(() => {
   replaceMock.mockReset();
   registerMock.mockReset();
+  searchParamsValue = new URLSearchParams();
 });
 
 function fillValidForm() {
@@ -111,5 +114,27 @@ describe("RegisterPage", () => {
       ),
     );
     expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("honours a same-site ?next= after registering (booking-flow restore)", async () => {
+    searchParamsValue = new URLSearchParams({ next: "/portal/book?service=s1" });
+    registerMock.mockResolvedValueOnce(undefined);
+    render(<RegisterPage />);
+
+    fillValidForm();
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Create account" }).closest("form")!,
+    );
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/portal/book?service=s1"));
+  });
+
+  it("carries ?next= through to the sign-in cross-link", () => {
+    searchParamsValue = new URLSearchParams({ next: "/portal/book?service=s1" });
+    render(<RegisterPage />);
+
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe(
+      `/login?next=${encodeURIComponent("/portal/book?service=s1")}`,
+    );
   });
 });

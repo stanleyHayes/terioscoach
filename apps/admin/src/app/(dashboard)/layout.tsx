@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           onSignOut={handleSignOut}
           signingOut={signingOut}
         />
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 pt-8 pb-12">
+        <main id="admin-content" className="mx-auto w-full max-w-[1480px] flex-1 px-4 pt-7 pb-14 sm:px-6 lg:px-8 lg:pt-9">
           {children}
         </main>
       </div>

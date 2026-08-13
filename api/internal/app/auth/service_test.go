@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,47 @@ func newTestService() (*Service, *portstest.FakeUserRepository, *portstest.FakeR
 	sessions := portstest.NewFakeRefreshTokenRepository()
 	svc := NewService(users, sessions, portstest.FakeHasher{}, portstest.NewFakeTokenIssuer(15*time.Minute), testRefreshTTL)
 	return svc, users, sessions
+}
+
+func TestPasswordResetIsUniformOneTimeAndRevokesSessions(t *testing.T) {
+	svc, users, sessions := newTestService()
+	mailer := portstest.NewFakeMailer()
+	svc.resetMailer = mailer
+	svc.resetURL = "https://terios.test/reset-password"
+	svc.resetTTL = time.Hour
+	registered := registerClient(t, svc, "recover@example.com", "the old long password")
+
+	if err := svc.ForgotPassword(context.Background(), "ghost@example.com"); err != nil {
+		t.Fatalf("unknown email must still succeed: %v", err)
+	}
+	if len(mailer.Sent()) != 0 {
+		t.Fatal("unknown account must not send mail")
+	}
+	if err := svc.ForgotPassword(context.Background(), " Recover@Example.com "); err != nil {
+		t.Fatalf("ForgotPassword: %v", err)
+	}
+	messages := mailer.Sent()
+	if len(messages) != 1 {
+		t.Fatalf("sent = %d, want 1", len(messages))
+	}
+	token := messages[0].Text[strings.LastIndex(messages[0].Text, "token=")+len("token="):]
+	if err := svc.ResetPassword(context.Background(), token, "the new long password"); err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+	if err := svc.ResetPassword(context.Background(), token, "another long password"); !errors.Is(err, identity.ErrPasswordResetInvalid) {
+		t.Fatalf("reuse err = %v", err)
+	}
+	if _, err := svc.Login(context.Background(), "recover@example.com", "the new long password"); err != nil {
+		t.Fatalf("new password login: %v", err)
+	}
+	old, _ := sessions.FindByHash(context.Background(), svc.tokens.HashRefreshToken(registered.RefreshToken))
+	if !old.Revoked {
+		t.Fatal("reset must revoke existing sessions")
+	}
+	stored, _ := users.FindByEmail(context.Background(), "recover@example.com")
+	if stored.PasswordResetTokenHash != "" {
+		t.Fatal("reset token was not consumed")
+	}
 }
 
 func registerClient(t *testing.T, svc *Service, email, password string) ports.AuthResult {

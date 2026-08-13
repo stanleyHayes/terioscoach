@@ -42,7 +42,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-[11px] leading-[1.3] font-semibold tracking-[0.08em] uppercase",
+        "terios-badge inline-flex items-center gap-1.5 rounded-full border border-current/10 px-2.5 py-1 text-[11px] leading-[1.3] font-semibold tracking-[0.08em] uppercase",
         variants[variant],
         className,
       )}

@@ -37,8 +37,15 @@ describe("Button", () => {
         <Button size="lg">Large</Button>
       </>,
     );
-    expect(screen.getByRole("button", { name: "Small" }).className).toContain("h-8");
-    expect(screen.getByRole("button", { name: "Large" }).className).toContain("h-12");
+    expect(screen.getByRole("button", { name: "Small" }).className).toContain("h-9");
+    expect(screen.getByRole("button", { name: "Large" }).className).toContain("h-[3.25rem]");
+  });
+
+  it("carries the Terios tactile treatment", () => {
+    render(<Button>Continue</Button>);
+    const button = screen.getByRole("button", { name: "Continue" });
+    expect(button.className).toContain("terios-button");
+    expect(button.className).toContain("active:scale-[.975]");
   });
 
   it("is disabled when disabled", () => {

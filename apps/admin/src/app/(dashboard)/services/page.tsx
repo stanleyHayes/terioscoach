@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, CircleAlert, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 import { IconButton } from "@/components/ui/IconButton";
 import { Switch } from "@/components/ui/Switch";
 import { ApiError, SessionExpiredError } from "@/lib/api";
@@ -157,17 +158,8 @@ export default function ServicesPage() {
   const columnCount = 6;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] leading-[1.3] font-semibold tracking-[-0.005em] text-ink">
-            Services
-          </h1>
-          <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            What you offer, what it costs, and the order clients see it in.
-          </p>
-        </div>
-        <Button
+    <div data-admin-page="services" className="flex flex-col gap-6">
+      <AdminPageHeader eyebrow="Practice menu" title="Services" description="Shape what you offer, what it costs, and the order clients see it in." actions={<Button
           onClick={() => {
             setEditTarget(null);
             setFormOpen(true);
@@ -175,8 +167,7 @@ export default function ServicesPage() {
         >
           <Plus size={16} aria-hidden="true" />
           New service
-        </Button>
-      </div>
+        </Button>} />
 
       {actionError ? (
         <div

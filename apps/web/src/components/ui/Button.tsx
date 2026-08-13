@@ -9,18 +9,18 @@ export type ButtonSize = "sm" | "md" | "lg";
 /* Design-system §3.1. All state changes animate duration-fast ease-out;
  * the focus ring comes from the global :focus-visible rule (brand §6). */
 const baseClasses = cn(
-  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap",
-  "rounded-md font-sans font-semibold tracking-[0.005em]",
-  "transition-colors duration-fast ease-out",
+  "terios-button relative isolate inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap",
+  "rounded-full font-sans font-semibold tracking-[0.005em]",
+  "transition-[color,background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 active:scale-[.975] active:translate-y-0",
   "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 );
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-xs hover:bg-primary-hover active:bg-primary-active",
+    "terios-button-primary bg-primary text-on-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_22%,transparent)] hover:bg-primary-hover hover:shadow-[0_12px_30px_color-mix(in_srgb,var(--primary)_26%,transparent)] active:bg-primary-active",
   secondary:
-    "border border-border-strong bg-transparent text-ink hover:bg-surface-sunken hover:border-ink-faint active:bg-eucalyptus-100",
-  ghost: "bg-transparent text-primary hover:bg-eucalyptus-50 active:bg-eucalyptus-100",
+    "terios-button-secondary border border-border-strong bg-transparent text-ink hover:bg-surface-sunken hover:border-primary active:bg-eucalyptus-100",
+  ghost: "terios-button-ghost bg-transparent text-primary hover:bg-eucalyptus-50 active:bg-eucalyptus-100",
   danger: cn(
     "bg-danger text-on-primary hover:bg-danger-hover",
     "active:bg-[color-mix(in_srgb,var(--danger),black_5%)]",
@@ -29,9 +29,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-8 px-4 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-4 text-base",
+  sm: "h-9 px-4 text-sm",
+  md: "h-11 px-5 text-sm",
+  lg: "h-[3.25rem] px-6 text-base",
 };
 
 export interface ButtonClassOptions {

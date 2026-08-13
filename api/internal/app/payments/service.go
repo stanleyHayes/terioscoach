@@ -7,6 +7,8 @@ package payments
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -147,8 +149,48 @@ func (s *Service) HandlePaystackWebhook(ctx context.Context, payload []byte, sig
 	if evt.Event != "charge.success" || evt.Data.Reference == "" {
 		return nil
 	}
+	return s.confirmCharge(ctx, evt.Data.Reference)
+}
 
-	p, err := s.payments.FindByReference(ctx, evt.Data.Reference)
+// stripeWebhookEvent is the minimal shape read from a Stripe delivery —
+// after the signature has already authenticated the raw body. The object
+// ID is the Checkout Session ID this deployment uses as the gateway
+// reference.
+type stripeWebhookEvent struct {
+	Type string `json:"type"`
+	Data struct {
+		Object struct {
+			ID string `json:"id"`
+		} `json:"object"`
+	} `json:"data"`
+}
+
+// HandleStripeWebhook processes one raw Stripe delivery under the same
+// rules as the Paystack handler: verify first, act only on
+// checkout.session.completed, confirm server-side before marking paid,
+// and acknowledge everything else without changes so Stripe retries are
+// always safe.
+func (s *Service) HandleStripeWebhook(ctx context.Context, payload []byte, signature string) error {
+	if !s.gateway.VerifyWebhookSignature(payload, signature) {
+		return payment.ErrInvalidWebhookSignature
+	}
+	var evt stripeWebhookEvent
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return nil // authentic but unparseable — nothing to act on
+	}
+	if evt.Type != "checkout.session.completed" || evt.Data.Object.ID == "" {
+		return nil
+	}
+	return s.confirmCharge(ctx, evt.Data.Object.ID)
+}
+
+// confirmCharge marks a pending payment paid after the gateway's own
+// Verify confirms the charge and its amount/currency. It is idempotent on
+// the payment reference; unknown references and non-pending payments are
+// acknowledged with no changes. A transient Verify failure is surfaced so
+// the provider retries the delivery.
+func (s *Service) confirmCharge(ctx context.Context, reference string) error {
+	p, err := s.payments.FindByReference(ctx, reference)
 	if errors.Is(err, payment.ErrPaymentNotFound) {
 		return nil // not ours — acknowledge so the retries stop
 	}
@@ -162,9 +204,9 @@ func (s *Service) HandlePaystackWebhook(ctx context.Context, payload []byte, sig
 		return nil
 	}
 
-	verified, err := s.gateway.Verify(ctx, evt.Data.Reference)
+	verified, err := s.gateway.Verify(ctx, reference)
 	if err != nil {
-		// Transient gateway failure — surface it so Paystack retries.
+		// Transient gateway failure — surface it so the provider retries.
 		return err
 	}
 	if verified.Status != "success" || verified.AmountKobo != p.AmountKobo || verified.Currency != p.Currency {
@@ -256,8 +298,15 @@ func (s *Service) RefundPayment(ctx context.Context, practitionerID, paymentID s
 }
 
 // newReference generates the server-side join key sent to Paystack:
-// recognizable, unique per attempt, and valid under Paystack's reference
-// alphabet (letters, digits, dash, underscore).
+// recognizable, unique per attempt (timestamp plus random suffix, so even
+// back-to-back re-initializations never collide), and valid under
+// Paystack's reference alphabet (letters, digits, dash, underscore).
 func (s *Service) newReference(bookingID string) string {
-	return fmt.Sprintf("terios_%s_%d", bookingID, s.now().UnixNano())
+	var buf [4]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		// crypto/rand never fails on supported platforms; fall back to the
+		// timestamp alone rather than abort a checkout.
+		return fmt.Sprintf("terios_%s_%d", bookingID, s.now().UnixNano())
+	}
+	return fmt.Sprintf("terios_%s_%d_%s", bookingID, s.now().UnixNano(), hex.EncodeToString(buf[:]))
 }

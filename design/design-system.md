@@ -49,8 +49,8 @@ CSS custom properties on `:root` (light) and `[data-theme="dark"]` (admin), then
   --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
   --space-20: 80px; --space-24: 96px; --space-32: 128px;
   /* type */
-  --font-display: "Fraunces Variable", Georgia, serif;
-  --font-sans: "Figtree", system-ui, sans-serif;
+  --font-display: "Figtree", system-ui, sans-serif;
+  --font-sans: "Outfit Variable", system-ui, sans-serif;
   /* z-index scale */
   --z-sticky: 20; --z-dropdown: 40; --z-overlay: 60; --z-modal: 70; --z-toast: 80; --z-tooltip: 90;
 }
@@ -97,11 +97,11 @@ Tailwind usage: `bg-surface-raised text-ink border-border rounded-lg shadow-md` 
 
 ## 3. Components
 
-Conventions below: sizes are `sm` (32px tall) / `md` (40px) / `lg` (48px) unless stated; default `md`. State changes animate `duration-fast ease-out` unless noted. Disabled = `opacity .5, cursor: not-allowed, pointer-events: none` (except form fields, which stay focusable-readonly per ARIA).
+Conventions below: action sizes are `sm` (36px tall) / `md` (44px) / `lg` (52px) unless a dense data control is explicitly stated; default `md`. State changes animate `duration-fast ease-out` unless noted. Disabled = `opacity .5, cursor: not-allowed, pointer-events: none` (except form fields, which stay focusable-readonly per ARIA).
 
 ### 3.1 Button
 
-Anatomy: container + optional leading icon (16px) + label (`label`, weight 600) + optional trailing icon. Height 40px md, padding `0 space-4` (icon-only padding `space-3`), `radius-md`, gap 8px.
+Anatomy: tactile pill container + optional leading icon (16px) + label (`label`, weight 600) + optional trailing icon + the 5px clay care-point on primary actions. Height 44px md, padding `0 space-5`, `radius-full`, gap 8px. The 1px inset highlight and care-point identify a Terios action without adding decorative icons.
 
 | Variant | Default | Hover | Active | Focus |
 |---|---|---|---|---|
@@ -110,7 +110,7 @@ Anatomy: container + optional leading icon (16px) + label (`label`, weight 600) 
 | ghost | bg transparent, text `primary` | bg `eucalyptus-50` | bg `eucalyptus-100` | ring |
 | danger | bg `danger`, text `on-primary` | bg `danger-hover` | darken 5% | ring (danger 40%) |
 
-States: **loading** — width locked, label replaced by 16px spinner (Lucide `LoaderCircle`, 900ms linear rotate, `currentColor`) + original label kept for screen readers (`aria-busy="true"`, disabled). **Disabled** per convention. **Full-width** option for mobile CTAs. Sizes: sm 32px/14px text, md 40px/14px, lg 48px/16px. Keyboard: native `<button>` semantics; `Enter`/`Space` activate. One primary button per view region.
+States: hover lifts 2px only on fine pointers; active scales to .975 for immediate acknowledgement. **Loading** — width locked, label replaced by 16px spinner (Lucide `LoaderCircle`, 900ms linear rotate, `currentColor`) + original label kept for screen readers (`aria-busy="true"`, disabled). **Disabled** per convention. **Full-width** option for mobile CTAs. Sizes: sm 36px/14px text, md 44px/14px, lg 52px/16px. Keyboard: native `<button>` semantics; `Enter`/`Space` activate. One primary button per view region.
 
 ### 3.2 IconButton
 
@@ -227,7 +227,9 @@ Chip (filter/tag input): height 28px, `radius-full`, border `border-strong`, bg 
 
 ### 3.21 Card
 
-Default: bg `surface-raised`, border 1px `border`, `radius-lg`, padding `space-6`, `shadow-none`. Hoverable/clickable card: hover border `border-strong` + `shadow-sm` + translateY(-2px), `duration-base ease-out`; whole card is one `<a>`/`<button>` (no nested interactive elements). Marketing feature card: `radius-xl`, padding `space-8`, optional top image with `radius-xl` inner crop. Stat card (admin): label `micro ink-faint`, value `display-sm` Fraunces 500, delta `caption` with `TrendingUp/Down` in `success`/`danger`. Selected card (RadioCard, §3.8): 1.5px `primary` border + `eucalyptus-50`.
+Default: bg `surface-raised`, border 1px `border`, `radius-lg`, padding `space-6`, `shadow-none`. Hoverable/clickable card: hover border `border-strong` + `shadow-sm` + translateY(-2px), `duration-base ease-out`; whole card is one `<a>`/`<button>` (no nested interactive elements). Marketing feature card: `radius-xl`, padding `space-8`, optional top image with `radius-xl` inner crop. Stat card (admin): label `micro ink-faint`, value `display-sm` Figtree 600, delta `caption` with `TrendingUp/Down` in `success`/`danger`. Selected card (RadioCard, §3.8): 1.5px `primary` border + `eucalyptus-50`.
+
+**Terios card families:** cards do not all share one silhouette. Choice cards use the asymmetric care-menu composition: numbered treatment rail, editorial name and description, duration capsule, separated price/action compartment, and a dark eucalyptus selected state with an explicit check. Record cards (sessions, forms, documents, payments, reviews) are quieter, with a rounded upper-right shoulder, care-point marker, and small hover lift. Booking summaries use a labelled header strip and inset reassurance note. Quote cards use alternating radii and a large tonal quotation mark. Error and empty states remain visually quiet; they do not inherit interactive card movement.
 
 ### 3.22 DataTable (admin)
 
@@ -242,7 +244,7 @@ Row centered under table/list, gap `space-1`: prev/next IconButtons (`ChevronLef
 
 ### 3.24 SignaturePad (consent forms)
 
-Canvas 100% width × 200px, `surface-raised`, 1.5px dashed `border-strong`, `radius-lg`; placeholder `caption ink-faint` "Sign here" + baseline guide (1px `border` 48px from bottom). Stroke: 2.5px `ink`, round caps, velocity-sensitive width 1.5–3.5px, pointer events (mouse + touch + pen). Once drawn: border solid `border-strong`, placeholder hidden. Footer row: "Clear" ghost sm (resets, `aria-live` announces), helper `caption ink-faint` "Use your mouse or finger". Empty submit → error border `danger` + inline error. Exports PNG (transparent bg, 2× scale) + stroke JSON. Focusable with `role="img" aria-label="Signature pad"`; keyboard alternative: "Type signature" toggle rendering typed name in Fraunces italic 28px as legal equivalent.
+Canvas 100% width × 200px, `surface-raised`, 1.5px dashed `border-strong`, `radius-lg`; placeholder `caption ink-faint` "Sign here" + baseline guide (1px `border` 48px from bottom). Stroke: 2.5px `ink`, round caps, velocity-sensitive width 1.5–3.5px, pointer events (mouse + touch + pen). Once drawn: border solid `border-strong`, placeholder hidden. Footer row: "Clear" ghost sm (resets, `aria-live` announces), helper `caption ink-faint` "Use your mouse or finger". Empty submit → error border `danger` + inline error. Exports PNG (transparent bg, 2× scale) + stroke JSON. Focusable with `role="img" aria-label="Signature pad"`; keyboard alternative: "Type signature" toggle rendering typed name in Figtree italic 28px as legal equivalent.
 
 ### 3.25 StarRating
 
@@ -253,7 +255,7 @@ Stars: Lucide `Star`, filled `accent` (`clay-500`), empty `border-strong` outlin
 Full-viewport surface `eucalyptus-900` (dark regardless of theme — video needs neutral dark; this is the one sanctioned dark surface in the customer app). Remote video: full-bleed, `object-fit: cover`.
 
 - **Controls bar**: bottom-centered, floating, bg `rgba(16,21,18,.72)` + `backdrop-filter: blur(12px)`, `radius-full`, padding `space-2`, gap 8px, auto-hides after 4s idle (fade 250ms; always visible when focus within or pointer near). Buttons: 48px `radius-full` IconButtons — mic `Mic/MicOff`, camera `Video/VideoOff`, screen share `ScreenShare`, chat `MessageSquare` (unread dot 8px `accent`), leave `PhoneOff`. Default: bg transparent, icon `sand-0`; hover `rgba(253,252,250,.12)`. Muted/off state: bg `sand-0` icon `ink` (inverted = "you turned this off"). Leave: bg `danger` icon `on-primary`, hover `danger-hover`, requires confirm Modal ("Leave this session?"). All have tooltips + `aria-pressed`.
-- **Self-view tile**: 180×120px (mobile 96×128 portrait), top-right 16px inset, `radius-md`, `shadow-lg`, mirror transform, draggable; click swaps with main view. Camera-off: `surface-sunken` + initials avatar (40px, `eucalyptus-700` bg, Fraunces 18px `on-primary`).
+- **Self-view tile**: 180×120px (mobile 96×128 portrait), top-right 16px inset, `radius-md`, `shadow-lg`, mirror transform, draggable; click swaps with main view. Camera-off: `surface-sunken` + initials avatar (40px, `eucalyptus-700` bg, Figtree 18px `on-primary`).
 - **Connection states**: pill top-left — good: `success` dot + "Good connection"; poor: `warning` dot + "Connection unstable — audio only suggested"; reconnecting: full scrim `overlay` + `LoaderCircle` + "Reconnecting… we'll keep trying for 2:00" countdown; failed: EmptyState pattern with "Rejoin" primary Button. Pre-join lobby: camera preview card `radius-xl`, device Selects (custom), "Join session" primary lg.
 - Timer: elapsed `caption tnum sand-0/70` next to connection pill. Recording indicator (admin-initiated): 8px `danger` pulsing dot (1200ms) + "REC" `micro`.
 
@@ -271,7 +273,11 @@ Anatomy (vertical rhythm): Label `label ink` → 6px → Control → 6px → hin
 
 ### 3.30 Nav
 
-**Customer top nav** (marketing + portal): height 72px, max-width 1200px content, wordmark left (Fraunces 24px), links `label ink-muted`, gap `space-8`, hover `ink` + underline grows 0→100% 150ms (`primary` 2px, offset 6px), active link `ink` weight 600 + underline persistent. Right: ghost "Sign in" / primary sm "Book a session" (marketing) or avatar menu (portal: 36px `radius-full`, dropdown = Select popup styling, items: Profile, Settings, divider, Sign out in `danger` text). Scrolled >8px: bg `surface` at 92% + `backdrop-filter blur(12px)` + bottom `border`, `shadow-none`; transition 200ms. Mobile: `Menu` IconButton → left Drawer with stacked links `heading-md`, staggered fade-in 40ms each ≤6 items.
+**Customer top nav** (marketing): at the top of a page it settles as a full-width 76px bar. After 48px of scroll it contracts into a floating 66px frame, max-width 1240px, with 12px viewport inset, `surface` at 92% with blur, `radius-xl`, and a tinted botanical shadow; returning to the top expands it again. The passive scroll listener updates this small boolean directly—scheduling through `requestAnimationFrame` can leave a background/restored tab stuck in its old state. Custom leaf tile and clay care-point form the wordmark. Desktop links sit in a sunken segmented rail; active is a raised capsule with clay point. Right: ghost "Sign in" / primary sm "Book now". Mobile: full-screen eucalyptus chapter menu with numbered editorial rows, fixed actions and a visible close control. Guest booking keeps this public header so the flow never becomes a navigational dead end. Authenticated portal chrome adds an explicit `Back to website` action.
+
+**Marketing footer:** rounded eucalyptus field with an inset ivory booking statement, oversized Figtree close, custom leaf tile, practice-quality markers, and two horizontal navigation rails. Mobile stacks the booking action, wordmark, rails, and legal line without collapsing into a generic link-column grid.
+
+**Legal pages:** Terms and Privacy share an editorial trust-page system rather than a generic prose template. The opening trust panel states the practical summary and review date on eucalyptus; a sticky numbered contents rail anchors into asymmetric reading chapters with restrained icons. The close offers the related policy and a direct contact path. On mobile the contents remains in document flow, chapter metadata becomes a compact horizontal rail, and body copy retains a comfortable `1.8` line height.
 
 **Admin sidebar**: 264px fixed, bg `surface-sunken`, right `border`; wordmark 20px padded `space-5`; section labels `micro ink-faint` padded `space-4 space-5 space-2`; items: height 36px, `radius-md`, margin `0 space-3`, padding `0 space-3`, icon 18px + `label ink-muted`, gap 12px; hover bg `surface-raised`; active bg `eucalyptus-100` text `eucalyptus-800` weight 600 + 3px left bar `primary` (rounded, 20px tall). Bottom: user card (avatar 32px, name `body-sm`, role `caption ink-faint`) + collapse IconButton → 72px rail (icons centered, tooltips right). Mobile: hidden, hamburger opens Drawer variant. Keyboard: full vertical menu pattern, typeahead, `aria-current="page"`.
 

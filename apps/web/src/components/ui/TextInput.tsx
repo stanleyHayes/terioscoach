@@ -88,7 +88,7 @@ export function TextInput({
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
-            "w-full rounded-md border bg-surface-raised px-3 text-ink caret-primary transition-colors duration-fast ease-out placeholder:text-ink-faint",
+            "w-full rounded-xl border bg-surface-raised px-3.5 text-ink caret-primary transition-[border-color,background-color,box-shadow] duration-fast ease-out placeholder:text-ink-faint",
             controlSizes[size],
             leadingIcon ? "pl-9" : undefined,
             isPassword && "pr-11",

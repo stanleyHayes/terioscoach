@@ -20,6 +20,7 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		// Accounts. Email is the login identifier — globally unique.
 		"users": {
 			{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "passwordResetTokenHash", Value: 1}}, Options: options.Index().SetUnique(true).SetSparse(true)},
 			// Login/role lookups: admin lists staff, auth filters by role.
 			{Keys: bson.D{{Key: "role", Value: 1}}},
 		},
@@ -30,6 +31,14 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "tokenHash", Value: 1}}, Options: options.Index().SetUnique(true)},
 			{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
 			{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "revoked", Value: 1}}},
+		},
+
+		// Brute-force accounting (BE-02). One record per login identifier
+		// (the submitted email, real or not); the TTL index on expiresAt
+		// reaps a record once its window and cooldown have passed.
+		"login_attempts": {
+			{Keys: bson.D{{Key: "identifier", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
 		},
 
 		// Services a practitioner offers; client app lists active ones ordered.
@@ -85,6 +94,12 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
 		},
 
+		// Practice-side client profiles (contact detail, tags, private
+		// summary). One profile per client account — upserted by userId.
+		"client_profiles": {
+			{Keys: bson.D{{Key: "userId", Value: 1}}, Options: options.Index().SetUnique(true)},
+		},
+
 		// Intake/consent form definitions. Templates are the reusable library
 		// the admin clones from; list views order by sortOrder.
 		"forms": {
@@ -129,17 +144,24 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "createdAt", Value: -1}}},
 		},
 
-		// Post-visit reviews. Client portal reads own reviews (isolation
-		// leads); moderation queue filters by status.
+		// Post-visit reviews (BE-14). One review per booking, enforced so a
+		// double submit loses the race rather than creating a second row.
+		// Client portal reads own reviews (isolation leads); the moderation
+		// queue and the public list both filter by status.
 		"reviews": {
-			{Keys: bson.D{{Key: "clientId", Value: 1}}},
+			{Keys: bson.D{{Key: "bookingId", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
+			{Keys: bson.D{{Key: "practitionerId", Value: 1}, {Key: "status", Value: 1}, {Key: "createdAt", Value: -1}}},
 			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "createdAt", Value: -1}}},
 		},
 
-		// Scheduled reminder emails/SMS. The dispatcher polls for due,
-		// pending jobs — that query must stay indexed.
-		"reminder_jobs": {
-			{Keys: bson.D{{Key: "dueAt", Value: 1}, {Key: "status", Value: 1}}},
+		// Outbound message outbox (BE-09). The dispatcher claims due,
+		// pending jobs oldest-first — that query runs on a timer and must
+		// stay indexed. The booking+kind index backs "cancel this
+		// booking's reminder" when a session moves or is called off.
+		"notification_jobs": {
+			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "dueAt", Value: 1}}},
+			{Keys: bson.D{{Key: "bookingId", Value: 1}, {Key: "kind", Value: 1}, {Key: "status", Value: 1}}},
 		},
 	}
 

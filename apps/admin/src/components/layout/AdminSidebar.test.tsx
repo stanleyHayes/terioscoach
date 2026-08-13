@@ -14,6 +14,7 @@ describe("AdminSidebar", () => {
     for (const label of [
       "Overview",
       "Calendar",
+      "Availability",
       "Clients",
       "Services",
       "Payments",
@@ -25,6 +26,17 @@ describe("AdminSidebar", () => {
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
+  });
+
+  it("links Calendar and Availability to their routes", () => {
+    render(<AdminSidebar userName="Akosua Mensah" />);
+
+    expect(screen.getByRole("link", { name: "Calendar" }).getAttribute("href")).toBe(
+      "/calendar",
+    );
+    expect(screen.getByRole("link", { name: "Availability" }).getAttribute("href")).toBe(
+      "/availability",
+    );
   });
 
   it("marks the current page with aria-current", () => {

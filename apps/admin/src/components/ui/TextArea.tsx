@@ -12,12 +12,19 @@ import { cn } from "@/lib/cn";
 
 export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
+  /**
+   * Hides the label visually while keeping it for assistive technology.
+   * For fields whose visible label is a nearby heading — never as a way to
+   * ship a field with no label at all.
+   */
+  labelHidden?: boolean;
   hint?: string;
   error?: string;
 }
 
 export function TextArea({
   label,
+  labelHidden = false,
   hint,
   error,
   id,
@@ -36,7 +43,10 @@ export function TextArea({
     <div className="flex flex-col gap-1.5">
       <label
         htmlFor={inputId}
-        className="text-sm font-medium tracking-[0.005em] text-ink"
+        className={cn(
+          "text-sm font-medium tracking-[0.005em] text-ink",
+          labelHidden && "sr-only",
+        )}
       >
         {label}
         {required ? (
@@ -59,7 +69,7 @@ export function TextArea({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         className={cn(
-          "min-h-24 w-full resize-y rounded-md border bg-surface-raised px-3 py-3 text-base text-ink caret-primary transition-colors duration-fast ease-out placeholder:text-ink-faint",
+          "min-h-28 w-full resize-y rounded-xl border bg-surface-raised px-3.5 py-3 text-base text-ink caret-primary transition-[border-color,background-color,box-shadow] duration-fast ease-out placeholder:text-ink-faint",
           error
             ? "border-danger focus-visible:outline-[color-mix(in_srgb,var(--danger)_40%,transparent)]"
             : "border-border-strong hover:border-ink-faint focus:border-primary",

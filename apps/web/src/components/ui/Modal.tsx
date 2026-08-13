@@ -71,7 +71,14 @@ export function Modal({
         dialog.setAttribute("open", "");
       }
     } else if (!open && dialog.open) {
-      dialog.close();
+      // Guarded to match the branch above. An environment without
+      // showModal has no close either, and an unguarded call there throws
+      // on the way out of a modal that opened perfectly well.
+      if (typeof dialog.close === "function") {
+        dialog.close();
+      } else {
+        dialog.removeAttribute("open");
+      }
     }
   }, [open]);
 
@@ -101,7 +108,7 @@ export function Modal({
       <style>{modalKeyframes}</style>
       <div
         className={cn(
-          "terios-modal-panel max-h-[85vh] overflow-y-auto rounded-xl bg-surface-raised p-6 shadow-lg",
+          "terios-modal-panel max-h-[88vh] overflow-y-auto rounded-[2rem] border border-border bg-surface-raised p-6 shadow-[0_35px_100px_rgba(28,51,40,.22)] sm:p-8",
           "max-sm:rounded-b-none",
           open && "[animation:terios-modal-in_var(--duration-slow)_var(--ease-out)_both]",
         )}
@@ -115,7 +122,7 @@ export function Modal({
           <div>
             <h2
               id={titleId}
-              className="font-display text-[1.5rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink"
+              className="font-display text-[1.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-ink"
             >
               {title}
             </h2>

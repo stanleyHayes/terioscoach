@@ -10,7 +10,7 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("navigation", { name: "Explore" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Practice" })).toBeTruthy();
 
-    for (const label of ["Services", "Work With Me", "Contact"]) {
+    for (const label of ["Services", "Work with me", "Contact"]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
 

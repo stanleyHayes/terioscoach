@@ -18,7 +18,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 const base =
-  "inline-flex shrink-0 select-none items-center justify-center rounded-md transition-colors duration-fast ease-out disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
+  "terios-icon-button relative inline-flex shrink-0 select-none items-center justify-center rounded-xl transition-[color,background-color,border-color,transform] duration-fast ease-out active:scale-[.92] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<IconButtonVariant, string> = {
   ghost: "bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink",

@@ -1,14 +1,15 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Leaf, LockKeyhole } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextInput } from "@/components/ui/TextInput";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { safeNextPath } from "@/lib/redirect";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,20 +26,33 @@ function bannerMessage(error: unknown): string {
 }
 
 export default function LoginPage() {
+  // useSearchParams needs a Suspense boundary at prerender time (Next.js).
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, login } = useAuth();
+  // The booking flow sends guests here with ?next= to resume afterwards
+  // (/portal/book?service=…&slot=…). Validated: same-site paths only.
+  const next = safeNextPath(searchParams.get("next")) ?? "/portal";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Already signed in — the portal is the right place to be.
+  // Already signed in — head straight to the intended destination.
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/portal");
+      router.replace(next);
     }
-  }, [status, router]);
+  }, [status, router, next]);
 
   function validate(): boolean {
     const errors: { email?: string; password?: string } = {};
@@ -62,7 +76,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      router.replace("/portal");
+      router.replace(next);
     } catch (error) {
       setFormError(bannerMessage(error));
     } finally {
@@ -71,18 +85,18 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-surface px-6 py-12">
-      <div className="w-full max-w-[400px]">
-        <div className="mb-8 text-center">
-          <p className="font-display text-[36px] leading-[1.15] tracking-[-0.01em] text-ink">
-            Terios Wellness
-          </p>
-          <p className="mt-2 text-sm leading-[1.55] text-ink-muted">
-            Sign in to your client portal
-          </p>
-        </div>
+    <main className="grid min-h-[100dvh] flex-1 bg-eucalyptus-900 lg:grid-cols-[minmax(22rem,.9fr)_1.1fr]">
+      <aside className="relative hidden overflow-hidden border-r border-sand-0/10 p-12 text-sand-0 lg:flex lg:flex-col lg:justify-between">
+        <div aria-hidden="true" className="absolute inset-0 [background-image:radial-gradient(circle_at_20%_15%,rgba(157,195,174,.2),transparent_25rem),radial-gradient(circle_at_80%_90%,rgba(222,166,132,.14),transparent_28rem)]" />
+        <Link href="/" className="relative inline-flex items-center gap-3 font-display text-2xl font-semibold tracking-[-0.03em]"><span className="flex size-9 items-center justify-center rounded-full bg-sand-0 text-eucalyptus-900"><Leaf size={16} /></span>Terios Wellness</Link>
+        <div className="relative max-w-md"><p className="font-display text-5xl leading-[.98] font-semibold tracking-[-0.045em]">Your care continues between sessions.</p><p className="mt-6 max-w-[40ch] text-base leading-relaxed text-eucalyptus-200">Plans, forms, payments and private notes stay together in one quiet place.</p></div>
+        <p className="relative flex items-center gap-2 text-xs text-eucalyptus-300"><LockKeyhole size={14} />Private and encrypted</p>
+      </aside>
+      <section className="flex items-start justify-center rounded-t-[2.5rem] bg-surface px-6 pb-12 pt-20 lg:items-center lg:rounded-l-[3rem] lg:rounded-tr-none lg:py-12">
+      <div className="w-full max-w-[440px]">
+        <div className="mb-9"><p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">Client portal</p><h1 className="mt-3 font-display text-[2.75rem] leading-none font-semibold tracking-[-0.04em] text-ink">Welcome back.</h1><p className="mt-3 text-sm leading-relaxed text-ink-muted">Sign in to continue your care journey.</p></div>
 
-        <Card>
+        <Card className="border-0 bg-surface-raised/70 p-0 shadow-none backdrop-blur-none">
           {/* noValidate: native validation bubbles are forbidden — errors are custom per §3.29 */}
           <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
             {formError ? (
@@ -119,6 +133,11 @@ export default function LoginPage() {
                 setFieldErrors((errors) => ({ ...errors, password: undefined }));
               }}
             />
+            <div className="-mt-1 flex justify-end">
+              <Link href="/forgot-password" className="text-sm font-semibold text-primary transition-colors hover:text-primary-hover">
+                Forgot password?
+              </Link>
+            </div>
 
             <Button type="submit" fullWidth loading={submitting} className="mt-2">
               Sign in
@@ -129,13 +148,14 @@ export default function LoginPage() {
         <p className="mt-6 text-center text-sm leading-[1.55] text-ink-muted">
           New to Terios?{" "}
           <Link
-            href="/register"
+            href={next === "/portal" ? "/register" : `/register?next=${encodeURIComponent(next)}`}
             className="font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
           >
             Create an account
           </Link>
         </p>
       </div>
+      </section>
     </main>
   );
 }

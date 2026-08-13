@@ -35,6 +35,8 @@ type AuthService interface {
 	// Login verifies credentials. Failures are uniformly
 	// identity.ErrInvalidCredentials to prevent user enumeration.
 	Login(ctx context.Context, email, password string) (AuthResult, error)
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, password string) error
 	// Refresh rotates a session: the presented refresh token is revoked and
 	// a new token pair is issued. Reuse of a rotated token fails.
 	Refresh(ctx context.Context, refreshToken string) (AuthResult, error)

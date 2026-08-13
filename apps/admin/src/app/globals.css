@@ -1,7 +1,7 @@
 /* Terios Wellness — design token contract (design/brand.md + design/design-system.md §1).
    This file is the arbiter for tokens in apps/admin; keep values in sync with the spec. */
 
-@import "@fontsource-variable/fraunces/full.css";
+@import "@fontsource-variable/outfit/index.css";
 @import "@fontsource/figtree/400.css";
 @import "@fontsource/figtree/500.css";
 @import "@fontsource/figtree/600.css";
@@ -47,8 +47,8 @@
   --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
   --space-20: 80px; --space-24: 96px; --space-32: 128px;
   /* type */
-  --font-display: "Fraunces Variable", Georgia, serif;
-  --font-sans: "Figtree", system-ui, sans-serif;
+  --font-display: "Figtree", system-ui, sans-serif;
+  --font-sans: "Outfit Variable", system-ui, sans-serif;
   /* z-index scale */
   --z-sticky: 20; --z-dropdown: 40; --z-overlay: 60; --z-modal: 70; --z-toast: 80; --z-tooltip: 90;
 }
@@ -217,10 +217,19 @@
     scrollbar-color: var(--border-strong) transparent;
   }
 
-  /* Fraunces axes per brand.md §4: optical sizing on, SOFT 100, WONK 0 */
+  body {
+    background-image:
+      radial-gradient(circle at 80% -10%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 32rem),
+      radial-gradient(circle at 5% 90%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 28rem);
+    background-attachment: fixed;
+  }
+
+  ::selection { background: color-mix(in srgb, var(--primary) 32%, transparent); color: var(--ink); }
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+
   .font-display {
-    font-optical-sizing: auto;
-    font-variation-settings: "SOFT" 100, "WONK" 0;
+    font-family: var(--font-display);
   }
 
   /* brand focus ring (brand.md §6): focus-visible only, never outline:none without replacement */
@@ -272,4 +281,100 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+.admin-skip-link {
+  position: fixed; top: 12px; left: 12px; z-index: var(--z-tooltip); transform: translateY(-150%);
+  border-radius: var(--radius-md); background: var(--ink); color: var(--surface); padding: 10px 14px;
+  font-weight: 600; transition: transform var(--duration-fast) var(--ease-out);
+}
+.admin-skip-link:focus { transform: translateY(0); }
+
+/* The practice workspace is a layered worktable, not a stack of SaaS cards. */
+[data-admin-page] { position: relative; gap: 2rem; }
+[data-admin-page]::before {
+  position: absolute; inset: -1rem; z-index: -1; border-radius: 2rem; content: "";
+  background: color-mix(in srgb, var(--surface-raised) 42%, transparent);
+}
+[data-admin-page] > :is(header, div):first-child {
+  position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--surface-raised) 88%, transparent); padding: 1.5rem 1.75rem;
+  box-shadow: 0 24px 80px rgba(0,0,0,.08); backdrop-filter: blur(18px);
+}
+[data-admin-page] > :is(header, div):first-child::after {
+  position: absolute; inset-block: 0; left: 0; width: 3px; content: ""; background: var(--primary);
+}
+[data-admin-page] > :is(header, div):first-child h1 {
+  font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.05;
+  font-weight: 600; letter-spacing: -.035em;
+}
+[data-admin-page] .rounded-lg { border-radius: 1.25rem; }
+[data-admin-page] :is(table, [role="table"]) { font-variant-numeric: tabular-nums; }
+[data-admin-page] thead { background: color-mix(in srgb, var(--surface-sunken) 82%, transparent); }
+[data-admin-page] tbody tr { transition: background-color var(--duration-fast) var(--ease-out); }
+[data-admin-page] tbody tr:hover { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+[data-admin-page] [role="tablist"] {
+  width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 9999px;
+  background: color-mix(in srgb, var(--surface-raised) 76%, transparent); padding: .3rem;
+}
+[data-admin-page] [role="tab"] { margin: 0; border: 0; border-radius: 9999px; padding-inline: 1rem; }
+[data-admin-page] [role="tab"][aria-selected="true"] { background: var(--primary); color: var(--on-primary); }
+
+@media (max-width: 639px) {
+  [data-admin-page] > :is(header, div):first-child { border-radius: 1.25rem; padding: 1.25rem; }
+}
+
+/* Practice interaction language: crisp route entry, care-thread cards, tactile controls. */
+@keyframes terios-route-arrive {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); filter: blur(1.5px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+.terios-route-stage { animation: terios-route-arrive var(--duration-page) var(--ease-out) both; }
+.terios-card::before {
+  position: absolute; top: -1px; left: 1.35rem; width: 2.5rem; height: .65rem; content: "";
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border)); border-top: 0;
+  border-radius: 0 0 999px 999px; pointer-events: none; opacity: .75;
+}
+.terios-card::after {
+  position: absolute; top: -4rem; right: -4rem; width: 10rem; height: 10rem; content: "";
+  border-radius: 50%; pointer-events: none; opacity: 0; transform: scale(.86);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 13%, transparent), transparent 68%);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+}
+.terios-card-interactive:hover::after { opacity: 1; transform: scale(1); }
+.terios-button::before {
+  position: absolute; inset: 1px 12% auto; height: 1px; content: ""; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 32%, transparent), transparent); opacity: .7;
+}
+.terios-button-primary::after {
+  width: .32rem; height: .32rem; margin-left: .15rem; flex: 0 0 auto; border-radius: 50%; content: "";
+  background: var(--clay-300); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay-300) 14%, transparent);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.terios-button-primary:hover::after { transform: scale(1.22); }
+.terios-button-secondary { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-raised) 60%, transparent); }
+.terios-icon-button::after {
+  position: absolute; inset: auto 25% 3px; height: 1px; content: ""; background: var(--accent); opacity: 0;
+  transform: scaleX(.4); transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+.terios-icon-button:hover::after { opacity: .75; transform: scaleX(1); }
+.terios-badge { box-shadow: inset 0 1px color-mix(in srgb, white 12%, transparent); }
+.terios-shortcut { position: relative; overflow: hidden; }
+.terios-shortcut::before {
+  position: absolute; right: -1rem; top: -1rem; width: 4rem; height: 4rem; content: "";
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); border-radius: 45% 55% 64% 36%;
+  transform: rotate(15deg); transition: transform 420ms var(--ease-out), background-color 420ms var(--ease-out);
+}
+.terios-shortcut:hover::before { transform: rotate(34deg) scale(1.2); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.terios-route-stage main a:not([class*="rounded"]):not([class*="bg-"]):not(.terios-button) {
+  text-decoration: none; background-image: linear-gradient(var(--accent), var(--accent));
+  background-position: 0 100%; background-repeat: no-repeat; background-size: 0 1px;
+  transition: color var(--duration-fast) var(--ease-out), background-size var(--duration-base) var(--ease-out);
+}
+.terios-route-stage main a:not([class*="rounded"]):not([class*="bg-"]):not(.terios-button):hover { background-size: 100% 1px; }
+@media (hover: hover) and (pointer: fine) {
+  .terios-card-interactive:hover { transform: translate3d(0, -4px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .terios-route-stage { opacity: 1 !important; transform: none !important; filter: none !important; }
 }

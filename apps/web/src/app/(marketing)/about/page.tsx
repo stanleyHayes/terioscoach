@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, MessageSquareHeart, Video } from "lucide-react";
+import { CalendarCheck, HeartPulse, Leaf, MessageSquareHeart, Video } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
+import { PageIntro } from "@/components/marketing/PageIntro";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
 
@@ -9,6 +10,12 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "The practice and approach behind Terios Wellness — registered nursing and wellness coaching, one-to-one and by video.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    type: "website",
+    url: "/about",
+    title: "About",
+  },
 };
 
 // TODO(cms): replace with the practitioner bio from the CMS API (long-form
@@ -66,32 +73,17 @@ const steps = [
 export default function About() {
   return (
     <>
-      {/* Page header. */}
-      <Section containerClassName="pb-0 lg:pb-0">
-        <div className="max-w-[68ch]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
-            About
-          </p>
-          <h1 className="mt-4 font-display text-[2.5rem] leading-[1.1] font-medium tracking-[-0.015em] text-ink lg:text-[3rem] [text-wrap:balance]">
-            A practice built on calm, clinical care
-          </h1>
-          <p className="mt-6 max-w-[60ch] text-lg leading-[1.6] text-ink-muted [text-wrap:pretty]">
-            Terios Wellness is the one-woman practice of a registered nurse and
-            wellness coach — care that is credentialed, confidential and
-            genuinely unhurried.
-          </p>
-        </div>
-      </Section>
+      <PageIntro eyebrow="About" title="A practice built on calm, clinical care" description="Terios Wellness is the one-woman practice of a registered nurse and wellness coach — care that is credentialed, confidential and genuinely unhurried." />
 
-      {/* Practitioner story — portrait placeholder + bio placeholder. */}
+      {/* Practitioner story — a brand illustration stands in until the real portrait is supplied. */}
       <Section ariaLabelledby="story-heading">
         <div className="grid gap-10 lg:grid-cols-[2fr_3fr] lg:gap-16">
-          {/* TODO(cms): swap for the practitioner portrait (4:5, radius-xl,
-              warm natural light per brand.md §7) once media is in the CMS. */}
-          <div
-            aria-hidden="true"
-            className="aspect-[4/5] w-full max-w-[400px] rounded-xl border border-border bg-surface-sunken"
-          />
+          <div aria-label="Terios combines clinical care with restorative wellness" role="img" className="relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-[2rem_5rem_2rem_5rem] bg-eucalyptus-900 shadow-[0_30px_80px_rgba(28,51,40,.2)]">
+            <div aria-hidden="true" className="absolute inset-0 [background-image:radial-gradient(circle_at_70%_18%,rgba(157,195,174,.24),transparent_34%),radial-gradient(circle_at_20%_82%,rgba(222,166,132,.2),transparent_42%)]" />
+            <Leaf aria-hidden="true" strokeWidth={0.65} className="botanical-drift absolute -right-16 top-10 size-72 rotate-[-25deg] text-eucalyptus-300/25" />
+            <HeartPulse aria-hidden="true" strokeWidth={0.8} className="absolute bottom-16 left-10 size-24 text-clay-300/70" />
+            <p className="absolute inset-x-8 bottom-8 border-t border-sand-0/15 pt-5 font-display text-2xl font-semibold leading-tight tracking-[-0.025em] text-sand-0">Care with a clinical backbone and a human pulse.</p>
+          </div>
           <div>
             <h2
               id="story-heading"

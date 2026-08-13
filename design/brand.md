@@ -4,7 +4,7 @@
 
 - Brand: **Terios Wellness** (practice of a solo RN + wellness coach; video-first, international clients, Ghana-based).
 - Two surfaces: `apps/web` (public marketing + client portal, **light-first**) and `apps/admin` (practice dashboard, supports light + dark).
-- Wordmark: "Terios" set in Fraunces 72pt optical, weight 500, letter-spacing -0.01em; "Wellness" may be dropped in compact contexts. Never letterspace the wordmark wide, never all-caps it.
+- Wordmark: "Terios" set in Figtree, weight 600, letter-spacing -0.03em; "Wellness" may be dropped in compact contexts. Never letterspace the wordmark wide, never all-caps it.
 
 ---
 
@@ -166,19 +166,19 @@ Admin defaults to system preference, toggle persists per-user. Customer app ship
 
 Two open-license fonts, both on Google Fonts + Fontsource:
 
-- **Display serif — Fraunces** (OFL). Variable; use optical size axis (`opsz`) and `SOFT` axis at 100, `wonk` 0. Conveys editorial premium. Used for: marketing headlines, page titles in portal, pull quotes, empty-state headlines, numeric display of prices/durations. Never for body text below 18px, never for tables/forms.
-- **UI sans — Figtree** (OFL). Humanist-geometric, warm, highly legible. Used for: all UI, body, forms, tables, nav, buttons. Weights used: 400, 500, 600 (never 300, never 700+).
+- **Display sans — Figtree** (OFL). Humanist-geometric, warm, and precise. Used for marketing headlines, page titles, pull quotes, empty-state headlines, and numeric displays.
+- **Body sans — Outfit** (OFL). Open and contemporary without losing warmth. Used for body copy, forms, tables, navigation, and buttons. Weights used: 400, 500, 600.
 
-Loading: Fontsource self-hosted (`@fontsource-variable/fraunces`, `@fontsource/figtree`), `font-display: swap`, subsets `latin` + `latin-ext` (international clients). Fallback stacks: `Georgia, 'Times New Roman', serif` / `system-ui, -apple-system, 'Segoe UI', sans-serif`.
+Loading: Fontsource self-hosted (`@fontsource-variable/outfit`, `@fontsource/figtree`), `font-display: swap`, subsets `latin` + `latin-ext` (international clients). Both fall back to `system-ui, -apple-system, 'Segoe UI', sans-serif`.
 
 ### Type scale (1.25 ratio-ish, hand-tuned; px at 16px root)
 
 | Token | Font / weight | Size | Line-height | Letter-spacing | Use |
 |---|---|---|---|---|---|
-| `display-xl` | Fraunces 500 | 64/56px (4/3.5rem) | 1.05 | -0.02em | marketing hero only |
-| `display-lg` | Fraunces 500 | 48/40px | 1.1 | -0.015em | marketing section heads |
-| `display-md` | Fraunces 500 | 36/32px | 1.15 | -0.01em | page titles (portal), empty states |
-| `display-sm` | Fraunces 500 | 28/24px | 1.2 | -0.01em | card feature titles, modal titles |
+| `display-xl` | Figtree 600 | 64/56px (4/3.5rem) | 1.05 | -0.03em | marketing hero only |
+| `display-lg` | Figtree 600 | 48/40px | 1.1 | -0.025em | marketing section heads |
+| `display-md` | Figtree 600 | 36/32px | 1.15 | -0.02em | page titles (portal), empty states |
+| `display-sm` | Figtree 600 | 28/24px | 1.2 | -0.015em | card feature titles, modal titles |
 | `heading-lg` | Figtree 600 | 22px | 1.3 | -0.005em | section heads inside app |
 | `heading-md` | Figtree 600 | 18px | 1.35 | 0 | card headers, drawer titles |
 | `heading-sm` | Figtree 600 | 16px | 1.4 | 0 | table headers row, list group heads |
@@ -252,4 +252,4 @@ Rules: entrances fade + translate 8–12px (or scale 0.98→1 for overlays); exi
 
 **Iconography:** one icon family only — **Lucide** (ISC license, 1.5px stroke at 24px grid, rounded joins — matches the brand's softness and Figtree's geometry). Sizes: 16px (`body-sm`/buttons), 20px (default UI), 24px (feature/empty states). Stroke never modified; no mixing with emoji or other icon sets. Status colors applied via semantic tokens, not icon variants.
 
-**Logo/mark:** wordmark-only in v1 (Fraunces "Terios"). A small eucalyptus-leaf glyph may accompany it at ≥24px height, drawn as a single 1.5px Lucide-matched stroke; never a filled clip-art leaf.
+**Logo/mark:** wordmark-only in v1 (Figtree "Terios"). A small eucalyptus-leaf glyph may accompany it at ≥24px height, drawn as a single 1.5px Lucide-matched stroke; never a filled clip-art leaf.

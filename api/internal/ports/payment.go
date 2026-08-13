@@ -16,7 +16,7 @@ type PaymentFilter struct {
 }
 
 // Initialization is the result of starting a checkout: the payment record
-// plus Paystack's hosted authorization URL the client is redirected to.
+// plus the gateway's hosted authorization URL the client is redirected to.
 type Initialization struct {
 	Payment          payment.Payment
 	AuthorizationURL string
@@ -73,6 +73,13 @@ type PaymentService interface {
 	// deliveries, unknown references, and other events are acknowledged
 	// without changes.
 	HandlePaystackWebhook(ctx context.Context, payload []byte, signature string) error
+	// HandleStripeWebhook processes one raw Stripe delivery. The signature
+	// is verified against the raw body first
+	// (payment.ErrInvalidWebhookSignature). Only verified
+	// checkout.session.completed events mutate state, idempotently on the
+	// payment reference — repeat deliveries, unknown references, and other
+	// events are acknowledged without changes.
+	HandleStripeWebhook(ctx context.Context, payload []byte, signature string) error
 	// ListMine returns the client's own payments, newest first.
 	ListMine(ctx context.Context, clientID string) ([]payment.Payment, error)
 	// ListForPractitioner returns payments on the practitioner's bookings,
@@ -96,7 +103,7 @@ type PaymentRepository interface {
 	// FindByBookingID looks up the booking's single payment; misses return
 	// payment.ErrPaymentNotFound.
 	FindByBookingID(ctx context.Context, bookingID string) (payment.Payment, error)
-	// FindByReference looks up a payment by its Paystack reference — the
+	// FindByReference looks up a payment by its gateway reference — the
 	// webhook join key; misses return payment.ErrPaymentNotFound.
 	FindByReference(ctx context.Context, reference string) (payment.Payment, error)
 	// Update persists a payment's mutable state. Misses return
@@ -112,9 +119,10 @@ type PaymentRepository interface {
 	ListByBookingIDs(ctx context.Context, bookingIDs []string, filter PaymentFilter) ([]payment.Payment, error)
 }
 
-// PaymentGateway is the outbound port for the payment provider (Paystack).
-// Card and mobile-money details only ever exist on the provider's hosted
-// checkout — this port deals in references and amounts only.
+// PaymentGateway is the outbound port for the payment provider (Paystack
+// or Stripe, selected by configuration). Card and mobile-money details
+// only ever exist on the provider's hosted checkout — this port deals in
+// references and amounts only.
 type PaymentGateway interface {
 	// Initialize creates a transaction and returns the hosted checkout URL.
 	Initialize(ctx context.Context, params InitializeParams) (InitializedTransaction, error)
@@ -122,8 +130,8 @@ type PaymentGateway interface {
 	Verify(ctx context.Context, reference string) (VerifiedTransaction, error)
 	// Refund refunds a successful transaction by reference.
 	Refund(ctx context.Context, reference string) error
-	// VerifyWebhookSignature reports whether signature is the valid
-	// HMAC-SHA512 (hex) of payload under the gateway secret, compared in
+	// VerifyWebhookSignature reports whether signature authenticates the
+	// raw webhook payload under the provider's signing scheme, compared in
 	// constant time.
 	VerifyWebhookSignature(payload []byte, signature string) bool
 }

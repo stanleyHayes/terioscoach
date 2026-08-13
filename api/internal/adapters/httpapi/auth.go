@@ -10,10 +10,33 @@ import (
 	"github.com/xcreativs/terios/api/internal/ports"
 )
 
+// AuthOption customizes the auth route group.
+type AuthOption func(*authRoutes)
+
+// authRoutes holds the mount-time settings for the /v1/auth group.
+type authRoutes struct {
+	rateLimit RateLimitPolicy
+}
+
+// WithAuthRateLimit overrides the per-IP cap on the credential routes
+// (BE-02). Tests use it to make the limit observable without sending the
+// production number of requests.
+func WithAuthRateLimit(policy RateLimitPolicy) AuthOption {
+	return func(a *authRoutes) { a.rateLimit = policy }
+}
+
 // WithAuth mounts the /v1/auth routes backed by the auth port. A nil
 // service keeps the routes mounted but answering 503, so a dev process
 // without MongoDB still boots and the gap is explicit rather than 404.
-func WithAuth(svc ports.AuthService) Option {
+//
+// Every credential route sits behind a per-IP rate limit (BE-02). /me is
+// excluded: it is a plain authenticated read whose token was already
+// issued, and rate-limiting it would throttle normal app use.
+func WithAuth(svc ports.AuthService, opts ...AuthOption) Option {
+	cfg := authRoutes{rateLimit: DefaultAuthRateLimitPolicy()}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	return func(s *Server) {
 		s.Router.Route("/v1/auth", func(r chi.Router) {
 			if svc == nil {
@@ -21,13 +44,47 @@ func WithAuth(svc ports.AuthService) Option {
 				return
 			}
 			h := &authHandler{svc: svc}
-			r.Post("/register", h.register)
-			r.Post("/login", h.login)
-			r.Post("/refresh", h.refresh)
-			r.Post("/logout", h.logout)
+			r.Group(func(r chi.Router) {
+				r.Use(RateLimit(cfg.rateLimit))
+				r.Post("/register", h.register)
+				r.Post("/login", h.login)
+				r.Post("/refresh", h.refresh)
+				r.Post("/logout", h.logout)
+				r.Post("/forgot-password", h.forgotPassword)
+				r.Post("/reset-password", h.resetPassword)
+			})
 			r.With(RequireAuth(svc)).Get("/me", h.me)
 		})
 	}
+}
+
+func (h *authHandler) forgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.ForgotPassword(r.Context(), req.Email); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.ResetPassword(r.Context(), req.Token, req.Password); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleAuthUnavailable answers every auth route when the database — and

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SiteNav } from "./SiteNav";
 
@@ -9,12 +9,11 @@ vi.mock("next/navigation", () => ({
 describe("SiteNav", () => {
   it("renders the wordmark and all nav links", () => {
     render(<SiteNav />);
-    expect(screen.getAllByText("Terios Wellness").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: "Terios Wellness" }).length).toBeGreaterThanOrEqual(1);
     for (const label of [
       "Home",
       "About",
       "Services",
-      "Work With Me",
       "Blog",
       "FAQ",
       "Contact",
@@ -22,6 +21,7 @@ describe("SiteNav", () => {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
     expect(screen.getByRole("link", { name: "Book now" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Work with me" })).toBeNull();
   });
 
   it("marks the active route with aria-current", () => {
@@ -62,5 +62,26 @@ describe("SiteNav", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("settles full-width at the top and contracts after scrolling like Kedland", async () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 0, writable: true });
+    render(<SiteNav />);
+
+    const header = screen.getByRole("banner");
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(header.getAttribute("data-header-state")).toBe("settled");
+    expect(header.className).toContain("px-0");
+    expect(nav.className).toContain("max-w-[100vw]");
+
+    window.scrollY = 120;
+    fireEvent.scroll(window);
+    await waitFor(() => expect(header.getAttribute("data-header-state")).toBe("floating"));
+    expect(header.className).toContain("px-3");
+    expect(nav.className).toContain("max-w-[1240px]");
+
+    window.scrollY = 0;
+    fireEvent.scroll(window);
+    await waitFor(() => expect(header.getAttribute("data-header-state")).toBe("settled"));
   });
 });

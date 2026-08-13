@@ -30,12 +30,14 @@ const MinPasswordLength = 12
 // User is an account. PasswordHash is always an encoded Argon2id hash —
 // the domain never sees a plaintext password beyond validation.
 type User struct {
-	ID           string
-	Email        string
-	PasswordHash string
-	Role         Role
-	Name         string
-	CreatedAt    time.Time
+	ID                     string
+	Email                  string
+	PasswordHash           string
+	Role                   Role
+	Name                   string
+	CreatedAt              time.Time
+	PasswordResetTokenHash string
+	PasswordResetExpiresAt time.Time
 }
 
 // Identity is the authenticated principal carried through requests.

@@ -86,3 +86,22 @@ func (r *RefreshTokenRepository) Revoke(ctx context.Context, tokenHash string) e
 	}
 	return nil
 }
+
+// RevokeAllForUser kills every live session of one account in a single
+// write — the response to refresh-token reuse (BE-02). It rides the
+// {userId, revoked} index. A user id that is not a valid ObjectID cannot
+// match any stored session, so there is nothing to revoke.
+func (r *RefreshTokenRepository) RevokeAllForUser(ctx context.Context, userID string) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil
+	}
+	_, err = r.coll.UpdateMany(ctx,
+		bson.M{"userId": oid, "revoked": false},
+		bson.M{"$set": bson.M{"revoked": true}},
+	)
+	if err != nil {
+		return fmt.Errorf("revoke user refresh tokens: %w", err)
+	}
+	return nil
+}

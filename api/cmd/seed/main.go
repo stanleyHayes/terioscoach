@@ -74,6 +74,14 @@ func run() error {
 	if err := seedAvailability(ctx, db, practitionerID); err != nil {
 		return err
 	}
+	if err := seedDemo(ctx, db, practitionerID); err != nil {
+		return err
+	}
+
+	slog.Info("sign in with these",
+		"practitioner", practitionerEmail,
+		"clients", "ama@example.com / kofi@example.com / efua@example.com",
+		"password", seedPassword)
 	return nil
 }
 
@@ -133,7 +141,7 @@ func seedServices(ctx context.Context, db *mongo.Database, practitionerID bson.O
 			"name":           "Swedish Massage",
 			"description":    "Classic full-body relaxation massage.",
 			"durationMin":    60,
-			"priceKobo":      25_000_00, // GHS 25,000.00 (minor units)
+			"priceKobo":      250_00, // GHS 250.00 in minor units
 			"currency":       "GHS",
 			"active":         true,
 			"sortOrder":      1,
@@ -145,7 +153,7 @@ func seedServices(ctx context.Context, db *mongo.Database, practitionerID bson.O
 			"name":           "Deep Tissue Massage",
 			"description":    "Targeted pressure for chronic muscle tension.",
 			"durationMin":    90,
-			"priceKobo":      40_000_00, // GHS 40,000.00
+			"priceKobo":      400_00, // GHS 400.00
 			"currency":       "GHS",
 			"active":         true,
 			"sortOrder":      2,

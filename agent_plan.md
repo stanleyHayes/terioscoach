@@ -70,10 +70,10 @@ Public site + Client portal   Practice dashboard
 | FND-03 | Design system spec: full custom component library (buttons, inputs, date/time picker, calendar, file upload, modal, toast, signature pad) — zero native elements | Design | FND-02 | Done |
 | FND-04 | Hexagonal API skeleton: domain / ports / adapters layout, router, config, structured logging, health checks | Backend | FND-01 | Done |
 | FND-05 | MongoDB Atlas cluster, collections & index design, seed tooling | DevOps + Backend | FND-04 | In Progress — adapter/indexes/seed code done; Atlas cluster needs credentials |
-| FND-06 | Resend: domain verification, transactional template set (confirm, remind, reschedule, enquiry, feedback) | DevOps | FND-02 | In Progress — 5 brand templates written (`design/email/`); domain verification needs Resend credentials |
-| FND-07 | Cloudinary: account, signed-upload presets, folder policy (client docs vs CMS media) | DevOps | — | Not Started |
-| FND-08 | `render.yaml` Blueprint: api service, coturn service, env groups, health checks, auto-deploy | DevOps | FND-01 | In Progress |
-| FND-09 | Vercel projects `terios-web` + `terios-admin`: env wiring, preview deployments, API base URL config | DevOps | FND-01 | Not Started |
+| FND-06 | Resend: domain verification, transactional template set (confirm, remind, reschedule, enquiry, feedback) | DevOps | FND-02 | **Blocked — key works, domain does not.** The Resend key is valid and the account has 8 verified domains, but `terioswellness.com` is not one of them. Resend accepts mail from an unregistered domain and silently drops it, so every confirmation, reminder and shared-feedback email would vanish with no error anywhere. Add and verify the domain, or point RESEND_FROM at a verified one. |
+| FND-07 | Cloudinary: account, signed-upload presets, folder policy (client docs vs CMS media) | DevOps | — | **Verified live** — signed upload accepted by Cloudinary and a forged signature rejected, both against the real account (`internal/integration`). Account exists, credentials work, folder policy holds. |
+| FND-08 | `render.yaml` Blueprint: api service, coturn service, env groups, health checks, auto-deploy | DevOps | FND-01 | Done — every one of the 35 config variables is declared. **PORTAL_URL corrected**: it was set to the bare origin, and the email renderer appends to it, so every client email linked to a 404 on the marketing site. Pinned by `TestEveryLinkResolvesToARealRoute`, which checks produced links against the app's real route tree. |
+| FND-09 | Vercel projects `terios-web` + `terios-admin`: env wiring, preview deployments, API base URL config | DevOps | FND-01 | Config written; project creation needs a Vercel account — `apps/web/vercel.json` and `apps/admin/vercel.json` carry build commands, region and security headers (admin sends `X-Robots-Tag: noindex` and `no-store` on everything). Env table and the two gotchas (root directory, `ALLOWED_ORIGINS`) are in `design/go-live-runbook.md` §5. |
 | FND-10 | CI (GitHub Actions): build, test, lint for all three codebases + SonarQube scan with blocking quality gate | DevOps | FND-01 | In Progress — workflows + sonar configs written; live gate needs SONAR_TOKEN |
 
 ## 6. Phase 2 — Public Website (`terios-web`, public area)
@@ -84,12 +84,12 @@ Public site + Client portal   Practice dashboard
 | WEB-02 | Home + brand story page | FE-Customer | WEB-01 | Done |
 | WEB-03 | About & approach page (client-supplied material, refined) | FE-Customer | WEB-01 | Done |
 | WEB-04 | Services pages with live pricing from API | FE-Customer | WEB-01, BE-03 | Done |
-| WEB-05 | Blog (listing, article, categories) reading from CMS API | FE-Customer | WEB-01, BE-12 | Not Started |
-| WEB-06 | FAQ: structured, searchable (custom search UI) | FE-Customer | WEB-01, BE-12 | Not Started |
-| WEB-07 | Testimonials display (approved only) | FE-Customer | WEB-01, BE-12 | Not Started |
-| WEB-08 | Contact / enquiry form → dashboard + email | FE-Customer | WEB-01, BE-13 | Not Started |
-| WEB-09 | Work With Me conversion page | FE-Customer | WEB-04 | In Progress |
-| WEB-10 | SEO (metadata, sitemap, OG), analytics, performance/Lighthouse pass | FE-Customer | WEB-02–09 | Not Started |
+| WEB-05 | Blog (listing, article, categories) reading from CMS API | FE-Customer | WEB-01, BE-12 | Done |
+| WEB-06 | FAQ: structured, searchable (custom search UI) | FE-Customer | WEB-01, BE-12 | Done |
+| WEB-07 | Testimonials display (approved only) | FE-Customer | WEB-01, BE-12 | Done |
+| WEB-08 | Contact / enquiry form → dashboard + email | FE-Customer | WEB-01, BE-13 | Done |
+| WEB-09 | Work With Me conversion page | FE-Customer | WEB-04 | Done |
+| WEB-10 | SEO (metadata, sitemap, OG), analytics, performance/Lighthouse pass | FE-Customer | WEB-02–09 | Done — metadata/canonicals/OG, sitemap and robots (preview builds refuse indexing). Analytics: Vercel Analytics + Speed Insights, chosen because they set no cookies, so the site needs no consent banner; the portal and preview deployments are excluded. The Lighthouse *measurement* needs a served build and is folded into LCH-06. |
 
 ## 7. Phase 3 — Practice Core (backend + `terios-admin`)
 
@@ -98,66 +98,66 @@ Public site + Client portal   Practice dashboard
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
 | BE-01 | AuthN/AuthZ: register, login, refresh tokens, Argon2id hashing, JWT, RBAC middleware (`client` / `practitioner`) | Backend | FND-04, FND-05 | Done |
-| BE-02 | Auth hardening: rate limiting, brute-force lockout, session hijack protections | Backend | BE-01 | Not Started |
+| BE-02 | Auth hardening: rate limiting, brute-force lockout, session hijack protections | Backend | BE-01 | Done |
 | BE-03 | Services & pricing CRUD (dashboard-controlled, instantly public) | Backend | BE-01 | Done |
 | BE-04 | Availability engine: working hours, session lengths, buffers, timezone-safe slot generation | Backend | BE-01 | Done |
 | BE-05 | Booking engine: slot hold, conflict prevention, reschedule/cancel rules, booking lifecycle | Backend | BE-03, BE-04 | Done |
-| BE-06 | Paystack adapter: charge at booking, webhooks, refunds, payment records per client | Backend | BE-05 | In Progress |
-| BE-07 | Client records: profile, history, documents, forms, payments — strict ownership scoping | Backend | BE-01 | Not Started |
-| BE-08 | Session notes: private notes vs shared feedback split | Backend | BE-07 | Not Started |
-| BE-09 | Notification service (Resend): booking confirmations, automated session reminders (scheduler), reschedule notices | Backend | BE-05, FND-06 | Not Started |
-| BE-10 | Form builder + digital signatures: intake/consent forms, attach to booking or send direct, signed storage | Backend | BE-07 | Not Started |
-| BE-11 | Documents: Cloudinary signed upload/download, client-scoped access | Backend | BE-07, FND-07 | Not Started |
-| BE-12 | CMS API: pages, blog posts, FAQs, testimonials (approve-before-publish) | Backend | BE-01 | Not Started |
-| BE-13 | Enquiry inbox API (form → dashboard + Resend notification) | Backend | BE-01, FND-06 | Not Started |
-| BE-14 | Reviews: client submission, practitioner moderation, publish to site | Backend | BE-07 | Not Started |
-| BE-15 | Reporting API: sessions, bookings ahead, income by service/period, content engagement | Backend | BE-05, BE-06 | Not Started |
+| BE-06 | Paystack adapter: charge at booking, webhooks, refunds, payment records per client | Backend | BE-05 | Done |
+| BE-07 | Client records: profile, history, documents, forms, payments — strict ownership scoping | Backend | BE-01 | Done |
+| BE-08 | Session notes: private notes vs shared feedback split | Backend | BE-07 | Done |
+| BE-09 | Notification service (Resend): booking confirmations, automated session reminders (scheduler), reschedule notices | Backend | BE-05, FND-06 | Done |
+| BE-10 | Form builder + digital signatures: intake/consent forms, attach to booking or send direct, signed storage | Backend | BE-07 | Done |
+| BE-11 | Documents: Cloudinary signed upload/download, client-scoped access | Backend | BE-07, FND-07 | Done (code + policy complete; live account needs Cloudinary credentials) |
+| BE-12 | CMS API: pages, blog posts, FAQs, testimonials (approve-before-publish) | Backend | BE-01 | Done |
+| BE-13 | Enquiry inbox API (form → dashboard + Resend notification) | Backend | BE-01, FND-06 | Done |
+| BE-14 | Reviews: client submission, practitioner moderation, publish to site | Backend | BE-07 | Done |
+| BE-15 | Reporting API: sessions, bookings ahead, income by service/period, content engagement | Backend | BE-05, BE-06 | Done |
 
 ### 7b. Admin App (`terios-admin`)
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
 | ADM-01 | Admin shell: login (brand-styled), layout, route guards | FE-Admin | FND-03, BE-01 | Done (v1 scope cut: no sidebar-collapse/mobile-drawer variants yet) |
-| ADM-02 | Calendar & scheduling: custom calendar component, availability/buffer editor, booking states | FE-Admin | ADM-01, BE-04, BE-05 | In Progress |
-| ADM-03 | Client records UI: full client file (details, sessions, notes, forms, docs, payments, feedback) | FE-Admin | ADM-01, BE-07 | Not Started |
-| ADM-04 | Session notes & feedback composer (private vs shared toggle) | FE-Admin | ADM-03, BE-08 | Not Started |
+| ADM-02 | Calendar & scheduling: custom calendar component, availability/buffer editor, booking states | FE-Admin | ADM-01, BE-04, BE-05 | Done — `WeekCalendar` built from scratch (no calendar library), `/availability` covers weekly windows, per-day buffers and time off, and every booking state transition is a separate explicit action. |
+| ADM-03 | Client records UI: full client file (details, sessions, notes, forms, docs, payments, feedback) | FE-Admin | ADM-01, BE-07 | Done |
+| ADM-04 | Session notes & feedback composer (private vs shared toggle) | FE-Admin | ADM-03, BE-08 | Done |
 | ADM-05 | Services & pricing manager | FE-Admin | ADM-01, BE-03 | Done |
-| ADM-06 | Payments & earnings views (per client, per service, over time) | FE-Admin | ADM-01, BE-06 | Not Started |
-| ADM-07 | CMS UI: pages, blog editor, FAQ manager, testimonial moderation, Cloudinary image picker | FE-Admin | ADM-01, BE-12 | Not Started |
-| ADM-08 | Form builder UI: field editor, assign to booking/client, view signed submissions | FE-Admin | ADM-01, BE-10 | Not Started |
-| ADM-09 | Enquiry inbox UI | FE-Admin | ADM-01, BE-13 | Not Started |
-| ADM-10 | Review moderation UI | FE-Admin | ADM-01, BE-14 | Not Started |
-| ADM-11 | Reporting dashboard: charts (custom-styled), sessions/income/bookings/content | FE-Admin | ADM-01, BE-15 | Not Started |
+| ADM-06 | Payments & earnings views (per client, per service, over time) | FE-Admin | ADM-01, BE-06 | Done |
+| ADM-07 | CMS UI: pages, blog editor, FAQ manager, testimonial moderation, Cloudinary image picker | FE-Admin | ADM-01, BE-12 | Done — one `/content` screen with four tabs. Publish and approve are separate buttons hitting their own routes; a save can never put content live. Images upload browser→Cloudinary on a signed, folder-scoped signature, never through the API. |
+| ADM-08 | Form builder UI: field editor, assign to booking/client, view signed submissions | FE-Admin | ADM-01, BE-10 | Done — `/forms`, definitions and responses on separate tabs. Field keys are assigned once and never recomputed, so rewording a label cannot orphan an answer already recorded. Submissions are read-only with the server's integrity verdict shown. |
+| ADM-09 | Enquiry inbox UI | FE-Admin | ADM-01, BE-13 | Done |
+| ADM-10 | Review moderation UI | FE-Admin | ADM-01, BE-14 | Done |
+| ADM-11 | Reporting dashboard: charts (custom-styled), sessions/income/bookings/content | FE-Admin | ADM-01, BE-15 | Done |
 
 ## 8. Phase 4 — Client Experience (portal in `terios-web` + video)
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
-| CX-01 | WebRTC signaling server: authenticated WebSocket, session-bound rooms, join-window enforcement | Backend | BE-05, BE-02 | Not Started |
-| CX-02 | Cloudflare Calls TURN: create TURN key, wire API-side credential endpoint, connectivity test harness | DevOps | FND-08 | Not Started |
+| CX-01 | WebRTC signaling server: authenticated WebSocket, session-bound rooms, join-window enforcement | Backend | BE-05, BE-02 | Done |
+| CX-02 | Cloudflare Calls TURN: create TURN key, wire API-side credential endpoint, connectivity test harness | DevOps | FND-08 | **Verified live** — the Cloudflare Realtime TURN key mints real credentials: 2 ICE entries with stun:, turn: and turns: URLs and base64 username/credential. A bad token is refused with 401 and the token never reaches the error text. Not yet proven between two real networks — that is the e2e video spec. |
 | CX-03 | Portal auth screens + account area shell | FE-Customer | WEB-01, BE-01 | Done |
-| CX-04 | Portal bookings: book new, view upcoming, reschedule within rules | FE-Customer | CX-03, BE-05 | In Progress |
-| CX-05 | Portal video room: raw WebRTC client (custom UI — no native call chrome), one-click join, reconnect handling | FE-Customer | CX-01, CX-02, CX-04 | Not Started |
-| CX-06 | Admin video room: start session from dashboard, session record attaches to client file | FE-Admin + Backend | CX-01, ADM-02 | Not Started |
-| CX-07 | Portal forms & signatures: complete, sign (custom signature pad), submit | FE-Customer | CX-03, BE-10 | Not Started |
-| CX-08 | Portal session history + shared feedback & resources | FE-Customer | CX-03, BE-08 | Not Started |
-| CX-09 | Portal documents library | FE-Customer | CX-03, BE-11 | Not Started |
-| CX-10 | Portal payment history + pay for new bookings | FE-Customer | CX-03, BE-06 | Not Started |
-| CX-11 | Portal review submission | FE-Customer | CX-03, BE-14 | Not Started |
+| CX-04 | Portal bookings: book new, view upcoming, reschedule within rules | FE-Customer | CX-03, BE-05 | Done |
+| CX-05 | Portal video room: raw WebRTC client (custom UI — no native call chrome), one-click join, reconnect handling | FE-Customer | CX-01, CX-02, CX-04 | Done — **and now actually reachable.** The room component and its hook were complete and tested but imported by nothing: `/portal/sessions/[id]/room` did not exist, so the Join link every client was offered 404'd. Route added with its own tests; the id comes from the route, leaving returns to the sessions list. |
+| CX-06 | Admin video room: start session from dashboard, session record attaches to client file | FE-Admin + Backend | CX-01, ADM-02 | Done |
+| CX-07 | Portal forms & signatures: complete, sign (custom signature pad), submit | FE-Customer | CX-03, BE-10 | Done |
+| CX-08 | Portal session history + shared feedback & resources | FE-Customer | CX-03, BE-08 | Done |
+| CX-09 | Portal documents library | FE-Customer | CX-03, BE-11 | Done |
+| CX-10 | Portal payment history + pay for new bookings | FE-Customer | CX-03, BE-06 | Done — **and now actually wired.** `book/page.tsx` ended at a confirmation screen with a `TODO(payments)`; nothing created the first payment record, so the Pay-now button on the Payments page could never appear and no booking could ever be paid for. Confirming now hands off to Paystack checkout. Booking and payment stay separate: a failed hand-off keeps the slot and offers payment from the portal. |
+| CX-11 | Portal review submission | FE-Customer | CX-03, BE-14 | Done |
 
 ## 9. Phase 5 — Launch
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
-| LCH-01 | Security hardening pass: OWASP review, headers, CORS, rate limits, secrets audit, WebRTC room isolation test | QA & Security | All BE + CX | Not Started |
-| LCH-02 | E2E suite: book → pay → remind → video → notes → feedback → review, across both apps | QA & Security | CX-11, ADM-11 | Not Started |
-| LCH-03 | SonarQube gates green across api/web/admin; coverage threshold met | QA & Security | LCH-02 | Not Started |
-| LCH-04 | Atlas daily backups verified + restore drill | DevOps | FND-05 | Not Started |
-| LCH-05 | Content placement: client copy, testimonials, service descriptions, images — refined and loaded via CMS | Design | ADM-07 | Not Started |
-| LCH-06 | Load/performance pass: booking concurrency, video room stress, Lighthouse | QA & Security | LCH-02 | Not Started |
-| LCH-07 | Practitioner training & handover runbook | Program | All above | Not Started |
-| LCH-08 | Domain cutover (Google-registered domain → Vercel/Render), SSL, go-live | DevOps | LCH-01–06 | Not Started |
-| LCH-09 | Post-launch monitoring, uptime alerts, settling-in support period | DevOps + QA | LCH-08 | Not Started |
+| LCH-01 | Security hardening pass: OWASP review, headers, CORS, rate limits, secrets audit, WebRTC room isolation test | QA & Security | All BE + CX | Done — `design/security-review.md`; CORS + security headers added, secrets audit clean; dependency scanning and alerting tracked as open items |
+| LCH-02 | E2E suite: book → pay → remind → video → notes → feedback → review, across both apps | QA & Security | CX-11, ADM-11 | Done (API half runs now; browser half needs a deployment) — `journey_test.go` drives the whole story over real HTTP with in-memory adapters and runs on every commit. `e2e/` holds the Playwright suite for the same story across both apps, including a two-browser WebRTC test that asserts `bytesReceived > 0`, not just a visible `<video>`. It is gated on FND-05/FND-09 and a seeded practitioner account. |
+| LCH-03 | SonarQube gates green across api/web/admin; coverage threshold met | QA & Security | LCH-02 | Done bar the live gate (needs SONAR_TOKEN) — enforced coverage ratchets in CI: API 65% floor (measured with `-coverpkg=./internal/...`, which reports 68% where the naive figure reads 48%), web 65/67/60/64, admin 73/72/68/71. Added `govulncheck` and `npm audit --audit-level=high`, closing LCH-01's dependency-scanning gap. Ratchets rise, never fall. |
+| LCH-04 | Atlas daily backups verified + restore drill | DevOps | FND-05 | Procedure written; needs an Atlas cluster — `design/go-live-runbook.md` §1, including why M0 cannot satisfy this task at all and what the drill has to prove (a booking, its payment, and a signed form still reporting `integrityOk`). |
+| LCH-05 | Content placement: client copy, testimonials, service descriptions, images — refined and loaded via CMS | Design | ADM-07 | Blocked on the client's own copy, photographs and testimonials. The CMS that receives them is built and tested (ADM-07); this task is the content itself, which cannot be invented. |
+| LCH-06 | Load/performance pass: booking concurrency, video room stress, Lighthouse | QA & Security | LCH-02 | Booking concurrency done — `concurrency_test.go` runs 32 simultaneous bookings of one slot under `-race`: exactly one 201, the rest a clean 409 `slot_unavailable`, plus repeated-tap, unrelated-slot and read-under-write cases. Video stress and Lighthouse need a deployment (FND-05/FND-09). |
+| LCH-07 | Practitioner training & handover runbook | Program | All above | Done — `design/handover-runbook.md`, written for the practitioner rather than an engineer: what each screen is for, which actions cannot be undone and why, the private-vs-shared notes rule, and the three symptoms that should be reported rather than worked around. |
+| LCH-08 | Domain cutover (Google-registered domain → Vercel/Render), SSL, go-live | DevOps | LCH-01–06 | Runbook written; needs the domain and DNS access — `design/go-live-runbook.md` §7: lower the TTL the day before, verify in a fixed order, switch Paystack to live keys last and refund the first real payment. Rollback is a DNS revert with nothing to undo in the database. |
+| LCH-09 | Post-launch monitoring, uptime alerts, settling-in support period | DevOps + QA | LCH-08 | Alerting built (needs a live deployment to point a monitor at) — `internal/domain/ops` holds the thresholds as pure, testable rules; `GET /v1/admin/ops/health` reports notification backlog, retry-exhausted failures, lockout spikes and payment-verification failures. Always HTTP 200 so a monitor doesn't page for a mail backlog, and `unknown` when the counters can't be read — four zeroes would look exactly like health. Closes LCH-01's alerting gap. |
 
 ---
 
@@ -175,5 +175,89 @@ Public site + Client portal   Practice dashboard
 1. **Version pins** — "latest stable" recorded at scaffold time (FND-01); Go / Next.js / mongo-driver / Paystack & Cloudinary SDKs verified that day.
 2. **Currencies** — default settlement currency(s) in Paystack (GHS base? USD for internationals?).
 3. **Analytics** — privacy-friendly choice for the "website visits / content engagement" reporting (e.g. Plausible vs first-party collection into MongoDB).
-4. **Session video length / recording** — raw WebRTC build assumes live-only, no recording (recording is a scope change).
+4. **Session video length / recording** — recording exists as **client-local** capture (MediaRecorder → `.webm` download on the recorder's own machine, with a ● Rec indicator relayed to the other party). Server-side recording/storage remains a scope change (needs a media server).
 5. **Reminders** — email-only via Resend per current scope; SMS/WhatsApp reminders would be a scope addition.
+
+## 12. Product-wide redesign and review (12 Aug 2026)
+
+| ID | Task | Status | Verification |
+|---|---|---|---|
+| UX-01 | Refresh the shared type system: Outfit for body/UI copy and Figtree for headings, titles, and wordmarks | Done | Fontsource dependencies are self-hosted in both apps; production builds load the new contract |
+| UX-02 | Recompose the public shell and homepage with stronger hierarchy, asymmetric service layout, atmospheric depth, refined motion, and a premium closing/footer treatment | Done | Web production build + focused component/page tests |
+| UX-03 | Carry the new surface, card, button, focus, selection, loading, empty, and responsive behavior through public, auth, portal, and admin routes via shared primitives and layouts | Done | Both production builds + app test suites |
+| UX-04 | Redesign the practice shell for small screens and upgrade the overview into a useful command surface | Done | Responsive horizontal navigation added below `lg`; desktop sidebar retained |
+| UX-05 | Code-review repairs: skip navigation in both apps, branded 404s, meaningful blog-cover alt text, sentence-case navigation, and removal of unused Fraunces dependency | Done | Lint, TypeScript, static route generation, targeted tests |
+
+The redesign deliberately preserves the existing eucalyptus/clay/sand identity and functional routes. It changes the visual hierarchy and interaction system without migrating frameworks or rewriting completed business flows.
+
+## 13. Complete UI revamp — second pass (12 Aug 2026)
+
+The first redesign pass was rejected because it leaned too heavily on shared primitives and did not prove route-by-route coverage. This pass takes the larger visual risk requested: a deep-eucalyptus “living practice journal” system, applied individually across the public site, both authentication experiences, the complete client portal, and every practice workspace.
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| REV-01 | Replace the visual foundation and both application shells | Done | Outfit body, Figtree titles, expanded palette tokens, rebuilt public/portal/admin navigation, footer and page-header systems |
+| REV-02 | Individually redesign every public and authentication route | Done | Route matrix in `design/ui-revamp.md`; includes new legal routes linked from the footer |
+| REV-03 | Carry the redesign through every client portal route and state | Done | New care-record navigation, route mastheads, connective page treatment and redesigned booking/session/form/document/payment/review surfaces |
+| REV-04 | Carry the redesign through every admin workspace and state | Done | New command rail, top bar, editorial page headers, data surfaces, forms, tables and modals across all dashboard routes |
+| REV-05 | Render at desktop and mobile sizes; run tests, lint, builds and API regression suite | Done | Desktop and 390px render review; web 284/284, admin 233/233, API suite green; both production builds pass; lint has zero errors |
+
+## 14. Component identity, motion, header and footer polish (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| POL-01 | Replace the generic shared card, button, badge, icon-button and inline-link treatments | Done | Care-thread card edge, responsive spotlight, tactile inset actions, clay care-point, animated link rule and active feedback in both apps |
+| POL-02 | Add page transitions and in-page motion without destabilising persistent chrome | Done | Route-group templates, viewport-triggered marketing sections, short stagger, GPU-safe transform/opacity and complete reduced-motion fallback |
+| POL-03 | Redesign the public header and mobile navigation | Done | Floating segmented frame, custom leaf mark, active capsules and numbered full-screen mobile chapter menu |
+| POL-04 | Redesign the public footer | Done | Editorial booking close, new brand lockup, practice-quality markers, horizontal link rails and responsive legal row |
+| POL-05 | Replace and verify favicon assets in both applications | Done | Matching SVG + ICO assets; all four local endpoints return 200 with correct MIME types |
+| POL-06 | Verify component behavior and production output | Done | Web 285/285, admin 233/233; both builds pass; scoped lint is clean; desktop and 390px browser review complete |
+
+## 15. Booking-shell continuity and settled-to-floating navigation (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| NAV-01 | Preserve the public website shell through guest booking | Done | `/portal/book` renders the same public header instead of a disconnected slim portal header |
+| NAV-02 | Give authenticated portal clients a direct website exit | Done | `Back to website` action is visible in the portal navigation at every width |
+| NAV-03 | Replicate Kedland's settled-to-floating header behavior | Done | Full-width at page top; contracts after 48px; expands on return; requestAnimationFrame throttling and reduced-motion handling retained |
+
+## 16. Semantic card redesign (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| CARD-01 | Recompose booking service choices into a branded, information-led control | Done | Number rail, care label, duration capsule, separated price/action zone, asymmetric silhouette, tactile hover, and accessible whole-card radio semantics |
+| CARD-02 | Carry the choice-card language into the public service chooser | Done | `/work-with-me` uses the same visual grammar with link actions and a dark preselected state |
+| CARD-03 | Create companion card families for other content types | Done | Record treatment applied to sessions, forms, documents, payments and review prompts; booking summary and public review cards receive distinct semantic variants |
+| CARD-04 | Verify code quality and production output | Done | Scoped ESLint clean; production build passes; focused affected-path tests 13/13. Full parallel suite reached 282/290 with eight resource-related 5s timeouts, none assertion failures |
+
+## 17. Terms and Privacy editorial redesign (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| LEGAL-01 | Replace the duplicated divider-list layouts with a shared legal-page composition | Done | New `LegalPage` component owns trust summary, review metadata, contents navigation, reading chapters and closing actions |
+| LEGAL-02 | Give Terms and Privacy distinct content cues while preserving shared visual language | Done | Route-specific summaries, icons, cross-policy links and unchanged plain-language policy copy |
+| LEGAL-03 | Make long-form legal reading responsive and accessible | Done | Semantic article/section/nav structure, anchor targets with sticky offset, mobile chapter rails and comfortable measure/leading |
+| LEGAL-04 | Verify the new legal routes | Done | Focused component test passes; scoped ESLint and diff checks clean; production build statically generates `/terms` and `/privacy` |
+
+## 18. Password recovery (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| AUTH-REC-01 | Add secure password-reset issuance and persistence | Done | 256-bit random tokens, SHA-256 hashes only in MongoDB, sparse unique index, one-hour expiry and uniform public responses prevent address enumeration |
+| AUTH-REC-02 | Add reset completion and session safety | Done | One-time atomic token consumption, existing password policy, Argon2 hashing and account-wide refresh-session revocation |
+| AUTH-REC-03 | Add recovery email and API routes | Done | Rate-limited `/v1/auth/forgot-password` and `/v1/auth/reset-password`; Resend message links to the customer reset route |
+| AUTH-REC-04 | Build the complete customer recovery experience | Done | Login entry point, branded request/success screen, token-aware new-password form, mismatch/expiry handling and return-to-login path |
+| AUTH-REC-05 | Verify recovery implementation | Done | Auth service/Mongo/HTTP packages pass; web API tests 16/16; scoped ESLint clean; production build generates both new routes |
+
+## 19. Production hardening and SEO — first slice (12 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| PROD-01 | Add practitioner password recovery to the admin workspace | Done | Admin-origin reset email for practitioner accounts; branded request/reset states; existing one-time token, expiry, password policy and session-revocation controls reused |
+| PROD-02 | Make frontend security headers deployment-portable | Done | Both Next configs now disable framework disclosure and enforce nosniff, frame denial, referrer, permissions, COOP and DNS-prefetch policy; Vercel manifests match |
+| PROD-03 | Prevent indexing and caching of private/auth surfaces | Done | Admin emits metadata and response-header noindex/noarchive plus private no-store; customer portal/auth group emits noindex metadata; recovery routes excluded from robots |
+| SEO-01 | Strengthen link-preview presentation | Done | Generated 1200×630 branded Open Graph image is automatically attached through Next metadata conventions and statically verified in production build |
+| SEO-02 | Re-verify canonical, robots and sitemap controls | Done | Focused robots/sitemap suite 6/6; preview indexing remains opt-out and portal/recovery routes stay outside sitemap |
+| PROD-04 | Run first dependency and production-build gate | Done | npm audit reports 0 vulnerabilities in web/admin; both production builds pass; relevant API packages pass; local `govulncheck` binary unavailable but CI already runs it |
+| PROD-05 | Live edge/TLS/email/Lighthouse verification | Blocked on deployment | Must be run against real origins; tracked in `design/security-review.md` open items |
+| PROD-06 | Strict nonce-based browser CSP | Planned | Requires Next nonce/hash integration and browser regression coverage; deliberately not shipped as a potentially breaking guessed policy |

@@ -3,24 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, Globe2, Leaf, LogOut, Plus } from "lucide-react";
+import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 /**
  * Portal top nav — design-system §3.30 (customer top nav, portal variant) +
  * §2 (client portal content max 960px). Wordmark left, section links with
- * underline-grow, user menu right (36px avatar, custom dropdown — native
- * elements are forbidden). Sections beyond Overview are "#" placeholders
- * until their CX tasks land.
+ * underline-grow, primary "Book" action, user menu right (36px avatar,
+ * custom dropdown — native elements are forbidden). Sections beyond
+ * Overview/Sessions are "#" placeholders until their CX tasks land.
  */
 
 const sections = [
-  { href: "/portal", label: "Overview", placeholder: false },
-  { href: "#", label: "Sessions", placeholder: true },
-  { href: "#", label: "Forms", placeholder: true },
-  { href: "#", label: "Documents", placeholder: true },
-  { href: "#", label: "Payments", placeholder: true },
-  { href: "#", label: "Reviews", placeholder: true },
+  { href: "/portal", label: "Overview" },
+  { href: "/portal/sessions", label: "Sessions" },
+  { href: "/portal/forms", label: "Forms" },
+  { href: "/portal/documents", label: "Documents" },
+  { href: "/portal/payments", label: "Payments" },
+  { href: "/portal/reviews", label: "Reviews" },
 ];
 
 function initials(name: string): string {
@@ -78,22 +79,22 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
   return (
     <header
       className={cn(
-        "sticky top-0 z-sticky border-b transition-colors duration-base ease-out",
-        scrolled ? "border-border bg-surface/92 backdrop-blur-md" : "border-transparent",
+        "sticky top-0 z-sticky border-b border-eucalyptus-800 bg-eucalyptus-900 text-sand-0 transition-shadow duration-base ease-out",
+        scrolled && "shadow-[0_18px_50px_rgba(28,51,40,.2)]",
       )}
     >
       <nav
         aria-label="Portal"
-        className="mx-auto flex h-[72px] max-w-[960px] items-center justify-between gap-8 px-6"
+        className="mx-auto grid max-w-[1040px] grid-cols-[1fr_auto] items-center gap-x-5 px-5 pb-3 pt-4 sm:px-6 lg:grid-cols-[auto_1fr_auto] lg:py-3"
       >
         <Link
           href="/portal"
-          className="font-display text-2xl font-medium tracking-[-0.01em] text-ink"
+          className="inline-flex items-center gap-2.5 font-display text-xl font-semibold tracking-[-0.03em] text-sand-0"
         >
-          Terios Wellness
+          <span className="flex size-8 items-center justify-center rounded-full bg-sand-0 text-eucalyptus-900"><Leaf size={14} aria-hidden="true" /></span>Terios <span className="font-medium text-eucalyptus-300">Wellness</span>
         </Link>
 
-        <ul className="flex flex-1 items-center gap-8 overflow-x-auto">
+        <ul className="order-3 col-span-2 mt-3 flex items-center gap-1 overflow-x-auto border-t border-sand-0/10 pt-3 lg:order-none lg:col-span-1 lg:mt-0 lg:justify-center lg:border-0 lg:pt-0">
           {sections.map((section) => {
             const active = isActive(section.href);
             return (
@@ -102,50 +103,56 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
                   href={section.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative py-1 text-sm font-medium tracking-[0.005em] whitespace-nowrap",
+                    "group relative rounded-full px-3 py-2 text-sm font-medium tracking-[0.005em] whitespace-nowrap",
                     "transition-colors duration-instant ease-out",
-                    active ? "font-semibold text-ink" : "text-ink-muted hover:text-ink",
+                    active ? "bg-sand-0 text-eucalyptus-900" : "text-eucalyptus-200 hover:bg-sand-0/8 hover:text-sand-0",
                   )}
                 >
                   {section.label}
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "absolute -bottom-[6px] left-0 h-0.5 bg-primary",
-                      "transition-[width] duration-fast ease-out",
-                      active ? "w-full" : "w-0 group-hover:w-full",
-                    )}
-                  />
                 </Link>
               </li>
             );
           })}
         </ul>
 
-        <div ref={menuRef} className="relative">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            aria-label="Back to website"
+            className="inline-flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-medium text-eucalyptus-200 transition-colors duration-fast hover:bg-sand-0/8 hover:text-sand-0 xl:px-3"
+          >
+            <Globe2 size={15} aria-hidden="true" />
+            <span className="hidden xl:inline">Website</span>
+          </Link>
+          {/* Primary action (§3.30: primary sm "Book a session" equivalent for
+              the portal variant). */}
+          <Link href="/portal/book" className={buttonClasses({ size: "sm", className: "hidden !bg-sand-0 !text-eucalyptus-900 shadow-none hover:!bg-eucalyptus-100 sm:inline-flex" })}>
+            <Plus size={14} aria-hidden="true" /> Book
+          </Link>
+          <div ref={menuRef} className="relative">
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
             className={cn(
-              "flex h-10 items-center gap-2 rounded-full pr-2 pl-1 text-sm font-medium text-ink",
+              "flex h-10 items-center gap-2 rounded-full pr-2 pl-1 text-sm font-medium text-sand-0",
               "transition-colors duration-fast ease-out",
-              "hover:bg-surface-sunken active:bg-eucalyptus-100",
+              "hover:bg-sand-0/8 active:bg-sand-0/12",
             )}
           >
             <span
               aria-hidden="true"
-              className="flex size-9 items-center justify-center rounded-full bg-primary font-display text-sm text-on-primary"
+              className="flex size-9 items-center justify-center rounded-full bg-clay-300 font-display text-sm font-semibold text-eucalyptus-900"
             >
               {initials(userName)}
             </span>
-            <span className="max-w-[140px] truncate">{userName}</span>
+            <span className="hidden max-w-[140px] truncate xl:block">{userName}</span>
             <ChevronDown
               size={16}
               aria-hidden="true"
               className={cn(
-                "text-ink-faint transition-transform duration-fast ease-out",
+                "text-eucalyptus-300 transition-transform duration-fast ease-out",
                 menuOpen && "rotate-180",
               )}
             />
@@ -155,7 +162,7 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
             <div
               role="menu"
               aria-label="Account"
-              className="animate-fade-in absolute right-0 z-dropdown mt-2 w-56 rounded-md border border-border bg-surface-raised p-1 shadow-md"
+              className="animate-fade-in absolute right-0 z-dropdown mt-2 w-60 rounded-2xl border border-border bg-surface-raised p-2 text-ink shadow-lg"
             >
               <div className="px-3 py-2">
                 <p className="text-sm font-medium text-ink">{userName}</p>
@@ -185,6 +192,7 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
               </button>
             </div>
           ) : null}
+          </div>
         </div>
       </nav>
     </header>

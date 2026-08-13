@@ -28,6 +28,16 @@ afterEach(() => {
 });
 
 describe("api client", () => {
+  it("requests and completes password recovery", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(authApi.forgotPassword("ama@example.com")).resolves.toBeUndefined();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ email: "ama@example.com" });
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(authApi.resetPassword("reset-token", "a new secure password")).resolves.toBeUndefined();
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ token: "reset-token", password: "a new secure password" });
+  });
+
   it("posts JSON to the register endpoint and parses the 201 auth response", async () => {
     const payload = {
       accessToken: "a1",

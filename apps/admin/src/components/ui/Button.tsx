@@ -21,23 +21,42 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex select-none items-center justify-center gap-2 rounded-md font-semibold transition-colors duration-fast ease-out disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
+  "terios-button relative isolate inline-flex select-none items-center justify-center gap-2 overflow-hidden rounded-full font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 active:scale-[.975] active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-xs hover:bg-primary-hover active:bg-primary-active",
+    "terios-button-primary bg-primary text-on-primary shadow-xs hover:bg-primary-hover active:bg-primary-active",
   secondary:
-    "border border-border-strong bg-transparent text-ink hover:bg-surface-sunken hover:border-ink-faint active:bg-eucalyptus-100",
-  ghost: "bg-transparent text-primary hover:bg-eucalyptus-50 active:bg-eucalyptus-100",
+    "terios-button-secondary border border-border-strong bg-transparent text-ink hover:bg-surface-sunken hover:border-primary active:bg-eucalyptus-100",
+  ghost: "terios-button-ghost bg-transparent text-primary hover:bg-eucalyptus-50 active:bg-eucalyptus-100",
   danger:
     "bg-danger text-on-primary hover:bg-danger-hover active:brightness-95 focus-visible:outline-[color-mix(in_srgb,var(--danger)_40%,transparent)]",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-8 px-4 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-4 text-base",
+  sm: "h-9 px-4 text-sm",
+  md: "h-11 px-5 text-sm",
+  lg: "h-[3.25rem] px-6 text-base",
 };
+
+/**
+ * The Button's classes on their own, for the cases where the element has
+ * to be a link — navigation that must stay right- and middle-clickable
+ * should not be a <button> with an onClick.
+ */
+export function buttonClasses({
+  variant = "primary",
+  size = "md",
+  fullWidth = false,
+  className,
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  className?: string;
+} = {}): string {
+  return cn(base, variants[variant], sizes[size], fullWidth && "w-full", className);
+}
 
 export function Button({
   variant = "primary",

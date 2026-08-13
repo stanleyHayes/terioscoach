@@ -18,9 +18,9 @@ export function Card({ hoverable = false, className, children, ...rest }: CardPr
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-surface-raised p-6",
+        "terios-card relative overflow-hidden rounded-[1.25rem] border border-border/75 bg-surface-raised/88 p-6 shadow-[0_20px_70px_rgba(0,0,0,.08)] backdrop-blur-sm",
         hoverable &&
-          "transition-[transform,border-color,box-shadow] duration-base ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm",
+          "terios-card-interactive transition-[transform,border-color,box-shadow] duration-base ease-out hover:-translate-y-1 hover:border-primary/50 hover:shadow-sm active:scale-[.99]",
         className,
       )}
       {...rest}

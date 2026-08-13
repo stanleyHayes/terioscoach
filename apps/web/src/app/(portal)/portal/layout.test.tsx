@@ -4,10 +4,11 @@ import PortalLayout from "./layout";
 
 const replaceMock = vi.fn();
 const logoutMock = vi.fn();
+let pathnameValue = "/portal";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
-  usePathname: () => "/portal",
+  usePathname: () => pathnameValue,
 }));
 
 let authState = {
@@ -33,6 +34,7 @@ afterEach(() => {
   replaceMock.mockReset();
   logoutMock.mockReset();
   authState = { status: "loading", user: null };
+  pathnameValue = "/portal";
 });
 
 describe("PortalLayout guard", () => {
@@ -62,6 +64,18 @@ describe("PortalLayout guard", () => {
 
     expect(screen.getByText("Secret content")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Portal" })).toBeTruthy();
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("/");
+  });
+
+  it("keeps the public website header around the guest booking flow", () => {
+    pathnameValue = "/portal/book";
+    authState = { status: "unauthenticated", user: null };
+    render(<PortalLayout>Choose your session</PortalLayout>);
+
+    expect(screen.getByText("Choose your session")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Terios Wellness" })[0]?.getAttribute("href")).toBe("/");
     expect(replaceMock).not.toHaveBeenCalled();
   });
 

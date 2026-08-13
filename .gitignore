@@ -18,6 +18,7 @@ coverage/
 .DS_Store
 .scannerwork/
 .sonar/
+.raven/
 
 # Go
 api/vendor/

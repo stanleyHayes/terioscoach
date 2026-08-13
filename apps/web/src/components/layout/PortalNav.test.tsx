@@ -22,16 +22,29 @@ describe("PortalNav", () => {
     }
   });
 
-  it("marks Overview active and keeps the other sections as '#' placeholders", () => {
+  it("marks Overview active and points Sessions at the real page", () => {
     render(<PortalNav {...props} />);
 
     expect(screen.getByRole("link", { name: "Overview" }).getAttribute("aria-current")).toBe(
       "page",
     );
-    expect(screen.getByRole("link", { name: "Sessions" }).getAttribute("href")).toBe("#");
+    expect(screen.getByRole("link", { name: "Sessions" }).getAttribute("href")).toBe(
+      "/portal/sessions",
+    );
     expect(
       screen.getByRole("link", { name: "Sessions" }).getAttribute("aria-current"),
     ).toBeNull();
+  });
+
+  it("renders the primary Book action into the booking flow", () => {
+    render(<PortalNav {...props} />);
+
+    expect(screen.getByRole("link", { name: "Book" }).getAttribute("href")).toBe("/portal/book");
+  });
+
+  it("offers an explicit route back to the public website", () => {
+    render(<PortalNav userName="Ama Serwaa" onSignOut={vi.fn()} />);
+    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("/");
   });
 
   it("opens the user menu, shows the account details, and signs out", () => {

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/identity"
 )
@@ -16,6 +17,8 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (identity.User, error)
 	// FindByID looks up by ID; misses return identity.ErrUserNotFound.
 	FindByID(ctx context.Context, id string) (identity.User, error)
+	SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
+	ResetPassword(ctx context.Context, tokenHash, passwordHash string, now time.Time) (string, error)
 }
 
 // RefreshTokenRepository is the outbound port for refresh-session
@@ -27,4 +30,22 @@ type RefreshTokenRepository interface {
 	FindByHash(ctx context.Context, tokenHash string) (identity.RefreshToken, error)
 	// Revoke marks a session revoked. Missing sessions are not an error.
 	Revoke(ctx context.Context, tokenHash string) error
+	// RevokeAllForUser revokes every live session of one account. It backs
+	// refresh-token reuse detection: replaying a rotated token means the
+	// token leaked, so the whole family dies at once (BE-02).
+	RevokeAllForUser(ctx context.Context, userID string) error
+}
+
+// LoginAttemptStore is the outbound port for brute-force accounting. The
+// key is the submitted login identifier (normalized email), recorded
+// whether or not an account exists — see identity.LockoutPolicy.
+type LoginAttemptStore interface {
+	// Get returns the current history. An identifier with no failures
+	// returns a zero-count record and no error.
+	Get(ctx context.Context, identifier string) (identity.LoginAttempts, error)
+	// Save persists the updated history, replacing any previous record.
+	Save(ctx context.Context, attempts identity.LoginAttempts, retainFor time.Duration) error
+	// Reset clears the history after a successful login. Missing records
+	// are not an error.
+	Reset(ctx context.Context, identifier string) error
 }

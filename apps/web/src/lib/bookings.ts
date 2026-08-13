@@ -144,10 +144,14 @@ export async function cancelBooking(
 export const RESCHEDULE_CUTOFF_HOURS = 24;
 
 /** Client-side mirror of the cutoff rule. Past the cutoff the server answers
- * 422 cutoff_passed — this lets the UI say so before the round trip. */
+ * 422 cutoff_passed — this lets the UI say so before the round trip.
+ *
+ * The boundary matches the server exactly: the domain allows a change while
+ * `now.Before(startAt - cutoff)`, so landing *on* the 24-hour mark is already
+ * closed (booking.ReschedulePolicy.CanChange, api/internal/domain/booking). */
 export function cutoffPassed(startAt: string, now: Date = new Date()): boolean {
   return (
-    new Date(startAt).getTime() - now.getTime() <
+    new Date(startAt).getTime() - now.getTime() <=
     RESCHEDULE_CUTOFF_HOURS * 60 * 60 * 1000
   );
 }

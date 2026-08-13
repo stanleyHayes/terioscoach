@@ -12,7 +12,7 @@ export interface SectionHeadingProps {
   className?: string;
 }
 
-/** Marketing section header (brand.md §4): micro eyebrow, display-lg Fraunces
+/** Marketing section header (brand.md §4): micro eyebrow, display-lg Figtree
  * title, body-lg muted description. Measure-capped, text-wrap pretty. */
 export function SectionHeading({
   eyebrow,

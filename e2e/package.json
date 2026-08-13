@@ -1,0 +1,18 @@
+{
+  "name": "terios-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser end-to-end suite (LCH-02). Runs against a deployment, not a dev server — see README.md.",
+  "scripts": {
+    "test": "playwright test",
+    "test:journey": "playwright test specs/journey.spec.ts --project=chromium",
+    "test:video": "playwright test specs/video.spec.ts --project=chromium",
+    "test:public": "playwright test specs/marketing.spec.ts",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install --with-deps chromium firefox"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "typescript": "5.9.3"
+  }
+}

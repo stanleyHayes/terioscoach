@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
+import { ApiError } from "@/lib/api";
 import type { Booking } from "@/lib/schedule";
-import { WeekCalendar } from "./WeekCalendar";
+import { WeekCalendar, type WeekCalendarProps } from "./WeekCalendar";
 
 /**
  * All fixtures sit in the practice zone (Africa/Accra ≡ UTC), so positioning
@@ -26,13 +27,21 @@ function booking(overrides: Partial<Booking> = {}): Booking {
   };
 }
 
+interface Handlers {
+  onPrevWeek: Mock<() => void>;
+  onNextWeek: Mock<() => void>;
+  onToday: Mock<() => void>;
+  onAction: Mock<WeekCalendarProps["onAction"]>;
+  onReschedule: Mock<WeekCalendarProps["onReschedule"]>;
+}
+
 function renderCalendar(bookings: Booking[] = [booking()], handlers: Partial<Handlers> = {}) {
   const props: Handlers = {
-    onPrevWeek: vi.fn(),
-    onNextWeek: vi.fn(),
-    onToday: vi.fn(),
-    onAction: vi.fn(),
-    onReschedule: vi.fn(),
+    onPrevWeek: vi.fn<() => void>(),
+    onNextWeek: vi.fn<() => void>(),
+    onToday: vi.fn<() => void>(),
+    onAction: vi.fn<WeekCalendarProps["onAction"]>(),
+    onReschedule: vi.fn<WeekCalendarProps["onReschedule"]>(),
     ...handlers,
   };
   render(
@@ -44,14 +53,6 @@ function renderCalendar(bookings: Booking[] = [booking()], handlers: Partial<Han
     />,
   );
   return props;
-}
-
-interface Handlers {
-  onPrevWeek: ReturnType<typeof vi.fn>;
-  onNextWeek: ReturnType<typeof vi.fn>;
-  onToday: ReturnType<typeof vi.fn>;
-  onAction: ReturnType<typeof vi.fn>;
-  onReschedule: ReturnType<typeof vi.fn>;
 }
 
 afterEach(() => {
@@ -180,7 +181,7 @@ describe("WeekCalendar", () => {
   it("Complete calls the action handler and updates the modal status", async () => {
     const completed = booking({ status: "completed", completedAt: "2026-08-11T10:30:00.000Z" });
     const handlers = renderCalendar([booking()], {
-      onAction: vi.fn().mockResolvedValue(completed),
+      onAction: vi.fn<WeekCalendarProps["onAction"]>().mockResolvedValue(completed),
     });
 
     fireEvent.click(
@@ -197,16 +198,21 @@ describe("WeekCalendar", () => {
         "complete",
       ),
     );
-    expect(await within(dialog).findByText("Completed")).toBeTruthy();
+    // Badge flips to Completed (selector pins the badge span, not the dt row).
+    expect(
+      await within(dialog).findByText("Completed", { selector: "span" }),
+    ).toBeTruthy();
     // Terminal state: the action row is gone.
     expect(within(dialog).queryByRole("button", { name: "Complete" })).toBeNull();
   });
 
   it("shows API errors from actions inline in the modal", async () => {
-    const handlers = renderCalendar([booking()], {
+    renderCalendar([booking()], {
       onAction: vi
-        .fn()
-        .mockRejectedValue(new Error("Only finished sessions can be completed.")),
+        .fn<WeekCalendarProps["onAction"]>()
+        .mockRejectedValue(
+          new ApiError(409, "invalid_status", "Only finished sessions can be completed."),
+        ),
     });
 
     fireEvent.click(
@@ -227,7 +233,7 @@ describe("WeekCalendar", () => {
   it("reschedule validates inputs, then calls the handler with a UTC instant", async () => {
     const moved = booking({ startAt: "2026-08-12T14:00:00.000Z", endAt: "2026-08-12T15:30:00.000Z" });
     const handlers = renderCalendar([booking()], {
-      onReschedule: vi.fn().mockResolvedValue(moved),
+      onReschedule: vi.fn<WeekCalendarProps["onReschedule"]>().mockResolvedValue(moved),
     });
 
     fireEvent.click(

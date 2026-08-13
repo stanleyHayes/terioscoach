@@ -122,7 +122,7 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "animate-modal-enter relative flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-xl bg-surface-raised p-6 shadow-lg sm:rounded-xl",
+          "animate-modal-enter relative flex max-h-[88vh] w-full flex-col overflow-y-auto rounded-t-[2rem] border border-border bg-surface-raised p-6 shadow-[0_35px_100px_rgba(0,0,0,.28)] sm:rounded-[2rem] sm:p-8",
           size === "form" ? "sm:max-w-[560px]" : "sm:max-w-[480px]",
         )}
       >
@@ -136,7 +136,7 @@ export function Modal({
           <div className="min-w-0">
             <h2
               id={titleId}
-              className="font-display text-2xl leading-[1.2] tracking-[-0.01em] text-ink"
+              className="font-display text-3xl leading-[1.05] font-semibold tracking-[-0.035em] text-ink"
             >
               {title}
             </h2>

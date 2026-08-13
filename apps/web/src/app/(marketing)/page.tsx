@@ -1,8 +1,21 @@
 import Link from "next/link";
-import { Globe, ShieldCheck, Video } from "lucide-react";
+import { ArrowRight, Globe, HeartPulse, Leaf, ShieldCheck, Video } from "lucide-react";
+import { Testimonials } from "@/components/content/Testimonials";
 import { Section } from "@/components/marketing/Section";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
+import {
+  getReviewSummary,
+  listReviews,
+  listTestimonials,
+  type PublicReview,
+  type ReviewSummary,
+  type Testimonial,
+} from "@/lib/content";
+
+// Testimonials and reviews are moderated in the dashboard and appear the
+// moment they are approved, so this page is never statically cached.
+export const dynamic = "force-dynamic";
 
 const trustPoints = [
   {
@@ -39,54 +52,73 @@ const servicesPreview = [
   },
 ];
 
-// TODO(cms): replace with testimonials from the CMS API once published.
-const testimonials = [
-  {
-    quote:
-      "I came for the coaching and stayed for the calm. Every session ends with a plan I can actually keep.",
-    name: "A long-term client",
-    detail: "Wellness coaching, 8 months",
-  },
-  {
-    quote:
-      "Speaking with a nurse who also understands rest changed how I recover. I feel looked after, not processed.",
-    name: "A client abroad",
-    detail: "Nursing consultations, by video",
-  },
-];
+/** Social proof, fetched together so the count beside the stars always
+ * matches the list under them. Every route here returns approved content
+ * only; a failure degrades to an empty section rather than a broken page. */
+async function loadSocialProof(): Promise<{
+  testimonials: Testimonial[];
+  reviews: PublicReview[];
+  summary: ReviewSummary | undefined;
+}> {
+  const [testimonials, reviews, summary] = await Promise.all([
+    listTestimonials().catch(() => []),
+    listReviews(4).catch(() => []),
+    getReviewSummary().catch(() => undefined),
+  ]);
+  return { testimonials, reviews, summary };
+}
 
-export default function Home() {
+export default async function Home() {
+  const { testimonials, reviews, summary } = await loadSocialProof();
+  const hasSocialProof = testimonials.length > 0 || reviews.length > 0;
   return (
     <>
       {/* Hero — design-system §2: min-height 88vh, content vertically centered.
           Type: display-xl headline, body-lg lead (brand.md §4). */}
-      <Section containerClassName="flex min-h-[88vh] flex-col justify-center">
+      <Section background="night" className="terios-grain overflow-hidden" containerClassName="grid min-h-[calc(100dvh-72px)] items-center gap-14 py-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-20">
         <div className="max-w-[68ch]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">
             Nursing &amp; wellness coaching
           </p>
-          <h1 className="mt-4 font-display text-[3.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-ink lg:text-[4rem] [text-wrap:balance]">
-            Clinical calm, wherever you are
+          <h1 className="mt-5 font-display text-[3.7rem] leading-[.92] font-semibold tracking-[-0.055em] text-sand-0 sm:text-[4.5rem] lg:text-[5.75rem] [text-wrap:balance]">
+            Care that lets you <em className="font-medium text-clay-300">exhale.</em>
           </h1>
-          <p className="mt-6 max-w-[60ch] text-lg leading-[1.6] text-ink-muted [text-wrap:pretty]">
-            Terios is a one-woman practice bringing registered nursing and
-            wellness coaching together — unhurried video sessions and steady
-            guidance, wherever in the world you happen to be.
+          <p className="mt-7 max-w-[56ch] text-lg leading-[1.7] text-eucalyptus-200 [text-wrap:pretty]">
+            Registered nursing and wellness coaching, brought together in one
+            calm, private practice. Thoughtful video sessions. A plan that fits
+            your real life. Care that travels with you.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Link
               href="/work-with-me"
-              className={buttonClasses({ size: "lg" })}
+              className={buttonClasses({ size: "lg", className: "!bg-sand-0 !text-eucalyptus-900 shadow-none hover:!bg-eucalyptus-100" })}
             >
               Book a session
             </Link>
             <Link
               href="/services"
-              className={buttonClasses({ variant: "secondary", size: "lg" })}
+              className={buttonClasses({ variant: "secondary", size: "lg", className: "border-sand-0/25 text-sand-0 hover:border-sand-0/40 hover:bg-sand-0/8" })}
             >
               Explore services
             </Link>
           </div>
+          <div className="mt-12 flex flex-wrap gap-x-7 gap-y-3 border-t border-sand-0/12 pt-6 text-[13px] font-medium text-eucalyptus-300">
+            <span>Registered nurse-led</span><span>Private by design</span><span>Available worldwide</span>
+          </div>
+        </div>
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-[480px] lg:mr-0">
+          <div className="absolute inset-5 rotate-3 rounded-[3rem_1.5rem_3rem_1.5rem] bg-eucalyptus-100" />
+          <div className="absolute inset-0 -rotate-2 overflow-hidden rounded-[2rem_4.5rem_2rem_4.5rem] border border-eucalyptus-200 bg-eucalyptus-900 shadow-[0_35px_90px_rgba(28,51,40,.22)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_15%,rgba(198,220,207,.22),transparent_35%),radial-gradient(circle_at_30%_85%,rgba(222,166,132,.18),transparent_42%)]" />
+            <Leaf className="botanical-drift absolute -right-10 top-16 size-72 rotate-[-20deg] text-eucalyptus-300/30" strokeWidth={0.7} />
+            <Leaf className="botanical-drift absolute -left-16 bottom-12 size-64 rotate-[35deg] text-clay-300/20 [animation-delay:-4s]" strokeWidth={0.7} />
+            <div className="absolute inset-x-8 bottom-8 rounded-[1.5rem] border border-sand-0/15 bg-sand-0/10 p-6 text-sand-0 backdrop-blur-md">
+              <HeartPulse className="size-6 text-eucalyptus-300" aria-hidden="true" />
+              <p className="mt-8 font-display text-3xl leading-tight">Clinical confidence.<br />Human warmth.</p>
+              <p className="mt-3 text-sm leading-relaxed text-sand-0/70">One practitioner. Unhurried attention. Care shaped around you.</p>
+            </div>
+          </div>
+          <div className="absolute -left-5 top-14 rounded-full border border-border bg-surface-raised px-4 py-2 text-xs font-semibold text-primary shadow-md">Video-first care</div>
         </div>
       </Section>
 
@@ -129,22 +161,19 @@ export default function Home() {
           title="Care that fits the season you are in"
           description="Three ways to work together, each one-to-one and by video. Every engagement begins with a conversation, not a form."
         />
-        <ul className="mt-12 grid gap-6 md:grid-cols-3">
-          {servicesPreview.map((service) => (
-            <li key={service.title}>
+        <ul className="mt-12 grid gap-5 lg:grid-cols-12">
+          {servicesPreview.map((service, index) => (
+            <li key={service.title} className={index === 0 ? "lg:col-span-5" : index === 1 ? "lg:col-span-7" : "lg:col-span-12"}>
               <Link
                 href="/services"
-                className="block h-full rounded-xl border border-border bg-surface-raised p-8 transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+                className={`terios-feature-card group flex h-full min-h-72 flex-col justify-between overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 p-8 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:min-h-56" : ""}`}
               >
-                <h3 className="font-display text-2xl leading-[1.2] font-medium tracking-[-0.01em] text-ink [text-wrap:pretty]">
-                  {service.title}
-                </h3>
-                <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-                  {service.body}
-                </p>
-                <span className="mt-6 inline-block text-sm font-medium tracking-[0.005em] text-primary">
-                  Learn more
-                </span>
+                <span className="font-mono text-xs text-ink-faint">0{index + 1}</span>
+                <div className="mt-12 max-w-[54ch]">
+                  <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.title}</h3>
+                  <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.body}</p>
+                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">See how it works <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
+                </div>
               </Link>
             </li>
           ))}
@@ -173,41 +202,22 @@ export default function Home() {
 
       {/* Testimonials — static placeholders until the CMS ships. Clay appears
           once here (quote marks), within the ≤2-per-screen budget (brand §3). */}
-      <Section ariaLabelledby="testimonials-heading">
-        <SectionHeading
-          id="testimonials-heading"
-          eyebrow="Kind words"
-          title="What clients say"
-          align="center"
-        />
-        <ul className="mx-auto mt-12 grid max-w-[960px] gap-6 md:grid-cols-2">
-          {testimonials.map((testimonial) => (
-            <li key={testimonial.name}>
-              <figure className="flex h-full flex-col rounded-xl border border-border bg-surface-raised p-8">
-                <span
-                  aria-hidden="true"
-                  className="font-display text-[2.5rem] leading-none font-medium text-accent"
-                >
-                  &ldquo;
-                </span>
-                <blockquote className="mt-2 flex-1">
-                  <p className="font-display text-xl leading-[1.4] font-medium tracking-[-0.005em] text-ink [text-wrap:pretty]">
-                    {testimonial.quote}
-                  </p>
-                </blockquote>
-                <figcaption className="mt-6">
-                  <span className="block text-sm font-semibold text-ink">
-                    {testimonial.name}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] font-medium tracking-[0.01em] text-ink-faint">
-                    {testimonial.detail}
-                  </span>
-                </figcaption>
-              </figure>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {hasSocialProof ? (
+        <Section ariaLabelledby="testimonials-heading">
+          <SectionHeading
+            id="testimonials-heading"
+            eyebrow="Kind words"
+            title="What clients say"
+            align="center"
+          />
+          <Testimonials
+            className="mx-auto mt-12 max-w-[960px]"
+            testimonials={testimonials}
+            reviews={reviews}
+            summary={summary}
+          />
+        </Section>
+      ) : null}
 
       {/* Closing CTA band. */}
       <Section

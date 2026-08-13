@@ -64,16 +64,23 @@ describe("Work With Me page", () => {
     expect(within(chooser).getByText("GH₵1,200.00")).toBeTruthy();
   });
 
-  it("links every service's primary action to the #book placeholder", async () => {
+  it("links every service's primary action into the booking flow with the service preselected", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: services }));
 
     await renderPage(Promise.resolve({}));
 
     const chooseLinks = screen.getAllByRole("link", { name: /choose/i });
     expect(chooseLinks).toHaveLength(2);
-    for (const link of chooseLinks) {
-      expect(link.getAttribute("href")).toBe("#book");
-    }
+    expect(chooseLinks[0].getAttribute("href")).toBe("/portal/book?service=s1");
+    expect(chooseLinks[1].getAttribute("href")).toBe("/portal/book?service=s2");
+  });
+
+  it("no longer renders the #book placeholder section", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: services }));
+
+    await renderPage(Promise.resolve({}));
+
+    expect(screen.queryByText("Booking opens here")).toBeNull();
   });
 
   it("renders the three booking steps and the account-creation note", async () => {

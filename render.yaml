@@ -1,27 +1,77 @@
-# Render Blueprint — Terios Wellness Spa platform
-# Apply: Render Dashboard → Bluegrass → New Blueprint Instance → point at this repo.
-# Secrets (sync: false) are entered once in the Render dashboard, never committed.
+# Render Blueprint — Terios Wellness Spa platform (FND-08)
+#
+# Apply: Render Dashboard → New → Blueprint → point at this repo.
+#
+# Every variable `internal/config` reads is listed here, set or marked
+# `sync: false`. That is deliberate: a variable the code reads but the
+# blueprint omits does not fail the deploy — it silently takes its default,
+# and the first sign of trouble is a feature quietly not working. The one
+# that matters most is ALLOWED_ORIGINS: empty means no browser origin is
+# permitted, so both apps go down while the API stays green.
+#
+# Secrets are `sync: false` and entered once in the dashboard. Nothing
+# secret is ever committed here.
 
 services:
-  # Go hexagonal API (REST + WebSocket signaling)
+  # ---------------------------------------------------------------------
+  # Go hexagonal API — REST + WebSocket signaling.
+  #
+  # One instance, on purpose. Signaling tickets are held in memory and
+  # redeemed by the very next request, which must reach the same process;
+  # a video room's two peers must also land on the same instance to be in
+  # the same room. Scaling out means moving both to Redis first — see
+  # `internal/adapters/memory/ticket_store.go`.
+  # ---------------------------------------------------------------------
   - type: web
     name: terios-api
     runtime: go
     plan: starter
+    region: frankfurt
     rootDir: api
+    numInstances: 1
     buildCommand: go build -trimpath -ldflags="-s -w" -o bin/api ./cmd/api
     startCommand: ./bin/api
-    healthCheckPath: /healthz
+    healthCheckPath: /readyz
     autoDeploy: true
     envVars:
+      # ---- Runtime ----
       - key: APP_ENV
         value: production
       - key: PORT
         value: "8080"
+      # Render puts exactly one proxy in front of the service. RealIP reads
+      # X-Forwarded-For from the right by this many hops; setting it too
+      # high hands rate limiting to whoever sends the header.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: DEFAULT_TIMEZONE
+        value: Africa/Accra
+
+      # ---- Origins ----
+      # Both app origins, comma-separated, exact, no trailing slash. The
+      # apps cannot call the API without this and there is no wildcard.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # ⚠ Must include /portal. The email renderer treats this as the
+      # portal ROOT and appends to it — "/sessions" and "/book" — so
+      # dropping the suffix sends every client email to a 404 on the
+      # marketing site. It is the one mistake here that cannot be undone
+      # after the fact: an email already in an inbox keeps its link.
+      - key: PORTAL_URL
+        value: https://terioswellness.com/portal
+      - key: DASHBOARD_URL
+        value: https://practice.terioswellness.com
+
+      # ---- Database ----
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB
         value: terios
+
+      # ---- Sessions ----
+      # generateValue mints these once and keeps them across deploys.
+      # Rotating either signs every live session out, which is the correct
+      # emergency response and the wrong routine one.
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -30,23 +80,85 @@ services:
         value: 15m
       - key: REFRESH_TOKEN_TTL
         value: 720h
+
+      # ---- Brute-force protection ----
+      - key: AUTH_RATE_LIMIT
+        value: "10"
+      - key: AUTH_RATE_LIMIT_WINDOW
+        value: 1m
+      - key: LOGIN_MAX_ATTEMPTS
+        value: "5"
+      - key: LOGIN_ATTEMPT_WINDOW
+        value: 15m
+      - key: LOGIN_LOCKOUT_COOLDOWN
+        value: 15m
+
+      # ---- Email ----
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
         value: Terios Wellness Spa <no-reply@terioswellness.com>
+      # Where practice-facing alerts go — new enquiries, mainly.
+      - key: PRACTICE_EMAIL
+        sync: false
+      - key: REMINDER_LEAD
+        value: 24h
+      # How often the outbox is drained. Shorter is not better: every poll
+      # is a findAndModify against Atlas whether or not anything is due.
+      - key: NOTIFICATION_POLL_INTERVAL
+        value: 60s
+
+      # ---- Media ----
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Signed download links expire on their own, so a link forwarded out
+      # of an inbox stops working.
+      - key: DOCUMENT_URL_TTL
+        value: 10m
+
+      # ---- Payments ----
+      # PAYMENT_PROVIDER picks the gateway: paystack (default) or stripe.
+      # Only the selected provider's keys are used.
+      - key: PAYMENT_PROVIDER
+        value: paystack
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # ---- Video (CX-01/CX-02) ----
+      - key: ROOM_OPEN_BEFORE
+        value: 10m
+      - key: ROOM_CLOSE_AFTER
+        value: 15m
+      - key: STUN_URLS
+        value: stun:stun.cloudflare.com:3478
+      # Cloudflare dashboard → Realtime → TURN Keys. These two values are
+      # a long-term key the API exchanges for short-lived credentials per
+      # session; Cloudflare issues no static TURN username or password.
+      #
+      # TURN is not optional in production. With STUN alone, two people on
+      # ordinary home connections behind symmetric NAT will fail to
+      # connect, and the failure looks like "the video doesn't work".
       - key: TURN_KEY_ID
         sync: false
       - key: TURN_API_TOKEN
         sync: false
-      - key: ALLOWED_ORIGINS
-        sync: false
+
+# ---------------------------------------------------------------------
+# There is no coturn service here.
+#
+# The plan's original topology self-hosted coturn on Render. Render does
+# not expose the UDP port range TURN relaying needs, so a coturn service
+# here would fall back to TCP-only relaying and be worse than useless for
+# video. Cloudflare Calls' managed TURN is used instead — hence the
+# TURN_* credentials above rather than a second service block.
+# ---------------------------------------------------------------------

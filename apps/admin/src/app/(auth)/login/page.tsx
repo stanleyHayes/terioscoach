@@ -1,6 +1,7 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, HeartPulse, Leaf } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
@@ -85,18 +86,18 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-6 py-12">
-      <div className="w-full max-w-[400px]">
-        <div className="mb-8 text-center">
-          <p className="font-display text-[36px] leading-[1.15] tracking-[-0.01em] text-ink">
-            Terios
-          </p>
-          <p className="mt-2 text-sm leading-[1.55] text-ink-muted">
-            Sign in to your practice dashboard
-          </p>
-        </div>
+    <main className="grid min-h-[100dvh] bg-eucalyptus-900 lg:grid-cols-[1.08fr_.92fr]">
+      <aside className="relative hidden overflow-hidden p-12 text-sand-0 lg:flex lg:flex-col lg:justify-between">
+        <div aria-hidden="true" className="absolute inset-0 [background-image:radial-gradient(circle_at_20%_15%,rgba(157,195,174,.18),transparent_26rem),radial-gradient(circle_at_85%_90%,rgba(222,166,132,.14),transparent_28rem)]" />
+        <Link href="/" className="relative inline-flex items-center gap-3 font-display text-2xl font-semibold tracking-[-0.035em]"><span className="flex size-9 items-center justify-center rounded-full bg-sand-0 text-eucalyptus-900"><Leaf size={16} /></span><span>Terios</span><span className="-ml-2 font-medium text-eucalyptus-300">Practice</span></Link>
+        <div className="relative max-w-xl"><HeartPulse className="mb-8 size-8 text-eucalyptus-300" /><p className="font-display text-[4rem] leading-[.92] font-semibold tracking-[-0.055em]">The whole practice, without the noise.</p><p className="mt-7 max-w-[42ch] text-base leading-relaxed text-eucalyptus-200">Schedule care, keep records, publish guidance and follow every client thread from one focused workspace.</p></div>
+        <p className="relative text-xs text-eucalyptus-300">Practitioner access only</p>
+      </aside>
+      <section className="flex items-start justify-center rounded-t-[2.5rem] bg-surface px-6 pb-12 pt-20 lg:items-center lg:rounded-l-[3rem] lg:rounded-tr-none lg:py-12">
+      <div className="w-full max-w-[440px]">
+        <div className="mb-9"><p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">Practice workspace</p><h1 className="mt-3 font-display text-[2.75rem] leading-none font-semibold tracking-[-0.045em] text-ink">Good to see you.</h1><p className="mt-3 text-sm leading-relaxed text-ink-muted">Sign in to open today’s care desk.</p></div>
 
-        <Card>
+        <Card className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
           {/* noValidate: native validation bubbles are forbidden — errors are custom per §30 */}
           <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
             {formError ? (
@@ -133,6 +134,11 @@ export default function LoginPage() {
                 setFieldErrors((errors) => ({ ...errors, password: undefined }));
               }}
             />
+            <div className="-mt-1 flex justify-end">
+              <Link href="/forgot-password" className="text-sm font-semibold text-primary transition-colors hover:text-primary-hover">
+                Forgot password?
+              </Link>
+            </div>
 
             <Button type="submit" fullWidth loading={submitting} className="mt-2">
               Sign in
@@ -140,6 +146,7 @@ export default function LoginPage() {
           </form>
         </Card>
       </div>
+      </section>
     </main>
   );
 }

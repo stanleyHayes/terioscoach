@@ -34,7 +34,7 @@ func (s Status) Valid() bool {
 type PaymentStatus string
 
 const (
-	PaymentPaid    PaymentStatus = "paid"
+	PaymentPaid     PaymentStatus = "paid"
 	PaymentRefunded PaymentStatus = "refunded"
 )
 

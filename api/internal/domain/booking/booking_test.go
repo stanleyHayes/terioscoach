@@ -124,3 +124,31 @@ func TestClientCanModifyCutoff(t *testing.T) {
 		t.Error("zero policy must behave like the 24h default")
 	}
 }
+
+func TestPaymentStamp(t *testing.T) {
+	b := newTestBooking(t)
+	if b.PaymentStatus != "" || b.PaidAt != nil {
+		t.Errorf("new booking = %+v, want no payment stamp", b)
+	}
+	paidAt := testNow.Add(time.Hour)
+	b.MarkPaid(paidAt)
+	if b.PaymentStatus != PaymentPaid || b.PaidAt == nil || !b.PaidAt.Equal(paidAt) {
+		t.Errorf("after MarkPaid: %+v, want paid with timestamp", b)
+	}
+	// The lifecycle status is untouched by the payment stamp.
+	if b.Status != StatusConfirmed {
+		t.Errorf("status = %q, want still confirmed", b.Status)
+	}
+	// Idempotent: re-stamping just refreshes the same state.
+	b.MarkPaid(paidAt)
+	if b.PaymentStatus != PaymentPaid {
+		t.Errorf("double MarkPaid = %q, want paid", b.PaymentStatus)
+	}
+	b.MarkRefunded()
+	if b.PaymentStatus != PaymentRefunded {
+		t.Errorf("after MarkRefunded = %q, want refunded", b.PaymentStatus)
+	}
+	if b.PaidAt == nil {
+		t.Error("paidAt should be retained as history after refund")
+	}
+}

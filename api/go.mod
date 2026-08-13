@@ -3,6 +3,7 @@ module github.com/xcreativs/terios/api
 go 1.26.5
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	go.mongodb.org/mongo-driver/v2 v2.8.0

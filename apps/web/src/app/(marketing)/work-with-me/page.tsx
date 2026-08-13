@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, CreditCard, ListChecks } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, Clock3, CreditCard, ListChecks } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
+import { PageIntro } from "@/components/marketing/PageIntro";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
 import { listServices } from "@/lib/api";
@@ -13,6 +14,12 @@ export const metadata: Metadata = {
   title: "Work With Me",
   description:
     "Choose a service, pick a time, confirm and pay — your Terios account is created during booking.",
+  alternates: { canonical: "/work-with-me" },
+  openGraph: {
+    type: "website",
+    url: "/work-with-me",
+    title: "Work With Me",
+  },
 };
 
 // Same live catalog as /services — fetched at request time (no-store), so
@@ -56,22 +63,7 @@ export default async function WorkWithMePage({
 
   return (
     <>
-      {/* Page header. */}
-      <Section containerClassName="pb-0 lg:pb-0">
-        <div className="max-w-[68ch]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
-            Work with me
-          </p>
-          <h1 className="mt-4 font-display text-[2.5rem] leading-[1.1] font-medium tracking-[-0.015em] text-ink lg:text-[3rem] [text-wrap:balance]">
-            Begin with a single step
-          </h1>
-          <p className="mt-6 max-w-[60ch] text-lg leading-[1.6] text-ink-muted [text-wrap:pretty]">
-            Choose the care that fits, pick a time, confirm and pay. There is
-            no separate sign-up — your account is created while you book, and
-            it becomes your private client portal.
-          </p>
-        </div>
-      </Section>
+      <PageIntro eyebrow="Work with me" title="Begin with a single step" description="Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal." />
 
       {/* Service chooser — compact rows from the same live catalog. Selected
           card treatment per design-system §3.8 (RadioCard): 1.5px primary
@@ -110,22 +102,23 @@ export default async function WorkWithMePage({
           </p>
         ) : (
           <ul className="mt-12 flex flex-col gap-4">
-            {services.map((service) => {
+            {services.map((service, index) => {
               const selected = service.id === selectedId;
               return (
                 <li key={service.id}>
                   <div
                     aria-current={selected || undefined}
                     className={cn(
-                      "flex flex-col gap-5 rounded-lg border bg-surface-raised p-6 sm:flex-row sm:items-center sm:justify-between",
+                      "terios-choice-card group relative grid overflow-hidden border sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]",
                       selected
-                        ? "border-[1.5px] border-primary bg-eucalyptus-50"
-                        : "border-border",
+                        ? "is-selected border-eucalyptus-800 bg-eucalyptus-900 text-sand-0"
+                        : "border-border/80 bg-surface-raised text-ink",
                     )}
                   >
-                    <div className="min-w-0">
+                    <span className="terios-choice-index font-display" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                    <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-base font-semibold leading-[1.4] text-ink">
+                        <h3 className="font-display text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">
                           {service.name}
                         </h3>
                         {selected && (
@@ -134,24 +127,23 @@ export default async function WorkWithMePage({
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
+                      <p className="mt-2 text-sm leading-[1.55] text-ink-muted group-[.is-selected]:text-eucalyptus-100">
                         {service.description}
                       </p>
-                      <p className="mt-2 text-sm text-ink-muted">
+                      <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink-muted group-[.is-selected]:bg-white/10 group-[.is-selected]:text-sand-100">
+                        <Clock3 size={14} aria-hidden="true" />
                         {formatDuration(service.durationMinutes)}
-                        <span aria-hidden="true" className="mx-2 text-ink-faint">
-                          ·
-                        </span>
-                        <span className="font-display text-base font-medium tabular-nums text-ink">
-                          {formatMoney(service.priceKobo, service.currency)}
-                        </span>
                       </p>
                     </div>
-                    <div className="shrink-0">
-                      {/* Placeholder anchor — the booking flow (WEB-09/CX-04)
-                          mounts at #book below. */}
-                      <Link href="#book" className={buttonClasses({ size: "sm" })}>
-                        Choose
+                    <div className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:border-l sm:px-6 sm:py-7 group-[.is-selected]:border-white/15">
+                      <span className="font-display text-xl font-medium tabular-nums">{formatMoney(service.priceKobo, service.currency)}</span>
+                      {/* Straight into the booking flow (WEB-09), service
+                          preselected. */}
+                      <Link
+                        href={`/portal/book?service=${service.id}`}
+                        className={cn(buttonClasses({ size: "sm" }), selected && "border-white/20 bg-sand-0 text-eucalyptus-900 hover:bg-sand-100")}
+                      >
+                        Choose <ArrowUpRight size={15} aria-hidden="true" />
                       </Link>
                     </div>
                   </div>
@@ -190,25 +182,6 @@ export default async function WorkWithMePage({
           No account is needed before you start — you create yours during
           booking, and it becomes your private client portal.
         </p>
-      </Section>
-
-      {/* #book — target of every "Choose" above. Structure only: the live
-          calendar and secure checkout arrive with the booking flow
-          (WEB-09/CX-04). */}
-      <Section id="book" ariaLabelledby="book-heading">
-        <div className="mx-auto max-w-[480px] rounded-xl border border-border bg-surface-raised p-8 text-center">
-          <h2
-            id="book-heading"
-            className="font-display text-xl leading-[1.3] font-medium text-ink"
-          >
-            Booking opens here
-          </h2>
-          <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-            The live calendar and secure checkout are being finished now. When
-            they arrive, this is where you will pick your time and confirm —
-            your chosen service stays selected above.
-          </p>
-        </div>
       </Section>
     </>
   );

@@ -4,9 +4,11 @@ import LoginPage from "./page";
 
 const replaceMock = vi.fn();
 const loginMock = vi.fn();
+let searchParamsValue = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => searchParamsValue,
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => {
@@ -27,6 +29,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 afterEach(() => {
   replaceMock.mockReset();
   loginMock.mockReset();
+  searchParamsValue = new URLSearchParams();
 });
 
 describe("LoginPage", () => {
@@ -110,5 +113,44 @@ describe("LoginPage", () => {
         "We can't reach the server. Check your connection and try again.",
       ),
     );
+  });
+
+  it("honours a same-site ?next= after sign-in (booking-flow restore)", async () => {
+    searchParamsValue = new URLSearchParams({
+      next: "/portal/book?service=s1&slot=2026-08-20T09%3A30%3A00Z",
+    });
+    loginMock.mockResolvedValueOnce(undefined);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@b.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).closest("form")!);
+
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith(
+        "/portal/book?service=s1&slot=2026-08-20T09%3A30%3A00Z",
+      ),
+    );
+  });
+
+  it("carries ?next= through to the register cross-link", () => {
+    searchParamsValue = new URLSearchParams({ next: "/portal/book?service=s1" });
+    render(<LoginPage />);
+
+    expect(
+      screen.getByRole("link", { name: "Create an account" }).getAttribute("href"),
+    ).toBe(`/register?next=${encodeURIComponent("/portal/book?service=s1")}`);
+  });
+
+  it("ignores an external ?next= and falls back to the portal", async () => {
+    searchParamsValue = new URLSearchParams({ next: "https://evil.example" });
+    loginMock.mockResolvedValueOnce(undefined);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@b.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).closest("form")!);
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/portal"));
   });
 });

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/ports"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // UserRepository persists accounts in the users collection. Email is
@@ -26,12 +28,38 @@ func NewUserRepository(db *mongo.Database) *UserRepository {
 
 // userDoc is the storage shape; kept separate from the domain entity.
 type userDoc struct {
-	ID           bson.ObjectID `bson:"_id,omitempty"`
-	Email        string        `bson:"email"`
-	PasswordHash string        `bson:"passwordHash"`
-	Role         string        `bson:"role"`
-	Name         string        `bson:"name"`
-	CreatedAt    bson.DateTime `bson:"createdAt"`
+	ID                     bson.ObjectID `bson:"_id,omitempty"`
+	Email                  string        `bson:"email"`
+	PasswordHash           string        `bson:"passwordHash"`
+	Role                   string        `bson:"role"`
+	Name                   string        `bson:"name"`
+	CreatedAt              bson.DateTime `bson:"createdAt"`
+	PasswordResetTokenHash string        `bson:"passwordResetTokenHash,omitempty"`
+	PasswordResetExpiresAt bson.DateTime `bson:"passwordResetExpiresAt,omitempty"`
+}
+
+func (r *UserRepository) SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.ErrUserNotFound
+	}
+	_, err = r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"passwordResetTokenHash": tokenHash, "passwordResetExpiresAt": bson.NewDateTimeFromTime(expiresAt)}})
+	if err != nil {
+		return fmt.Errorf("store password reset: %w", err)
+	}
+	return nil
+}
+
+func (r *UserRepository) ResetPassword(ctx context.Context, tokenHash, passwordHash string, now time.Time) (string, error) {
+	var doc userDoc
+	err := r.coll.FindOneAndUpdate(ctx, bson.M{"passwordResetTokenHash": tokenHash, "passwordResetExpiresAt": bson.M{"$gt": bson.NewDateTimeFromTime(now)}}, bson.M{"$set": bson.M{"passwordHash": passwordHash}, "$unset": bson.M{"passwordResetTokenHash": "", "passwordResetExpiresAt": ""}}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return "", identity.ErrPasswordResetInvalid
+	}
+	if err != nil {
+		return "", fmt.Errorf("reset password: %w", err)
+	}
+	return doc.ID.Hex(), nil
 }
 
 // Create inserts a new account, mapping the unique-index violation to

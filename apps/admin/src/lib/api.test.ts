@@ -26,6 +26,14 @@ afterEach(() => {
 });
 
 describe("api client", () => {
+  it("supports practitioner password recovery", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(authApi.forgotPassword("practice@example.com")).resolves.toBeUndefined();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ email: "practice@example.com" });
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(authApi.resetPassword("one-time-token", "a safer new password")).resolves.toBeUndefined();
+  });
+
   it("posts JSON to the login endpoint and parses the auth response", async () => {
     const payload = {
       accessToken: "a1",

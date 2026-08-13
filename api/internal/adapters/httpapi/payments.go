@@ -15,12 +15,12 @@ import (
 // Paystack event).
 const maxWebhookBytes = 1 << 20
 
-// WithPayments mounts the /v1/payments and /v1/webhooks/paystack routes
-// backed by the payment port. Initialize and "mine" are client-only; the
-// list and refund are practitioner-only; the webhook is public and
-// signature-verified inside the app layer. A nil service (database or
-// Paystack unconfigured) keeps every route — webhook included — mounted
-// but answering 503.
+// WithPayments mounts the /v1/payments and /v1/webhooks/{paystack,stripe}
+// routes backed by the payment port. Initialize and "mine" are
+// client-only; the list and refund are practitioner-only; the webhooks
+// are public and signature-verified inside the app layer. A nil service
+// (database or gateway unconfigured) keeps every route — webhooks
+// included — mounted but answering 503.
 func WithPayments(svc ports.PaymentService, auth ports.AuthService) Option {
 	return func(s *Server) {
 		s.Router.Route("/v1/payments", func(r chi.Router) {
@@ -43,12 +43,13 @@ func WithPayments(svc ports.PaymentService, auth ports.AuthService) Option {
 			}
 			h := &paymentHandler{svc: svc}
 			r.Post("/paystack", h.paystackWebhook)
+			r.Post("/stripe", h.stripeWebhook)
 		})
 	}
 }
 
 // handlePaymentsUnavailable answers every payment and webhook route when
-// the database — or Paystack — is not configured.
+// the database — or the configured payment gateway — is not connected.
 func handlePaymentsUnavailable(w http.ResponseWriter, _ *http.Request) {
 	writeError(w, http.StatusServiceUnavailable, "service_unavailable", "payments are unavailable: database or payment gateway not connected")
 }
@@ -194,6 +195,22 @@ func (h *paymentHandler) paystackWebhook(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := h.svc.HandlePaystackWebhook(r.Context(), body, r.Header.Get("x-paystack-signature")); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{})
+}
+
+// stripeWebhook handles POST /v1/webhooks/stripe — public, with the raw
+// body read before anything else so the signature can be verified over
+// the exact bytes Stripe signed.
+func (h *paymentHandler) stripeWebhook(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBytes))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "webhook body is unreadable")
+		return
+	}
+	if err := h.svc.HandleStripeWebhook(r.Context(), body, r.Header.Get("Stripe-Signature")); err != nil {
 		writeDomainError(w, err)
 		return
 	}

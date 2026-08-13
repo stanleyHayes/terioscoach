@@ -1,6 +1,9 @@
 package identity
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // Domain errors for the identity slice. Adapters and the HTTP layer map
 // these to storage results and status codes via errors.Is.
@@ -25,4 +28,21 @@ var (
 	ErrInvalidRole = errors.New("invalid role")
 	// ErrPasswordHashRequired guards against storing unhashed credentials.
 	ErrPasswordHashRequired = errors.New("password hash required")
+	// ErrTooManyAttempts means the brute-force lockout is holding this
+	// login identifier. It is returned for locked identifiers whether or
+	// not an account exists, so it cannot be used to enumerate accounts.
+	ErrTooManyAttempts      = errors.New("too many login attempts")
+	ErrPasswordResetInvalid = errors.New("password reset link is invalid or expired")
 )
+
+// RetryAfterError carries how long a caller must wait before retrying. The
+// HTTP adapter reads it to set the Retry-After header; errors.Is still
+// matches the wrapped sentinel, so every other layer treats it as the plain
+// domain error.
+type RetryAfterError struct {
+	Err        error
+	RetryAfter time.Duration
+}
+
+func (e *RetryAfterError) Error() string { return e.Err.Error() }
+func (e *RetryAfterError) Unwrap() error { return e.Err }

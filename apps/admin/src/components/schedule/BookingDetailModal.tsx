@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+
+
 import { CircleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TextInput } from "@/components/ui/TextInput";
 import { ApiError } from "@/lib/api";
@@ -145,6 +148,15 @@ export function BookingDetailModal({
       footer={
         isConfirmed && !rescheduling ? (
           <>
+            {/* Starting the session from the calendar is the one-click
+                path the practitioner actually uses; the room enforces its
+                own opening hours, so it is always offered. */}
+            <Link
+              href={`/sessions/${current.id}/room?client=${current.clientId}`}
+              className={buttonClasses({ size: "sm" })}
+            >
+              Start session
+            </Link>
             <Button
               variant="danger"
               size="sm"

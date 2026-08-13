@@ -27,7 +27,16 @@ jobs:
         run: npm run lint --workspace=apps/web
 
       - name: Test with coverage
+        # Coverage thresholds live in vitest.config.mts and fail the run
+        # on their own, so there is no separate gate step here.
         run: npm run test:coverage --workspace=apps/web
+
+      # Advisories in the dependency tree. `--audit-level=high` on
+      # purpose: failing on every low-severity transitive advisory trains
+      # everyone to ignore the step, which is how a critical one gets
+      # ignored too.
+      - name: Dependency audit
+        run: npm audit --audit-level=high --workspaces --include-workspace-root
 
       - name: Build
         run: npm run build --workspace=apps/web

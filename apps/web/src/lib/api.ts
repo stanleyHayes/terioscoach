@@ -130,6 +130,14 @@ export const authApi = {
     });
   },
 
+  forgotPassword(email: string): Promise<void> {
+    return request<void>("/v1/auth/forgot-password", { method: "POST", body: { email } });
+  },
+
+  resetPassword(token: string, password: string): Promise<void> {
+    return request<void>("/v1/auth/reset-password", { method: "POST", body: { token, password } });
+  },
+
   refresh(refreshToken: string): Promise<AuthResponse> {
     return request<AuthResponse>("/v1/auth/refresh", {
       method: "POST",
