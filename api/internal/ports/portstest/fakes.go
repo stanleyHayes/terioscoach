@@ -70,6 +70,17 @@ func (f *FakeUserRepository) FindByEmail(_ context.Context, email string) (ident
 	return f.byID[id], nil
 }
 
+func (f *FakeUserRepository) FindFirstByRole(_ context.Context, role identity.Role) (identity.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, user := range f.byID {
+		if user.Role == role {
+			return user, nil
+		}
+	}
+	return identity.User{}, identity.ErrUserNotFound
+}
+
 func (f *FakeUserRepository) FindByID(_ context.Context, id string) (identity.User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

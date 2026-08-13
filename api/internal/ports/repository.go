@@ -15,6 +15,10 @@ type UserRepository interface {
 	// FindByEmail looks up by normalized email; misses return
 	// identity.ErrUserNotFound.
 	FindByEmail(ctx context.Context, email string) (identity.User, error)
+	// FindFirstByRole returns one account holding the role — used where the
+	// platform's single-practitioner model makes "the practitioner" a
+	// meaningful lookup. Misses return identity.ErrUserNotFound.
+	FindFirstByRole(ctx context.Context, role identity.Role) (identity.User, error)
 	// FindByID looks up by ID; misses return identity.ErrUserNotFound.
 	FindByID(ctx context.Context, id string) (identity.User, error)
 	SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error

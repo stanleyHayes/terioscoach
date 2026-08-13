@@ -91,6 +91,12 @@ type Config struct {
 	// the deployment exactly: too high and a caller can forge its own
 	// address, too low and every caller shares the proxy's address.
 	TrustedProxyHops int
+
+	// TestingSeedToken authorizes the test-only seed routes
+	// (/v1/testing/*) used by the e2e suite. The routes exist only when
+	// this is set AND the server is not in production — see
+	// httpapi.WithTestingSeed. It must never be set in production.
+	TestingSeedToken string
 }
 
 // LockoutPolicy is the brute-force rule assembled from configuration. The
@@ -166,6 +172,7 @@ func Load() (Config, error) {
 		AuthRateLimit:        getEnvInt("AUTH_RATE_LIMIT", 0),
 		AuthRateLimitWindow:  getEnvDuration("AUTH_RATE_LIMIT_WINDOW", 0),
 		TrustedProxyHops:     getEnvInt("TRUSTED_PROXY_HOPS", 1),
+		TestingSeedToken:     os.Getenv("TESTING_SEED_TOKEN"),
 
 		STUNUrls:       getEnvList("STUN_URLS", []string{"stun:stun.cloudflare.com:3478"}),
 		RoomOpenBefore: getEnvDuration("ROOM_OPEN_BEFORE", signaling.DefaultOpenBefore),

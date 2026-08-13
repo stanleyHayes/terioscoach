@@ -90,6 +90,11 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (identit
 	return r.findOne(ctx, bson.M{"email": email})
 }
 
+// FindFirstByRole looks up one account by role.
+func (r *UserRepository) FindFirstByRole(ctx context.Context, role identity.Role) (identity.User, error) {
+	return r.findOne(ctx, bson.M{"role": string(role)})
+}
+
 // FindByID looks up an account by hex ObjectID.
 func (r *UserRepository) FindByID(ctx context.Context, id string) (identity.User, error) {
 	oid, err := bson.ObjectIDFromHex(id)

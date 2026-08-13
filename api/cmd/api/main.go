@@ -137,7 +137,19 @@ func run() error {
 				authService, opsThresholds,
 			),
 			httpapi.WithSessions(signalingSvc, wsapi.NewHandler(signalingSvc, wsapi.NewHub(), cfg.AllowedOrigins, slog.Default()), authService),
+			// Test-only seed routes for the e2e suite. WithTestingSeed
+			// self-gates: no token or a production environment means the
+			// routes are never mounted.
+			httpapi.WithTestingSeed(
+				cfg.TestingSeedToken, cfg.Env == "production",
+				mongodb.NewUserRepository(db),
+				mongodb.NewBookingRepository(db),
+				mongodb.NewServiceRepository(db),
+			),
 		)
+		if cfg.TestingSeedToken != "" && cfg.Env == "production" {
+			slog.Warn("TESTING_SEED_TOKEN is set in production; the testing routes stay disabled — unset it")
+		}
 	} else {
 		slog.Warn("MONGODB_URI not set; running without database, readiness will fail and auth routes return 503")
 		opts = append(opts,

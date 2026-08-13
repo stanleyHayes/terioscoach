@@ -173,6 +173,12 @@ A video room **is** a booking: there is no separate room entity. Entry is a two-
 - **Scaling note:** rooms live in one API process (correct for the single-instance deployment). Scaling out needs peers pinned to one instance or a shared relay.
 - When the database or signaling is not configured, both routes answer 503 `service_unavailable`.
 
+**Testing (e2e seed route).** `POST /v1/testing/sessions` seeds a confirmed booking starting `startingIn` seconds from now (0 = now) for an existing client email, so the e2e suite can join a room without waiting for a real appointment. It is mounted **only** when `TESTING_SEED_TOKEN` is set and `APP_ENV` is not production — otherwise the path is a plain 404 — and it authenticates with that shared token as the bearer credential (constant-time comparison), not a user session. The booking belongs to the named client and the (single) practitioner account, borrowing the first active catalog service's id and duration (a labelled placeholder + 60 minutes when the catalog is empty), so it satisfies every join guard above.
+
+| Method | Route | Auth | Body | Success | Errors |
+|---|---|---|---|---|---|
+| POST | `/v1/testing/sessions` | `TESTING_SEED_TOKEN` bearer | `{clientEmail, startingIn}` | 201 `{bookingId}` | 400 `validation_error`, 401 `unauthorized`, 404 `client_not_found`, 422 `no_practitioner` |
+
 ## Forms and signatures (BE-10)
 
 | Method | Route | Auth | Body / Query | Success | Errors |

@@ -153,6 +153,16 @@ services:
       - key: TURN_API_TOKEN
         sync: false
 
+      # ---- Testing (e2e seed routes) ----
+      # ⚠ NOT FOR PRODUCTION. This blueprint is the production deployment
+      # (APP_ENV=production), where the route stays disabled even if a
+      # value is set — leave it unset here. It exists so a non-production
+      # deployment built from this blueprint can enable POST
+      # /v1/testing/sessions for the e2e suite; the suite's E2E_SEED_TOKEN
+      # must hold the same value.
+      - key: TESTING_SEED_TOKEN
+        sync: false
+
 # ---------------------------------------------------------------------
 # There is no coturn service here.
 #
