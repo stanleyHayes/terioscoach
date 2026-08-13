@@ -19,6 +19,7 @@ coverage/
 .scannerwork/
 .sonar/
 .raven/
+credentials.txt
 
 # Go
 api/vendor/
