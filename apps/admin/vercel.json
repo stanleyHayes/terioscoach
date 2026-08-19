@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npm run build --workspace=apps/admin",
+  "buildCommand": "npm run build",
   "installCommand": "npm ci",
-  "outputDirectory": "apps/admin/.next",
+  "outputDirectory": ".next",
   "regions": ["fra1"],
   "github": { "silent": true },
   "headers": [
