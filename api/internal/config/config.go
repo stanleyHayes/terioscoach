@@ -192,6 +192,15 @@ func Load() (Config, error) {
 		if cfg.JWTAccessSecret == "" || cfg.JWTRefreshSecret == "" {
 			return Config{}, fmt.Errorf("JWT secrets are required in production")
 		}
+		// Without this the API is up, healthy, and useless: CORS permits no
+		// browser origin and the signaling socket refuses every handshake,
+		// so both apps fail on every call while every probe stays green.
+		// Refusing to start is the loud version of the same outcome — and
+		// the only one that says why.
+		if len(cfg.AllowedOrigins) == 0 {
+			return Config{}, fmt.Errorf(
+				"ALLOWED_ORIGINS is required in production: set it to the exact web and admin origins, comma-separated")
+		}
 	}
 	return cfg, nil
 }

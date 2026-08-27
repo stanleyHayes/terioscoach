@@ -189,6 +189,71 @@ func TestReinitializeReusesPendingRecord(t *testing.T) {
 	}
 }
 
+// Re-initializing does not cancel the checkout it replaces. The gateway page
+// for the old reference is still open in whichever tab the client left it in,
+// and paying there is a real charge — one that arrives quoting a reference the
+// record no longer advertises. Dropping it on the floor takes the client's
+// money and leaves the booking reading unpaid.
+func TestWebhookOnAbandonedCheckoutStillRecordsThePayment(t *testing.T) {
+	rig := newTestRig()
+	id, b := seedBooked(t, rig)
+	abandoned := initialize(t, rig, id, b.ID)
+	current := initialize(t, rig, id, b.ID)
+
+	// The client went back to the first tab and paid there.
+	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.PaystackReference)); err != nil {
+		t.Fatalf("webhook: %v", err)
+	}
+
+	p, err := rig.payments.FindByID(context.Background(), current.Payment.ID)
+	if err != nil {
+		t.Fatalf("find payment: %v", err)
+	}
+	if p.Status != payment.StatusSuccess || p.PaidAt == nil {
+		t.Fatalf("payment = %+v, want success — the charge was real", p)
+	}
+	// The charged reference becomes the live one: it is the transaction the
+	// gateway holds, and a refund has to quote it.
+	if p.PaystackReference != abandoned.Payment.PaystackReference {
+		t.Errorf("reference = %q, want the charged one %q",
+			p.PaystackReference, abandoned.Payment.PaystackReference)
+	}
+	if !p.KnownReference(current.Payment.PaystackReference) {
+		t.Errorf("displaced reference %q was forgotten", current.Payment.PaystackReference)
+	}
+
+	updated, err := rig.bookings.FindByID(context.Background(), b.ID)
+	if err != nil {
+		t.Fatalf("find booking: %v", err)
+	}
+	if updated.PaymentStatus != booking.PaymentPaid {
+		t.Errorf("booking paymentStatus = %q, want paid", updated.PaymentStatus)
+	}
+}
+
+// The refund has to reach the transaction that was actually charged, not the
+// abandoned checkout that replaced it in the record.
+func TestRefundQuotesTheChargedReference(t *testing.T) {
+	rig := newTestRig()
+	id, b := seedBooked(t, rig)
+	abandoned := initialize(t, rig, id, b.ID)
+	initialize(t, rig, id, b.ID)
+	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.PaystackReference)); err != nil {
+		t.Fatalf("webhook: %v", err)
+	}
+
+	p, err := rig.payments.FindByBookingID(context.Background(), b.ID)
+	if err != nil {
+		t.Fatalf("find payment: %v", err)
+	}
+	if _, err := rig.svc.RefundPayment(context.Background(), "prac-1", p.ID); err != nil {
+		t.Fatalf("RefundPayment: %v", err)
+	}
+	if got := rig.gateway.RefundCalls; len(got) != 1 || got[0] != abandoned.Payment.PaystackReference {
+		t.Errorf("refund calls = %v, want [%q]", got, abandoned.Payment.PaystackReference)
+	}
+}
+
 func TestWebhookRejectsBadSignatures(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)

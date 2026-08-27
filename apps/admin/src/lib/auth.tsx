@@ -28,6 +28,7 @@ import {
 import {
   ApiError,
   authApi,
+  resetTokenRotation,
   type AuthTokens,
   type RefreshCallbacks,
   type User,
@@ -69,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(null);
     setUser(null);
     setStatus("unauthenticated");
+    // Drop the shared rotation state with the session, so the next sign-in
+    // never inherits tokens belonging to the account that just left.
+    resetTokenRotation(null);
     try {
       localStorage.removeItem(REFRESH_TOKEN_KEY);
     } catch {
@@ -80,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(nextTokens);
     setUser(nextUser);
     setStatus("authenticated");
+    // These are now the newest tokens in play; tell the shared rotation so a
+    // request still holding the pre-sign-in set doesn't present it.
+    resetTokenRotation(nextTokens);
     try {
       localStorage.setItem(REFRESH_TOKEN_KEY, nextTokens.refreshToken);
     } catch {

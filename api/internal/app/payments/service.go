@@ -217,6 +217,11 @@ func (s *Service) confirmCharge(ctx context.Context, reference string) error {
 	if paidAt.IsZero() {
 		paidAt = s.now()
 	}
+	// The delivery may quote a reference this payment was re-initialized
+	// away from — the client went back to an abandoned checkout tab and
+	// paid there. That reference is the transaction the gateway actually
+	// holds, so it becomes the live one; a refund has to quote it.
+	p.AdoptReference(reference)
 	if err := p.MarkSuccess(verified.Channel, paidAt); err != nil {
 		return err
 	}

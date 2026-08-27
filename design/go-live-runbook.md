@@ -88,8 +88,10 @@ serving traffic again", and only the drill answers it.
 3. **`ALLOWED_ORIGINS` is the one that will bite you.** It must list both
    app origins exactly, comma-separated, no trailing slash:
    `https://terioswellness.com,https://practice.terioswellness.com`.
-   Empty means no browser origin is permitted — the API will look
-   perfectly healthy while both apps fail every request.
+   Leaving it empty no longer produces a healthy-looking API that refuses
+   every browser request: the service now refuses to start in production
+   without it, and the deploy log says so. A failed deploy here means this
+   variable, not the database.
 4. Confirm `/readyz` returns 200. It checks the database; `/healthz` only
    proves the process is alive.
 
@@ -152,7 +154,13 @@ Do this at a quiet hour, with no session booked for the next two.
    - `https://terioswellness.com` loads and is not a certificate warning.
    - `https://practice.terioswellness.com` loads and shows the login.
    - Sign in on the dashboard. If this fails with a network error,
-     `ALLOWED_ORIGINS` is wrong — that is the usual first fault.
+     `ALLOWED_ORIGINS` is wrong — that is the usual first fault. (A missing
+     value stops the API booting; a value with the wrong origin in it
+     starts fine and fails exactly like this.)
+   - Open the browser console on both apps and confirm there are no
+     Content Security Policy violations. Both apps send a CSP (PROD-06);
+     the dashboard's is nonce-based, so a caching layer that serves one
+     visitor's HTML to another would show up here as refused scripts.
    - Book a session end to end with a real card in Paystack **test** mode.
    - Confirm the confirmation email arrives.
 5. Switch Paystack to live keys **last**, after the test booking has

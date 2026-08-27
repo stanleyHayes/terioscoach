@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL, isIndexable } from "@/lib/seo";
+import { PRIVATE_PATHS, SITE_URL, isIndexable } from "@/lib/seo";
 
 /**
  * robots.txt (WEB-10).
@@ -22,7 +22,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/portal/", "/login", "/register", "/forgot-password", "/reset-password"],
+      // Shared with Analytics, so the two cannot drift apart again.
+      disallow: [...PRIVATE_PATHS],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

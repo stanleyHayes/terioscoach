@@ -653,11 +653,14 @@ func (f *FakePaymentRepository) FindByBookingID(_ context.Context, bookingID str
 	return payment.Payment{}, payment.ErrPaymentNotFound
 }
 
+// FindByReference matches the current reference or any the payment was
+// initialized under before — the same rule the Mongo adapter applies, so a
+// webhook for an abandoned checkout finds its record here too.
 func (f *FakePaymentRepository) FindByReference(_ context.Context, reference string) (payment.Payment, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, p := range f.byID {
-		if p.PaystackReference == reference {
+		if p.KnownReference(reference) {
 			return p, nil
 		}
 	}

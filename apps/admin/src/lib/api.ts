@@ -143,11 +143,75 @@ export interface RefreshCallbacks {
   onTokensRefreshed: (tokens: AuthTokens) => void;
 }
 
+/* ---------------------------------------------------------------------------
+ * Single-flight refresh.
+ *
+ * A refresh token is one-time: the API rotates it and, on seeing a revoked one
+ * presented again, treats it as a stolen token and revokes the whole session
+ * family (auth.Service.Refresh). That is the right rule against theft, and it
+ * makes a naive per-request refresh actively dangerous here, because expiry is
+ * never observed by one request alone. `/forms` mounts two authenticated reads
+ * at once and `/content` mounts four; fifteen minutes after sign-in they all
+ * 401 together. Refreshing per request would send the same token two, three,
+ * four times over — the first rotates it, the rest look exactly like a replay,
+ * and the practitioner is signed out for the crime of opening a page.
+ *
+ * So the rotation is shared. Concurrent callers await one in-flight refresh,
+ * and a caller whose snapshot has already been rotated past takes the newer
+ * tokens rather than presenting its dead one.
+ * ------------------------------------------------------------------------- */
+
+/** The refresh currently in progress, if any — concurrent 401s await this. */
+let refreshInFlight: Promise<AuthTokens> | null = null;
+/** The newest tokens this module has issued, for callers holding a stale set. */
+let latestTokens: AuthTokens | null = null;
+
+/**
+ * Forgets the rotation state. The auth provider calls this whenever it
+ * establishes or ends a session, so tokens from a previous sign-in are never
+ * handed to a caller in the next one.
+ */
+export function resetTokenRotation(tokens: AuthTokens | null = null): void {
+  refreshInFlight = null;
+  latestTokens = tokens;
+}
+
+/** Rotates `session`'s refresh token, joining an in-flight rotation if there
+ * is one and skipping it entirely if this caller is already behind. */
+function rotate(session: Session, callbacks: RefreshCallbacks): Promise<AuthTokens> {
+  // Someone else already rotated past this caller's snapshot. Presenting the
+  // token it holds is precisely the replay the server revokes for.
+  if (latestTokens !== null && latestTokens.refreshToken !== session.refreshToken) {
+    return Promise.resolve(latestTokens);
+  }
+  if (refreshInFlight !== null) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = authApi
+    .refresh(session.refreshToken)
+    // refresh returns the full AuthResponse (user included); the callback
+    // contract is AuthTokens only, so strip the user before reporting.
+    .then(({ accessToken, refreshToken }) => {
+      const tokens: AuthTokens = { accessToken, refreshToken };
+      latestTokens = tokens;
+      callbacks.onTokensRefreshed(tokens);
+      return tokens;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
 /**
  * Authenticated request with the contract's 401 recovery: try the request once;
  * on 401 refresh the token exactly once and retry exactly once; if the refresh
  * or the retry is still unauthorized, throw SessionExpiredError so the caller
  * can force a logout.
+ *
+ * "Exactly once" is per session, not per request — see the single-flight note
+ * above. Ten simultaneous 401s produce one rotation and ten retries.
  */
 export async function authedRequest<T>(
   path: string,
@@ -165,14 +229,13 @@ export async function authedRequest<T>(
 
   let tokens: AuthTokens;
   try {
-    tokens = await authApi.refresh(session.refreshToken);
+    tokens = await rotate(session, callbacks);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       throw new SessionExpiredError();
     }
     throw error;
   }
-  callbacks.onTokensRefreshed(tokens);
 
   try {
     return await request<T>(path, { ...options, accessToken: tokens.accessToken });

@@ -85,6 +85,16 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 					SetUnique(true).
 					SetPartialFilterExpression(bson.D{{Key: "paystackReference", Value: bson.D{{Key: "$type", Value: "string"}}}}),
 			},
+			// The other half of the webhook join. A re-initialized payment
+			// keeps the references it used before, because the checkout
+			// pages behind them are still live and can still be paid; a
+			// delivery quoting one has to find this record. Not unique: the
+			// field is an array and only exists on records that were
+			// re-initialized, which is why it is sparse.
+			{
+				Keys:    bson.D{{Key: "previousReferences", Value: 1}},
+				Options: options.Index().SetSparse(true),
+			},
 		},
 
 		// Practitioner treatment notes. One note per booking; a client's

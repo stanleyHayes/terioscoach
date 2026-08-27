@@ -43,11 +43,41 @@ type Payment struct {
 	Currency          string
 	Status            Status
 	PaystackReference string
-	Channel           string
-	PaidAt            *time.Time
-	RefundedAt        *time.Time
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	// PreviousReferences are references this payment was initialized under
+	// before, oldest first. Re-initialization does not cancel the checkout
+	// it replaces: the gateway page for the old reference is still open in
+	// whichever tab the client left it in, and paying there produces a real
+	// charge that arrives as a webhook for a reference this record no
+	// longer advertises. Keeping them is what lets that charge still find
+	// its payment instead of being acknowledged as somebody else's.
+	PreviousReferences []string
+	Channel            string
+	PaidAt             *time.Time
+	RefundedAt         *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// MaxPreviousReferences bounds the retained history. A client who abandons
+// checkout twenty times over is not going to come back to the first page,
+// and an unbounded list is a document that grows on a stranger's clicks.
+const MaxPreviousReferences = 20
+
+// KnownReference reports whether reference identifies this payment, under
+// its current reference or any it was initialized under before.
+func (p Payment) KnownReference(reference string) bool {
+	if reference == "" {
+		return false
+	}
+	if p.PaystackReference == reference {
+		return true
+	}
+	for _, previous := range p.PreviousReferences {
+		if previous == reference {
+			return true
+		}
+	}
+	return false
 }
 
 // New builds a pending payment for a booking. amountKobo and currency are
@@ -107,6 +137,12 @@ func (p *Payment) MarkFailed(now time.Time) error {
 // Reinitialize restarts a pending or failed payment with a fresh reference
 // — the client abandoned checkout and is initializing again. Successful and
 // refunded payments can never be re-initialized.
+//
+// The outgoing reference is retained rather than dropped: the checkout it
+// belongs to is still live at the gateway, and a client who returns to that
+// abandoned tab and pays produces a charge under it. Forgetting it would
+// leave that charge with no record to join to — money taken and a booking
+// still showing as unpaid.
 func (p *Payment) Reinitialize(reference string, now time.Time) error {
 	if p.Status != StatusPending && p.Status != StatusFailed {
 		return ErrInvalidTransition
@@ -115,12 +151,56 @@ func (p *Payment) Reinitialize(reference string, now time.Time) error {
 		return ErrReferenceRequired
 	}
 	now = now.UTC()
+	if p.PaystackReference != "" && p.PaystackReference != reference {
+		p.PreviousReferences = appendReference(p.PreviousReferences, p.PaystackReference)
+	}
 	p.Status = StatusPending
 	p.PaystackReference = reference
 	p.Channel = ""
 	p.PaidAt = nil
 	p.UpdatedAt = now
 	return nil
+}
+
+// AdoptReference makes reference the payment's live reference, moving the
+// one it displaces into the retained history. It is a no-op when reference
+// is already live or is not one of this payment's references at all.
+//
+// This is what a charge confirmed under a superseded reference needs: the
+// client paid on the abandoned checkout page, so that reference — not the
+// newer unpaid one — is the transaction the gateway holds, and a later
+// refund has to quote it.
+func (p *Payment) AdoptReference(reference string) {
+	if reference == "" || p.PaystackReference == reference || !p.KnownReference(reference) {
+		return
+	}
+	displaced := p.PaystackReference
+	kept := p.PreviousReferences[:0:0]
+	for _, previous := range p.PreviousReferences {
+		if previous != reference {
+			kept = append(kept, previous)
+		}
+	}
+	p.PreviousReferences = kept
+	p.PaystackReference = reference
+	if displaced != "" {
+		p.PreviousReferences = appendReference(p.PreviousReferences, displaced)
+	}
+}
+
+// appendReference adds reference to the retained history, skipping
+// duplicates and dropping the oldest entries once the cap is reached.
+func appendReference(history []string, reference string) []string {
+	for _, previous := range history {
+		if previous == reference {
+			return history
+		}
+	}
+	history = append(history, reference)
+	if len(history) > MaxPreviousReferences {
+		history = history[len(history)-MaxPreviousReferences:]
+	}
+	return history
 }
 
 // MarkRefunded moves a successful payment to refunded — terminal. Only

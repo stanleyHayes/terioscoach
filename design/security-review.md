@@ -52,14 +52,17 @@ learn that a record exists but is not theirs, the answer is "not found".
 |---|---|---|
 | CORS: exact-match allowlist, credentialed, **never** `*` or origin-reflection | `httpapi.CORS` | `TestUnknownOriginGetsNoCORSHeaders`, `TestNoWildcardEverAppears` |
 | Security headers on every response, errors included | `httpapi.SecurityHeaders` | `TestSecurityHeadersOnEveryResponse`, `TestHeadersSurviveAnErrorResponse` |
+| Content Security Policy on both apps — nonce-based and strict on the dashboard, static on the customer app | `apps/admin/src/proxy.ts`, `apps/web/next.config.ts` | `proxy.test.ts`, `csp.test.ts`, plus a real-browser pass over 16 routes reporting zero violations |
+| Production refuses to start without `ALLOWED_ORIGINS` | `config.Load` | `TestProductionRequiresItsSecretsAndOrigins` |
 | `Cache-Control: no-store` — bearer tokens and client records never sit in a shared proxy cache | same | as above |
 | WebSocket origin checking (a WS handshake is **not** covered by same-origin policy) | `wsapi.NewHandler` | origin patterns come from `ALLOWED_ORIGINS` |
 | Unconfigured providers answer 503 rather than appearing to work | every `With*` option | `*UnavailableWithoutDatabase` tests |
 
 **Deployment requirement:** `ALLOWED_ORIGINS` must list both app origins
-exactly. Empty means no browser origin is permitted — the correct failure
-mode for a misconfiguration, but it will take the apps down, so it belongs
-in the launch checklist.
+exactly. Empty means no browser origin is permitted, which would take both
+apps down while every health probe stayed green — so production now refuses
+to boot without it rather than running in that state. It is still in the
+launch checklist; it now fails loudly instead of quietly.
 
 ## A06 — Vulnerable and Outdated Components
 
@@ -110,4 +113,46 @@ request by varying one header. That was found and fixed during this build.
 3. **`ALLOWED_ORIGINS` must be set at deploy** — the apps cannot call the API without it. It is in `render.yaml` as `sync: false`, so the deploy will not silently default it, but it is still a step someone has to take.
 4. **Penetration test** — still open, and the one that cannot be closed from inside the codebase. This is a code review, not an adversarial exercise against a running system.
 5. **Live-origin verification** — after deployment, verify headers, redirects, TLS/HSTS, `robots.txt`, sitemap URLs, recovery-email delivery and reset links on the real web/admin origins. Local builds prove generation, not edge behavior.
-6. **Browser CSP rollout** — framework-independent headers are now enforced in both Next configs and Vercel manifests. A strict browser CSP remains staged work because Next's generated inline boot scripts require nonce/hash integration; shipping a guessed policy would break the applications.
+6. ~~Browser CSP rollout~~ — **closed.** Both apps now send a Content
+   Security Policy, by two different routes, because the cost of a nonce
+   falls very differently on them:
+
+   - **Practice dashboard** — strict and nonce-based (`apps/admin/src/proxy.ts`).
+     `script-src 'self' 'nonce-…' 'strict-dynamic'`: an injected script
+     cannot guess the nonce and does not run, and host allowlists stop
+     being consulted at all, so an open redirect on an allowed origin is
+     not a bypass. A nonce is per-request, so every route renders
+     dynamically (`export const dynamic = "force-dynamic"` in the root
+     layout) — which costs nothing here, because the dashboard already
+     sends `Cache-Control: private, no-store` on everything and was never
+     cached.
+   - **Customer app** — static policy in `next.config.ts`, keeping
+     `'unsafe-inline'` on `script-src` for Next's boot script. Its nine
+     marketing routes are statically generated and served from the edge
+     with Lighthouse as an explicit deliverable (WEB-10), and it renders
+     no attacker HTML: no `dangerouslySetInnerHTML` anywhere, and CMS
+     bodies go through `Prose`, which renders text. The value it does take
+     is the directives that need no nonce — `object-src 'none'`,
+     `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`,
+     and a bounded `connect-src`, which is what turns an exfiltration
+     attempt into a blocked request.
+
+   Both policies keep `'unsafe-inline'` on `style-src`: React writes layout
+   through `style` attributes (the week calendar positions every booking
+   that way), which no nonce or hash can cover.
+
+   Verified rather than assumed. Loading eight routes per app in a real
+   browser against production builds reports **zero CSP violations**, all
+   hydrated. That check found the failure this item warned about: with the
+   nonce policy but no `force-dynamic`, admin pages were prerendered, their
+   script tags carried no nonce, and `'strict-dynamic'` refused every one —
+   a blank dashboard. The policies are pinned by `apps/web/src/lib/csp.test.ts`
+   and `apps/admin/src/proxy.test.ts`.
+
+7. ~~`ALLOWED_ORIGINS` may be missed at deploy~~ — **closed as a silent
+   failure.** It is still a step someone has to take, but the API now
+   refuses to start in production without it (`config.Load`). Previously an
+   empty value produced an API that was up, healthy on every probe, and
+   useless: CORS permitted no browser origin and the signaling socket
+   refused every handshake, so both apps failed on every call with no
+   indication why. Pinned by `TestProductionRequiresItsSecretsAndOrigins`.

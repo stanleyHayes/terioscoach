@@ -5,6 +5,7 @@ import {
   authApi,
   authedRequest,
   listServices,
+  resetTokenRotation,
   SessionExpiredError,
 } from "./api";
 
@@ -214,6 +215,12 @@ describe("authedRequest 401 recovery", () => {
     user: clientUser,
   };
 
+  // The rotation state is shared across calls by design; each test starts
+  // from a clean one, exactly as a fresh page load would.
+  beforeEach(() => {
+    resetTokenRotation(null);
+  });
+
   it("refreshes once after a token_expired 401, retries once, and reports the rotated tokens", async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -283,5 +290,98 @@ describe("authedRequest 401 recovery", () => {
       authedRequest("/v1/auth/me", session, { onTokensRefreshed: vi.fn() }),
     ).rejects.toMatchObject({ status: 500, code: "server_error" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // A refresh token is one-time and the API revokes the whole session family
+  // when a spent one comes back. Every portal screen mounts more than one
+  // authenticated read, so simultaneous expiry is the normal case, not a rare
+  // one — three reads must still cost exactly one rotation.
+  it("rotates once for simultaneous 401s and retries all of them", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/v1/auth/refresh")) {
+        expect(JSON.parse(String(init?.body))).toEqual({ refreshToken: "refresh-1" });
+        return Promise.resolve(jsonResponse(200, rotated));
+      }
+      const authorization = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      return Promise.resolve(
+        authorization === "Bearer new-access"
+          ? jsonResponse(200, { ok: String(url) })
+          : jsonResponse(401, { error: { code: "token_expired", message: "expired" } }),
+      );
+    });
+
+    const onTokensRefreshed = vi.fn();
+    const results = await Promise.all([
+      authedRequest<{ ok: string }>("/v1/bookings/me", session, { onTokensRefreshed }),
+      authedRequest<{ ok: string }>("/v1/forms/me", session, { onTokensRefreshed }),
+      authedRequest<{ ok: string }>("/v1/documents/me", session, { onTokensRefreshed }),
+    ]);
+
+    expect(results.map((r) => r.ok)).toEqual([
+      `${API_BASE_URL}/v1/bookings/me`,
+      `${API_BASE_URL}/v1/forms/me`,
+      `${API_BASE_URL}/v1/documents/me`,
+    ]);
+    const refreshCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/v1/auth/refresh"),
+    );
+    expect(refreshCalls).toHaveLength(1);
+    expect(onTokensRefreshed).toHaveBeenCalledTimes(1);
+  });
+
+  // A component holding a snapshot from before the rotation must not present
+  // the spent token afterwards: that is the replay the server revokes for.
+  it("hands the current tokens to a caller whose session has already rotated", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(401, { error: { code: "token_expired", message: "expired" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, rotated))
+      .mockResolvedValueOnce(jsonResponse(200, { first: true }))
+      .mockResolvedValueOnce(
+        jsonResponse(401, { error: { code: "token_expired", message: "expired" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { second: true }));
+
+    const onTokensRefreshed = vi.fn();
+    await authedRequest("/v1/bookings/me", session, { onTokensRefreshed });
+    // Same stale `session` object a mounted component would still be holding.
+    await authedRequest("/v1/forms/me", session, { onTokensRefreshed });
+
+    const refreshCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/v1/auth/refresh"),
+    );
+    expect(refreshCalls).toHaveLength(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(`${API_BASE_URL}/v1/forms/me`, {
+      method: "GET",
+      headers: { Authorization: "Bearer new-access" },
+    });
+  });
+
+  // Sign out, sign in as someone else: the rotation state must not carry the
+  // previous account's tokens into the new session.
+  it("forgets rotated tokens when the session is reset", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(401, { error: { code: "token_expired", message: "expired" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, rotated))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+    await authedRequest("/v1/bookings/me", session, { onTokensRefreshed: vi.fn() });
+
+    resetTokenRotation(null);
+
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(401, { error: { code: "token_expired", message: "expired" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, rotated))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+    await authedRequest("/v1/forms/me", session, { onTokensRefreshed: vi.fn() });
+
+    const refreshCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/v1/auth/refresh"),
+    );
+    expect(refreshCalls).toHaveLength(2);
   });
 });

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated reports, not source. The v8 coverage reporter emits its
+    // own bundled scripts, and linting them reports problems in code
+    // nobody here wrote or can fix.
+    "coverage/**",
   ]),
 ]);
 

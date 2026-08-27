@@ -260,4 +260,76 @@ The first redesign pass was rejected because it leaned too heavily on shared pri
 | SEO-02 | Re-verify canonical, robots and sitemap controls | Done | Focused robots/sitemap suite 6/6; preview indexing remains opt-out and portal/recovery routes stay outside sitemap |
 | PROD-04 | Run first dependency and production-build gate | Done | npm audit reports 0 vulnerabilities in web/admin; both production builds pass; relevant API packages pass; local `govulncheck` binary unavailable but CI already runs it |
 | PROD-05 | Live edge/TLS/email/Lighthouse verification | Blocked on deployment | Must be run against real origins; tracked in `design/security-review.md` open items |
-| PROD-06 | Strict nonce-based browser CSP | Planned | Requires Next nonce/hash integration and browser regression coverage; deliberately not shipped as a potentially breaking guessed policy |
+| PROD-06 | Strict nonce-based browser CSP | Done | See §20 |
+
+## 20. Production readiness pass (27 Aug 2026)
+
+A review of the whole platform against what CI and a real browser actually
+report, rather than what the plan claimed. Every item below was verified,
+not assumed.
+
+### 20a. Defects found and fixed
+
+| ID | Defect | Fix | Evidence |
+|---|---|---|---|
+| FIX-01 | **Both frontend suites failed nondeterministically**, so `test:coverage` — the exact command CI runs — was red. Ten web and three admin tests timed out, none on an assertion: vitest's 5s default is shorter than the first render in a worker, and whichever test happens to be first in its file pays the jsdom + import + compile cost for all of them. | `testTimeout`/`hookTimeout` raised to 30s in both vitest configs. The ceiling is for a hung test, not a slow one — the same tests finish in ~600ms once warm. | Web 45 files / 350 tests green; admin 37 / 388 green |
+| FIX-02 | **Concurrent 401s signed the user out.** A refresh token is one-time and the API revokes the whole session family when a spent one comes back (`auth.Service.Refresh`) — correct against theft, and fatal here, because expiry is never observed by one request alone. The portal mounts two or three authenticated reads at once and `/content` mounts four; fifteen minutes after sign-in they 401 together, each refreshed with the same token, and every request after the first looked exactly like a replay. The client was signed out of every device for opening a page. | Rotation is now single-flight in both apps' `api.ts`: concurrent callers await one refresh, and a caller whose snapshot has already been rotated past takes the newer tokens instead of presenting its dead one. `resetTokenRotation` is wired into both auth providers so tokens never cross a sign-out. | Three new tests per app, including four simultaneous 401s producing exactly one rotation |
+| FIX-03 | **Abandoned-checkout payments were lost.** `Reinitialize` overwrote the gateway reference, but re-initializing does not cancel the checkout it replaces — the gateway page is still open in whichever tab the client left it in. Paying there produced a real charge whose webhook quoted a reference no record advertised, so `FindByReference` missed and the delivery was acknowledged with no changes. Money taken, booking still reading unpaid. | Superseded references are retained (`Payment.PreviousReferences`, capped at 20) and matched by both the Mongo adapter and the fake; a charge confirmed under one promotes it to the live reference, so a later refund quotes the transaction that was actually charged. | `TestWebhookOnAbandonedCheckoutStillRecordsThePayment`, `TestRefundQuotesTheChargedReference` — both verified to fail without the fix |
+| FIX-04 | **`ALLOWED_ORIGINS` unset in production was a silent outage.** The API came up, passed every probe, and refused every browser call from both apps: CORS permitted no origin and the signaling socket refused every handshake. | Production now refuses to start without it, alongside the existing `MONGODB_URI` and JWT-secret guards. | New `internal/config` suite (the package had none): `TestProductionRequiresItsSecretsAndOrigins` |
+| FIX-05 | **The password-reset token reached analytics.** `Analytics` excluded `/portal`, `/login` and `/register`, but the recovery routes shipped later (AUTH-REC-04, PROD-01) were added to `robots.ts` and not to this list — so `/reset-password?token=…` was reported as a page view with a live one-time credential in the URL. | One `PRIVATE_PATHS` list in `lib/seo`, consumed by both, so they cannot drift again; plus a `beforeSend` that strips the query string from every reported URL, which does not depend on anyone remembering to extend a list. | `Analytics.test.tsx` covers both recovery routes and the stripping |
+| FIX-06 | **Every field error was announced twice.** Both forgot-password screens passed `error` to `TextInput` — which renders it as `role="alert"`, tied to the input — *and* rendered a second identical alert beside it. | The redundant paragraph removed from both; `TextInput`'s is the better one, being associated with the field via `aria-describedby`. | "announces the error exactly once" |
+| FIX-07 | Admin `vercel.json` had drifted from `next.config.ts`: `Referrer-Policy` was the customer app's `strict-origin-when-cross-origin` rather than the dashboard's `no-referrer`, and `X-Robots-Tag` had lost `noarchive`. | Manifest realigned. | Diff |
+| FIX-08 | ESLint linted the generated `coverage/` reports, reporting problems in code nobody wrote. | `coverage/**` added to both configs' ignores. | Both lints report zero problems |
+
+### 20b. PROD-06 — browser CSP
+
+Shipped as two policies, because the cost of a nonce falls very differently
+on the two apps. The dashboard gets the strict nonce-based one; the customer
+app gets a static one that keeps its statically generated marketing routes.
+Full rationale in `design/security-review.md` §Open items 6.
+
+Verified in a real browser against production builds of both apps: **16
+routes, zero CSP violations, all hydrated.** That check is what caught the
+breakage this task had been deferred over — with the nonce policy but no
+`force-dynamic`, admin pages were prerendered, their script tags carried no
+nonce, and `'strict-dynamic'` refused every one, giving a blank dashboard.
+
+### 20c. Coverage gates
+
+`test:coverage` had never passed in either app: the LCH-03 ratchets were
+above what the suites achieved, by 7 points of branch coverage in admin.
+Measured against a clean `HEAD` worktree to confirm this predated the pass.
+Closed by testing what was genuinely untested rather than by lowering a
+threshold — the client record page, both recovery screens in both apps, the
+modal's focus trap, the submission viewer, the assign-form dialog, and the
+`clients`/`inbox`/`insights`/`portal` API modules.
+
+| Suite | Was | Now | Floor |
+|---|---|---|---|
+| API | 68.3% statements | 68.8% | 65% |
+| Web | 63.6 / 59.0 / 64.2 / 66.8 | **67.6 / 61.4 / 68.5 / 69.1** | 64 / 60 / 67 / 65 |
+| Admin | 69.2 / 61.0 / 69.6 / 72.5 | **76.3 / 68.4 / 75.9 / 78.4** | 71 / 68 / 72 / 73 |
+
+(statements / branches / functions / lines)
+
+Thresholds were left where they are rather than ratcheted up to the new
+figures: admin's branch coverage clears its floor by 0.4 points, and raising
+it now would trade a passing gate for a fragile one.
+
+### 20d. Still open, and why
+
+| Item | Why it cannot close here |
+|---|---|
+| FND-05, FND-09, LCH-04, LCH-08 | Need an Atlas cluster, a Vercel account, and DNS access |
+| FND-06 | `terioswellness.com` is not a verified Resend domain; mail is accepted and silently dropped |
+| FND-10, LCH-03 live gate | Needs `SONAR_TOKEN` |
+| LCH-05 | The client's own copy, photographs and testimonials |
+| PROD-05, LCH-06 (Lighthouse, video stress), LCH-09 monitor | Need real origins to measure |
+| Penetration test | An adversarial exercise against a running system, not a code review |
+
+One deliberate non-change: `use-video-room.ts` (1,026 lines) and `video.ts`
+are duplicated near-verbatim across both apps, differing only in the auth
+context's naming. Sharing them means a `packages/*` workspace and new Vercel
+root directories — a deployment change, not a refactor, and not one to make
+in the same pass as the fixes above. It is the largest piece of technical
+debt left in the tree.

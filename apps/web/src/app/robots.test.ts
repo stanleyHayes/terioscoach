@@ -27,8 +27,14 @@ describe("robots", () => {
 
     // The portal is behind authentication: a crawler can only ever reach a
     // login page there, and those URLs in an index help nobody.
+    //
+    // The list is PRIVATE_PATHS, shared with Analytics so the two cannot
+    // drift — which they had, leaving the recovery routes measured. That
+    // is why /portal has lost its trailing slash: robots.txt matches on
+    // prefix, so "/portal" already covers everything under it, and the
+    // shared list has to be usable as a pathname test too.
     expect(rules.disallow).toEqual([
-      "/portal/",
+      "/portal",
       "/login",
       "/register",
       "/forgot-password",

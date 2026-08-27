@@ -35,6 +35,31 @@ function isProductionOrigin(): boolean {
   );
 }
 
+/**
+ * Paths that belong to a signed-in client or to getting signed in.
+ *
+ * One list, because it has two consumers that must agree — `robots.ts`
+ * keeps these out of the index, and `Analytics` keeps them out of the
+ * measurement — and they had already drifted once: the recovery routes
+ * were added to robots when they shipped and not to analytics, which left
+ * `/reset-password?token=…` being reported as a page view with a live
+ * one-time credential in the URL.
+ */
+export const PRIVATE_PATHS = [
+  "/portal",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+] as const;
+
+/** Whether a pathname belongs to the private surface above. */
+export function isPrivatePath(pathname: string): boolean {
+  return PRIVATE_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 /** Absolute URL for a site-relative path, for canonicals and OG tags. */
 export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

@@ -7,7 +7,9 @@
 # blueprint omits does not fail the deploy — it silently takes its default,
 # and the first sign of trouble is a feature quietly not working. The one
 # that matters most is ALLOWED_ORIGINS: empty means no browser origin is
-# permitted, so both apps go down while the API stays green.
+# permitted, which would take both apps down while the API stayed green —
+# so the service now refuses to start in production without it, and the
+# deploy fails loudly instead.
 #
 # Secrets are `sync: false` and entered once in the dashboard. Nothing
 # secret is ever committed here.

@@ -114,8 +114,10 @@ func (l *rateLimiter) sweep(now time.Time) {
 }
 
 // RateLimit caps requests per client address, answering 429 rate_limited
-// with a Retry-After header once the cap is hit. Chi's RealIP middleware
-// has already resolved the forwarded address by the time this runs.
+// with a Retry-After header once the cap is hit. This package's own RealIP
+// has already rewritten RemoteAddr by the time this runs — deliberately
+// not chi's, which reads X-Forwarded-For from the left and would let any
+// caller mint a fresh limit identity per request.
 func RateLimit(policy RateLimitPolicy) func(http.Handler) http.Handler {
 	limiter := newRateLimiter(policy)
 	return func(next http.Handler) http.Handler {

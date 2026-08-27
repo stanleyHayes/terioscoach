@@ -3,7 +3,7 @@
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { usePathname } from "next/navigation";
-import { isIndexable } from "@/lib/seo";
+import { isIndexable, isPrivatePath } from "@/lib/seo";
 
 /**
  * Analytics (WEB-10).
@@ -21,11 +21,13 @@ import { isIndexable } from "@/lib/seo";
  *
  * Two deliberate exclusions:
  *
- *  - **The portal is not measured.** Every path under /portal belongs to a
- *    signed-in client looking at their own health information. Page views
- *    there would tie a URL containing a session id to a visitor, which is
- *    not something a practice should be collecting to find out which page
- *    is popular.
+ *  - **The private surface is not measured** — the portal and every route
+ *    that leads into it. A portal path belongs to a signed-in client
+ *    looking at their own health information, and measuring it would tie a
+ *    URL containing a session id to a visitor. The auth and recovery
+ *    routes are worse still: `/reset-password` carries a live one-time
+ *    token in its query string. The list lives in `lib/seo` because
+ *    `robots.ts` needs the same one.
  *
  *  - **Preview deployments are not measured**, for the same reason they are
  *    not indexed: staging traffic in the production numbers makes the
@@ -34,17 +36,31 @@ import { isIndexable } from "@/lib/seo";
 export function Analytics() {
   const pathname = usePathname();
 
-  const isPrivate =
-    pathname.startsWith("/portal") ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register");
-
-  if (isPrivate || !isIndexable()) return null;
+  if (isPrivatePath(pathname) || !isIndexable()) return null;
 
   return (
     <>
-      <VercelAnalytics />
+      <VercelAnalytics beforeSend={withoutQueryString} />
       <SpeedInsights />
     </>
   );
+}
+
+/**
+ * Strips the query string from every reported URL.
+ *
+ * `isPrivatePath` already keeps the recovery routes out of the
+ * measurement, so this is the second layer rather than the first — but it
+ * is the layer that does not depend on anyone remembering to extend a list
+ * when they add a route. Nothing on this site needs query parameters
+ * measured, and the one that would hurt most to record is a password-reset
+ * token arriving as `?token=…`.
+ */
+function withoutQueryString<Event extends { url: string }>(event: Event): Event {
+  // Relative or malformed URLs are not something this library sends, but a
+  // throw here would take the page down over a page view.
+  const stripped = URL.parse(event.url);
+  if (stripped === null) return event;
+  stripped.search = "";
+  return { ...event, url: stripped.toString() };
 }

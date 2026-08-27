@@ -14,6 +14,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    // Vitest's 5s default is shorter than the first render in a worker.
+    // Spinning up jsdom, importing the Next/React tree and compiling the
+    // component under test costs several seconds before the first
+    // assertion runs, and every worker pays it again — so whichever test
+    // happens to be first in its file fails on a loaded machine while the
+    // other twelve in the same file finish in under a second between them.
+    // These ceilings are for a hung test, not a slow one; nothing here is
+    // expected to approach them.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

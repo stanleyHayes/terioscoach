@@ -15,7 +15,8 @@ import (
 // PaymentRepository persists payments in the payments collection. The
 // document shape is guarded by the fixed index design: bookingId unique
 // (one payment per booking), paystackReference unique when present (the
-// webhook join key), and clientId+createdAt for the client history. The
+// webhook join key), previousReferences for the same join after a
+// re-initialization, and clientId+createdAt for the client history. The
 // collection deliberately carries no card or mobile-money data — checkout
 // is hosted by Paystack.
 type PaymentRepository struct {
@@ -31,18 +32,21 @@ func NewPaymentRepository(db *mongo.Database) *PaymentRepository {
 
 // paymentDoc is the storage shape; kept separate from the domain entity.
 type paymentDoc struct {
-	ID                bson.ObjectID  `bson:"_id,omitempty"`
-	BookingID         bson.ObjectID  `bson:"bookingId"`
-	ClientID          bson.ObjectID  `bson:"clientId"`
-	AmountKobo        int64          `bson:"amountKobo"`
-	Currency          string         `bson:"currency"`
-	Status            string         `bson:"status"`
-	PaystackReference string         `bson:"paystackReference"`
-	Channel           string         `bson:"channel,omitempty"`
-	PaidAt            *bson.DateTime `bson:"paidAt,omitempty"`
-	RefundedAt        *bson.DateTime `bson:"refundedAt,omitempty"`
-	CreatedAt         bson.DateTime  `bson:"createdAt"`
-	UpdatedAt         bson.DateTime  `bson:"updatedAt"`
+	ID                bson.ObjectID `bson:"_id,omitempty"`
+	BookingID         bson.ObjectID `bson:"bookingId"`
+	ClientID          bson.ObjectID `bson:"clientId"`
+	AmountKobo        int64         `bson:"amountKobo"`
+	Currency          string        `bson:"currency"`
+	Status            string        `bson:"status"`
+	PaystackReference string        `bson:"paystackReference"`
+	// References this payment was initialized under before. Omitted when
+	// empty so the index below stays off the documents that have none.
+	PreviousReferences []string       `bson:"previousReferences,omitempty"`
+	Channel            string         `bson:"channel,omitempty"`
+	PaidAt             *bson.DateTime `bson:"paidAt,omitempty"`
+	RefundedAt         *bson.DateTime `bson:"refundedAt,omitempty"`
+	CreatedAt          bson.DateTime  `bson:"createdAt"`
+	UpdatedAt          bson.DateTime  `bson:"updatedAt"`
 }
 
 // Create inserts a new payment, assigning its ID. A duplicate-key error
@@ -86,11 +90,16 @@ func (r *PaymentRepository) FindByBookingID(ctx context.Context, bookingID strin
 	return r.findOne(ctx, bson.M{"bookingId": oid})
 }
 
-// FindByReference looks up a payment by its Paystack reference — the
-// webhook join key (unique partial index); misses return
+// FindByReference looks up a payment by its gateway reference — the webhook
+// join key. It matches the current reference (unique partial index) or any
+// the payment was initialized under before, so a charge completed on an
+// abandoned checkout page still finds its record. Misses return
 // payment.ErrPaymentNotFound.
 func (r *PaymentRepository) FindByReference(ctx context.Context, reference string) (payment.Payment, error) {
-	return r.findOne(ctx, bson.M{"paystackReference": reference})
+	return r.findOne(ctx, bson.M{"$or": []bson.M{
+		{"paystackReference": reference},
+		{"previousReferences": reference},
+	}})
 }
 
 func (r *PaymentRepository) findOne(ctx context.Context, filter bson.M) (payment.Payment, error) {
@@ -207,15 +216,16 @@ func newPaymentDoc(p payment.Payment) (paymentDoc, error) {
 		return paymentDoc{}, fmt.Errorf("payment clientId %q is not an ObjectID: %w", p.ClientID, err)
 	}
 	doc := paymentDoc{
-		BookingID:         bookingOID,
-		ClientID:          clientOID,
-		AmountKobo:        p.AmountKobo,
-		Currency:          p.Currency,
-		Status:            string(p.Status),
-		PaystackReference: p.PaystackReference,
-		Channel:           p.Channel,
-		CreatedAt:         bson.NewDateTimeFromTime(p.CreatedAt),
-		UpdatedAt:         bson.NewDateTimeFromTime(p.UpdatedAt),
+		BookingID:          bookingOID,
+		ClientID:           clientOID,
+		AmountKobo:         p.AmountKobo,
+		Currency:           p.Currency,
+		Status:             string(p.Status),
+		PaystackReference:  p.PaystackReference,
+		PreviousReferences: p.PreviousReferences,
+		Channel:            p.Channel,
+		CreatedAt:          bson.NewDateTimeFromTime(p.CreatedAt),
+		UpdatedAt:          bson.NewDateTimeFromTime(p.UpdatedAt),
 	}
 	if p.ID != "" {
 		oid, err := bson.ObjectIDFromHex(p.ID)
@@ -237,16 +247,17 @@ func newPaymentDoc(p payment.Payment) (paymentDoc, error) {
 
 func paymentFromDoc(doc paymentDoc) payment.Payment {
 	p := payment.Payment{
-		ID:                doc.ID.Hex(),
-		BookingID:         doc.BookingID.Hex(),
-		ClientID:          doc.ClientID.Hex(),
-		AmountKobo:        doc.AmountKobo,
-		Currency:          doc.Currency,
-		Status:            payment.Status(doc.Status),
-		PaystackReference: doc.PaystackReference,
-		Channel:           doc.Channel,
-		CreatedAt:         doc.CreatedAt.Time(),
-		UpdatedAt:         doc.UpdatedAt.Time(),
+		ID:                 doc.ID.Hex(),
+		BookingID:          doc.BookingID.Hex(),
+		ClientID:           doc.ClientID.Hex(),
+		AmountKobo:         doc.AmountKobo,
+		Currency:           doc.Currency,
+		Status:             payment.Status(doc.Status),
+		PaystackReference:  doc.PaystackReference,
+		PreviousReferences: doc.PreviousReferences,
+		Channel:            doc.Channel,
+		CreatedAt:          doc.CreatedAt.Time(),
+		UpdatedAt:          doc.UpdatedAt.Time(),
 	}
 	if doc.PaidAt != nil {
 		paid := doc.PaidAt.Time()
