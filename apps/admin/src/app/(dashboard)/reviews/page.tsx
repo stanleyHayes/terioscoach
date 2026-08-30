@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/content/states";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import { cn } from "@/lib/cn";
 import {
   REVIEW_STATUSES,
@@ -99,6 +100,41 @@ export default function ReviewsPage() {
           ))}
         </div>
       </header>
+
+      {reviews.data ? (
+        <KpiStrip
+          label="Review summary"
+          items={[
+            {
+              label: "All reviews",
+              value: String(items.length),
+              detail: "submitted by clients",
+            },
+            {
+              label: "Awaiting review",
+              value: String(pendingCount),
+              detail: "need a decision",
+            },
+            {
+              label: "Published",
+              value: String(
+                items.filter((review) => review.status === "approved").length,
+              ),
+              detail: "visible on the website",
+            },
+            {
+              label: "Average rating",
+              value: items.length
+                ? (
+                    items.reduce((sum, review) => sum + review.rating, 0) /
+                    items.length
+                  ).toFixed(1)
+                : "—",
+              detail: items.length ? "out of 5" : "no ratings yet",
+            },
+          ]}
+        />
+      ) : null}
 
       {action.error ? (
         <div

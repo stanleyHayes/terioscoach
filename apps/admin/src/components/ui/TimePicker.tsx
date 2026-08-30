@@ -80,7 +80,7 @@ export function TimePicker({
         <div
           role="listbox"
           aria-label={`${label} options`}
-          className="absolute top-full left-0 z-dropdown mt-2 max-h-64 w-44 overflow-y-auto rounded-2xl border border-border bg-surface-raised p-2 shadow-lg"
+          className="absolute top-full left-0 z-[50] mt-2 max-h-64 w-44 overflow-y-auto rounded-2xl border border-border bg-surface-raised p-2 shadow-lg"
         >
           {TIMES.map((time) => (
             <button

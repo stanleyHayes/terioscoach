@@ -4,6 +4,7 @@ import { CircleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import type { BookingAction } from "@/components/schedule/BookingDetailModal";
 import { ApiError, SessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -40,7 +41,9 @@ const FILTERS: { value: StatusFilter; label: string }[] = [
 ];
 
 function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+  return error instanceof ApiError
+    ? error.message
+    : "Something went wrong. Try again.";
 }
 
 export default function CalendarPage() {
@@ -67,7 +70,11 @@ export default function CalendarPage() {
     const weekEnd = addDaysCivil(weekStart, 7);
     scheduleApi
       .listBookings(session, refreshCallbacks, {
-        from: wallClockToUtcIso(dateKey(weekStart), "00:00", PRACTICE_TIMEZONE)!,
+        from: wallClockToUtcIso(
+          dateKey(weekStart),
+          "00:00",
+          PRACTICE_TIMEZONE,
+        )!,
         to: wallClockToUtcIso(dateKey(weekEnd), "00:00", PRACTICE_TIMEZONE)!,
         ...(filter === "all" ? {} : { status: filter }),
       })
@@ -98,11 +105,19 @@ export default function CalendarPage() {
   }
 
   function requireSession(): { session: NonNullable<typeof session> } {
-    if (!session) throw new ApiError(0, "no_session", "Your session isn't ready. Try again.");
+    if (!session)
+      throw new ApiError(
+        0,
+        "no_session",
+        "Your session isn't ready. Try again.",
+      );
     return { session };
   }
 
-  async function handleAction(booking: Booking, action: BookingAction): Promise<Booking> {
+  async function handleAction(
+    booking: Booking,
+    action: BookingAction,
+  ): Promise<Booking> {
     const { session: live } = requireSession();
     const call =
       action === "complete"
@@ -118,11 +133,19 @@ export default function CalendarPage() {
     }
   }
 
-  async function handleReschedule(booking: Booking, startAt: string): Promise<Booking> {
+  async function handleReschedule(
+    booking: Booking,
+    startAt: string,
+  ): Promise<Booking> {
     const { session: live } = requireSession();
     try {
       return replaceBooking(
-        await scheduleApi.rescheduleBooking(live, refreshCallbacks, booking.id, startAt),
+        await scheduleApi.rescheduleBooking(
+          live,
+          refreshCallbacks,
+          booking.id,
+          startAt,
+        ),
       );
     } catch (err) {
       handleSessionExpiry(err);
@@ -142,7 +165,11 @@ export default function CalendarPage() {
           </p>
         </div>
         {/* status filter chips (§3.20): selected = eucalyptus-100 + primary border */}
-        <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+        <div
+          role="group"
+          aria-label="Filter by status"
+          className="flex flex-wrap gap-2"
+        >
           {FILTERS.map(({ value, label }) => (
             <button
               key={value}
@@ -156,7 +183,7 @@ export default function CalendarPage() {
               className={cn(
                 "h-7 rounded-full border px-3 text-[13px] leading-[1.45] font-medium tracking-[0.01em] transition-colors duration-fast ease-out",
                 filter === value
-                  ? "border-primary bg-eucalyptus-100 text-ink"
+                  ? "border-primary bg-primary text-on-primary shadow-sm"
                   : "border-border-strong bg-surface-raised text-ink hover:border-ink-faint",
               )}
             >
@@ -166,12 +193,59 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {bookings ? (
+        <KpiStrip
+          label="Weekly schedule summary"
+          items={[
+            {
+              label: "This view",
+              value: String(bookings.length),
+              detail:
+                filter === "all"
+                  ? "sessions this week"
+                  : `${filter.replace("_", "-")} sessions`,
+            },
+            {
+              label: "Confirmed",
+              value: String(
+                bookings.filter((booking) => booking.status === "confirmed")
+                  .length,
+              ),
+              detail: "still ahead",
+            },
+            {
+              label: "Completed",
+              value: String(
+                bookings.filter((booking) => booking.status === "completed")
+                  .length,
+              ),
+              detail: "care delivered",
+            },
+            {
+              label: "Changed",
+              value: String(
+                bookings.filter(
+                  (booking) =>
+                    booking.status === "cancelled" ||
+                    booking.status === "no_show",
+                ).length,
+              ),
+              detail: "cancelled or no-show",
+            },
+          ]}
+        />
+      ) : null}
+
       {error ? (
         <div
           role="alert"
           className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          />
           <span className="flex-1">{error}</span>
           <Button
             variant="ghost"
@@ -215,30 +289,47 @@ export default function CalendarPage() {
 /** Skeleton mirroring the calendar chrome 1:1 (§3.28): header + 7-day grid. */
 function CalendarSkeleton() {
   return (
-    <div
-      role="status"
-      aria-busy="true"
-      className="flex flex-col gap-4"
-    >
+    <div role="status" aria-busy="true" className="flex flex-col gap-4">
       <span className="sr-only">Loading your calendar…</span>
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col gap-2">
-          <div className="skeleton-shimmer h-7 w-48 rounded-sm" aria-hidden="true" />
-          <div className="skeleton-shimmer h-4 w-28 rounded-sm" aria-hidden="true" />
+          <div
+            className="skeleton-shimmer h-7 w-48 rounded-sm"
+            aria-hidden="true"
+          />
+          <div
+            className="skeleton-shimmer h-4 w-28 rounded-sm"
+            aria-hidden="true"
+          />
         </div>
-        <div className="skeleton-shimmer h-10 w-36 rounded-md" aria-hidden="true" />
+        <div
+          className="skeleton-shimmer h-10 w-36 rounded-md"
+          aria-hidden="true"
+        />
       </div>
       <div className="overflow-hidden rounded-lg border border-border bg-surface-raised">
         <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border">
           <div />
           {Array.from({ length: 7 }, (_, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 border-l border-border px-2 py-2">
-              <div className="skeleton-shimmer h-3 w-8 rounded-sm" aria-hidden="true" />
-              <div className="skeleton-shimmer h-4 w-4 rounded-sm" aria-hidden="true" />
+            <div
+              key={i}
+              className="flex flex-col items-center gap-1.5 border-l border-border px-2 py-2"
+            >
+              <div
+                className="skeleton-shimmer h-3 w-8 rounded-sm"
+                aria-hidden="true"
+              />
+              <div
+                className="skeleton-shimmer h-4 w-4 rounded-sm"
+                aria-hidden="true"
+              />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-[56px_repeat(7,1fr)]" style={{ height: 384 }}>
+        <div
+          className="grid grid-cols-[56px_repeat(7,1fr)]"
+          style={{ height: 384 }}
+        >
           <div />
           {Array.from({ length: 7 }, (_, i) => (
             <div key={i} className="border-l border-border p-1">

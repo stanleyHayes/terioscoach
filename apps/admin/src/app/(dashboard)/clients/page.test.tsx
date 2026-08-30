@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClientSummary } from "@/lib/clients";
 import ClientsPage, { filterClients } from "./page";
@@ -48,7 +48,7 @@ describe("ClientsPage", () => {
     const link = await screen.findByRole("link", { name: "Ama Serwaa" });
     expect(link.getAttribute("href")).toBe("/clients/client-1");
     expect(screen.getByText("ama@example.com")).toBeTruthy();
-    expect(screen.getByText("4")).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("4")).toBeTruthy();
     expect(screen.getByText("regular")).toBeTruthy();
   });
 

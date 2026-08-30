@@ -15,11 +15,20 @@ import (
 const testRefreshTTL = 30 * 24 * time.Hour
 
 type testProtector struct{}
+
 func (testProtector) Encrypt(value string) (string, error) { return "encrypted:" + value, nil }
-func (testProtector) Decrypt(value string) (string, error) { return strings.TrimPrefix(value, "encrypted:"), nil }
+func (testProtector) Decrypt(value string) (string, error) {
+	return strings.TrimPrefix(value, "encrypted:"), nil
+}
+
 type testTOTP struct{}
-func (testTOTP) Generate(_, account string) (string, string, error) { return "TESTSECRET", "otpauth://totp/Terios:" + account, nil }
-func (testTOTP) Validate(code, secret string, _ time.Time) bool { return code == "123456" && secret == "TESTSECRET" }
+
+func (testTOTP) Generate(_, account string) (string, string, error) {
+	return "TESTSECRET", "otpauth://totp/Terios:" + account, nil
+}
+func (testTOTP) Validate(code, secret string, _ time.Time) bool {
+	return code == "123456" && secret == "TESTSECRET"
+}
 
 func newTestService() (*Service, *portstest.FakeUserRepository, *portstest.FakeRefreshTokenRepository) {
 	users := portstest.NewFakeUserRepository()
@@ -152,18 +161,36 @@ func TestMFAIsOptInAndOnlyEnforcedAfterConfirmation(t *testing.T) {
 	registered := registerClient(t, svc, "mfa@example.com", "the correct password")
 
 	// No enrollment: password login works and no code is requested.
-	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); err != nil { t.Fatalf("login before opt-in: %v", err) }
+	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); err != nil {
+		t.Fatalf("login before opt-in: %v", err)
+	}
 	enrollment, err := svc.BeginMFA(context.Background(), registered.User.Identity())
-	if err != nil || enrollment.Secret != "TESTSECRET" || !strings.HasPrefix(enrollment.OTPAuthURL, "otpauth://") { t.Fatalf("BeginMFA = %+v, %v", enrollment, err) }
+	if err != nil || enrollment.Secret != "TESTSECRET" || !strings.HasPrefix(enrollment.OTPAuthURL, "otpauth://") {
+		t.Fatalf("BeginMFA = %+v, %v", enrollment, err)
+	}
 	// Opening enrollment is staged and must not alter login behavior.
-	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); err != nil { t.Fatalf("login during pending enrollment: %v", err) }
-	if err := svc.ConfirmMFA(context.Background(), registered.User.Identity(), "000000"); !errors.Is(err, identity.ErrMFAInvalid) { t.Fatalf("invalid confirm = %v", err) }
-	if err := svc.ConfirmMFA(context.Background(), registered.User.Identity(), "123456"); err != nil { t.Fatalf("confirm MFA: %v", err) }
-	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); !errors.Is(err, identity.ErrMFARequired) { t.Fatalf("login without MFA = %v", err) }
-	if _, err := svc.LoginWithMFA(context.Background(), "mfa@example.com", "the correct password", "000000"); !errors.Is(err, identity.ErrMFAInvalid) { t.Fatalf("login with bad MFA = %v", err) }
-	if _, err := svc.LoginWithMFA(context.Background(), "mfa@example.com", "the correct password", "123456"); err != nil { t.Fatalf("login with MFA: %v", err) }
+	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); err != nil {
+		t.Fatalf("login during pending enrollment: %v", err)
+	}
+	if err := svc.ConfirmMFA(context.Background(), registered.User.Identity(), "000000"); !errors.Is(err, identity.ErrMFAInvalid) {
+		t.Fatalf("invalid confirm = %v", err)
+	}
+	if err := svc.ConfirmMFA(context.Background(), registered.User.Identity(), "123456"); err != nil {
+		t.Fatalf("confirm MFA: %v", err)
+	}
+	if _, err := svc.Login(context.Background(), "mfa@example.com", "the correct password"); !errors.Is(err, identity.ErrMFARequired) {
+		t.Fatalf("login without MFA = %v", err)
+	}
+	if _, err := svc.LoginWithMFA(context.Background(), "mfa@example.com", "the correct password", "000000"); !errors.Is(err, identity.ErrMFAInvalid) {
+		t.Fatalf("login with bad MFA = %v", err)
+	}
+	if _, err := svc.LoginWithMFA(context.Background(), "mfa@example.com", "the correct password", "123456"); err != nil {
+		t.Fatalf("login with MFA: %v", err)
+	}
 	stored, _ := users.FindByEmail(context.Background(), "mfa@example.com")
-	if !stored.MFAEnabled { t.Fatal("MFA was not persisted as enabled") }
+	if !stored.MFAEnabled {
+		t.Fatal("MFA was not persisted as enabled")
+	}
 }
 
 func TestLoginUniformFailure(t *testing.T) {

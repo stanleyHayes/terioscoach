@@ -1,6 +1,7 @@
 "use client";
 
-import { Globe } from "lucide-react";
+import { CalendarX2, Globe } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useEffect, useMemo, useState } from "react";
 import { getSlots, type Slot } from "@/lib/bookings";
 import { browserTimeZone, formatTimeOfDay, gmtOffsetLabel } from "@/lib/format";
@@ -51,8 +52,14 @@ function buildDays(timeZone: string): DayCell[] {
     day: "2-digit",
     timeZone,
   });
-  const weekdayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone });
-  const dayFormat = new Intl.DateTimeFormat("en-US", { day: "numeric", timeZone });
+  const weekdayFormat = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone,
+  });
+  const dayFormat = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    timeZone,
+  });
   const todayKey = keyFormat.format(now);
 
   return Array.from({ length: DAY_COUNT }, (_, index) => {
@@ -199,7 +206,9 @@ export function SlotPicker({
               >
                 {day.weekday}
               </span>
-              <span className="text-sm font-semibold tabular-nums">{day.dayNumber}</span>
+              <span className="text-sm font-semibold tabular-nums">
+                {day.dayNumber}
+              </span>
             </button>
           );
         })}
@@ -221,7 +230,10 @@ export function SlotPicker({
       ) : null}
 
       {/* The well. */}
-      <div className="rounded-lg bg-surface-sunken p-3" aria-busy={loadState.status === "loading"}>
+      <div
+        className="rounded-lg bg-surface-sunken p-3"
+        aria-busy={loadState.status === "loading"}
+      >
         {loadState.status === "loading" ? (
           <div role="status" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <span className="sr-only">Loading available times…</span>
@@ -247,9 +259,12 @@ export function SlotPicker({
             </button>
           </div>
         ) : groups.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm leading-[1.55] text-ink-muted">
-            No times available on this day
-          </p>
+          <EmptyState
+            compact
+            icon={<CalendarX2 size={25} />}
+            title="No times available"
+            description="Choose another day to see the next available appointments."
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {groups.map((group) => (
@@ -257,7 +272,11 @@ export function SlotPicker({
                 <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
                   {group.label}
                 </p>
-                <div role="listbox" aria-label={`${group.label} times`} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div
+                  role="listbox"
+                  aria-label={`${group.label} times`}
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                >
                   {group.slots.map((slot) => {
                     const selected = selectedSlot?.startAt === slot.startAt;
                     const taken = raceStartAt === slot.startAt;
@@ -273,7 +292,9 @@ export function SlotPicker({
                         onClick={() => handleSelect(slot)}
                         style={
                           taken
-                            ? { animation: "terios-slot-shake 150ms ease-out 1" }
+                            ? {
+                                animation: "terios-slot-shake 150ms ease-out 1",
+                              }
                             : undefined
                         }
                         className={cn(
@@ -300,11 +321,17 @@ export function SlotPicker({
       {/* Legend (§3.11). */}
       <div className="flex items-center gap-4 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-success" />
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-success"
+          />
           Available
         </span>
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-border-strong" />
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-border-strong"
+          />
           Unavailable
         </span>
       </div>

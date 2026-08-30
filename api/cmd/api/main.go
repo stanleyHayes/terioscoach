@@ -289,7 +289,12 @@ func buildSchedulingService(db *mongo.Database) *schedulingapp.Service {
 // without the selected provider's secret key the gateway is nil — payment
 // and webhook routes then answer 503 instead of crashing, like the other
 // unconfigured-service stubs.
-func buildPaymentService(cfg config.Config, db *mongo.Database) *paymentsapp.Service {
+// Return the port interface, not *payments.Service. When payment credentials
+// are absent this function returns nil; converting a typed nil pointer to the
+// interface at the call site makes the interface non-nil and mounts handlers
+// whose receiver panics. Keeping the nil conversion here preserves the
+// intended 503 unavailable route.
+func buildPaymentService(cfg config.Config, db *mongo.Database) ports.PaymentService {
 	var gateway ports.PaymentGateway
 	switch cfg.PaymentProvider {
 	case "stripe":

@@ -50,12 +50,15 @@ export function AdminTopbar({
     return () => document.removeEventListener("mousedown", close);
   }, []);
   return (
-    <header className="z-sticky shrink-0 border-b border-border/80 bg-surface-raised/92 backdrop-blur-xl">
+    <header className="relative z-[40] shrink-0 border-b border-border/80 bg-surface-raised/95 backdrop-blur-xl">
       <div className="flex h-[72px] items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-1">
           <button
             type="button"
-            onClick={onOpenMobileNav}
+            onClick={() => {
+              setOpen(false);
+              onOpenMobileNav?.();
+            }}
             aria-label="Open navigation"
             className="rounded-xl p-2.5 text-ink hover:bg-surface-sunken lg:hidden"
           >
@@ -128,7 +131,7 @@ export function AdminTopbar({
             {open ? (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-surface-raised p-2 shadow-lg"
+                className="absolute right-0 z-[50] mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-surface-raised p-2 shadow-lg"
               >
                 <div className="border-b border-border px-3 py-3">
                   <p className="text-sm font-semibold text-ink">{userName}</p>

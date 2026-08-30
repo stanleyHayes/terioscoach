@@ -156,12 +156,12 @@ export function AdminSidebar({
           type="button"
           aria-label="Close navigation"
           onClick={onMobileClose}
-          className="fixed inset-0 z-50 bg-overlay lg:hidden"
+          className="fixed inset-0 z-[60] bg-overlay lg:hidden"
         />
       ) : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-overlay flex h-dvh w-[264px] shrink-0 flex-col overflow-hidden border-r border-eucalyptus-800 bg-eucalyptus-900 text-sand-0 transition-[width,transform] duration-base lg:relative lg:inset-auto lg:z-auto",
+          "fixed inset-y-0 left-0 z-[70] flex h-dvh w-[min(264px,calc(100vw-2rem))] shrink-0 flex-col overflow-hidden border-r border-eucalyptus-800 bg-eucalyptus-900 text-sand-0 shadow-2xl transition-[width,transform] duration-base lg:relative lg:inset-auto lg:z-auto lg:w-[264px] lg:shadow-none",
           compact && "lg:w-[76px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}

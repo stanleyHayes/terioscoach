@@ -1,6 +1,14 @@
 "use client";
 
-import { ChevronDown, ChevronUp, CircleAlert, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  Plus,
+  Sparkles,
+} from "lucide-react";
+import { EmptyState } from "@/components/content/states";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +18,12 @@ import { Switch } from "@/components/ui/Switch";
 import { ApiError, SessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDuration, formatMoney } from "@/lib/format";
-import { servicesApi, sortServices, type Service, type ServiceDraft } from "@/lib/services";
+import {
+  servicesApi,
+  sortServices,
+  type Service,
+  type ServiceDraft,
+} from "@/lib/services";
 import { DeleteServiceModal } from "./DeleteServiceModal";
 import { ServiceFormModal } from "./ServiceFormModal";
 
@@ -23,7 +36,9 @@ import { ServiceFormModal } from "./ServiceFormModal";
  */
 
 function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+  return error instanceof ApiError
+    ? error.message
+    : "Something went wrong. Try again.";
 }
 
 export default function ServicesPage() {
@@ -72,7 +87,9 @@ export default function ServicesPage() {
 
   function replaceService(updated: Service) {
     setServices((prev) =>
-      prev ? sortServices(prev.map((s) => (s.id === updated.id ? updated : s))) : prev,
+      prev
+        ? sortServices(prev.map((s) => (s.id === updated.id ? updated : s)))
+        : prev,
     );
   }
 
@@ -82,10 +99,16 @@ export default function ServicesPage() {
     setPendingToggleId(service.id);
     // Optimistic: flip immediately, revert on failure.
     setServices((prev) =>
-      prev ? prev.map((s) => (s.id === service.id ? { ...s, active } : s)) : prev,
+      prev
+        ? prev.map((s) => (s.id === service.id ? { ...s, active } : s))
+        : prev,
     );
     try {
-      replaceService(await servicesApi.update(session, refreshCallbacks, service.id, { active }));
+      replaceService(
+        await servicesApi.update(session, refreshCallbacks, service.id, {
+          active,
+        }),
+      );
     } catch (error) {
       setServices((prev) =>
         prev ? prev.map((s) => (s.id === service.id ? service : s)) : prev,
@@ -120,14 +143,22 @@ export default function ServicesPage() {
 
     try {
       const [updatedDisplaced, updatedMoved] = await Promise.all([
-        servicesApi.update(session, refreshCallbacks, displaced.id, { sortOrder: displacedOrder }),
-        servicesApi.update(session, refreshCallbacks, moved.id, { sortOrder: movedOrder }),
+        servicesApi.update(session, refreshCallbacks, displaced.id, {
+          sortOrder: displacedOrder,
+        }),
+        servicesApi.update(session, refreshCallbacks, moved.id, {
+          sortOrder: movedOrder,
+        }),
       ]);
       setServices((prev) =>
         prev
           ? sortServices(
               prev.map((s) =>
-                s.id === updatedMoved.id ? updatedMoved : s.id === updatedDisplaced.id ? updatedDisplaced : s,
+                s.id === updatedMoved.id
+                  ? updatedMoved
+                  : s.id === updatedDisplaced.id
+                    ? updatedDisplaced
+                    : s,
               ),
             )
           : prev,
@@ -142,39 +173,102 @@ export default function ServicesPage() {
   async function handleFormSubmit(draft: ServiceDraft, target: Service | null) {
     if (!session) return;
     if (target) {
-      replaceService(await servicesApi.update(session, refreshCallbacks, target.id, draft));
+      replaceService(
+        await servicesApi.update(session, refreshCallbacks, target.id, draft),
+      );
     } else {
-      const created = await servicesApi.create(session, refreshCallbacks, draft);
-      setServices((prev) => (prev ? sortServices([...prev, created]) : [created]));
+      const created = await servicesApi.create(
+        session,
+        refreshCallbacks,
+        draft,
+      );
+      setServices((prev) =>
+        prev ? sortServices([...prev, created]) : [created],
+      );
     }
   }
 
   async function handleDelete(service: Service) {
     if (!session) return;
     await servicesApi.remove(session, refreshCallbacks, service.id);
-    setServices((prev) => (prev ? prev.filter((s) => s.id !== service.id) : prev));
+    setServices((prev) =>
+      prev ? prev.filter((s) => s.id !== service.id) : prev,
+    );
   }
 
   const columnCount = 6;
 
   return (
     <div data-admin-page="services" className="flex flex-col gap-6">
-      <AdminPageHeader eyebrow="Practice menu" title="Services" description="Shape what you offer, what it costs, and the order clients see it in." actions={<Button
-          onClick={() => {
-            setEditTarget(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus size={16} aria-hidden="true" />
-          New service
-        </Button>} />
+      <AdminPageHeader
+        eyebrow="Practice menu"
+        title="Services"
+        description="Shape what you offer, what it costs, and the order clients see it in."
+        actions={
+          <Button
+            onClick={() => {
+              setEditTarget(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus size={16} aria-hidden="true" />
+            New service
+          </Button>
+        }
+      />
+
+      {services ? (
+        <KpiStrip
+          label="Service summary"
+          items={[
+            {
+              label: "Services",
+              value: String(services.length),
+              detail: "in the practice menu",
+            },
+            {
+              label: "Published",
+              value: String(
+                services.filter((service) => service.active).length,
+              ),
+              detail: "available to book",
+            },
+            {
+              label: "Average duration",
+              value: services.length
+                ? `${Math.round(services.reduce((sum, service) => sum + service.durationMinutes, 0) / services.length)} min`
+                : "—",
+              detail: "per appointment",
+            },
+            {
+              label: "Average price",
+              value: services.length
+                ? formatMoney(
+                    Math.round(
+                      services.reduce(
+                        (sum, service) => sum + service.priceKobo,
+                        0,
+                      ) / services.length,
+                    ),
+                    services[0]?.currency || "GHS",
+                  )
+                : "—",
+              detail: "across the menu",
+            },
+          ]}
+        />
+      ) : null}
 
       {actionError ? (
         <div
           role="alert"
           className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          />
           {actionError}
         </div>
       ) : null}
@@ -183,22 +277,40 @@ export default function ServicesPage() {
         <table className="w-full text-left text-sm leading-[1.55]">
           <thead className="bg-surface-sunken">
             <tr className="border-b border-border">
-              <th scope="col" className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 Name
               </th>
-              <th scope="col" className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 Duration
               </th>
-              <th scope="col" className="px-4 py-3 text-right text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-right text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 Price
               </th>
-              <th scope="col" className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 Status
               </th>
-              <th scope="col" className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 <span className="sr-only">Reorder</span>
               </th>
-              <th scope="col" className="px-4 py-3 text-right text-[13px] font-semibold tracking-[0.01em] text-ink-muted">
+              <th
+                scope="col"
+                className="px-4 py-3 text-right text-[13px] font-semibold tracking-[0.01em] text-ink-muted"
+              >
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -207,18 +319,33 @@ export default function ServicesPage() {
             {services === null && !listError ? (
               // Loading: 5 skeleton rows matching the cell shapes (§3.22/§3.28)
               Array.from({ length: 5 }, (_, row) => (
-                <tr key={row} className="h-[52px] border-b border-border last:border-0">
+                <tr
+                  key={row}
+                  className="h-[52px] border-b border-border last:border-0"
+                >
                   <td className="px-4">
-                    <div className="skeleton-shimmer h-4 w-40 rounded-sm" aria-hidden="true" />
+                    <div
+                      className="skeleton-shimmer h-4 w-40 rounded-sm"
+                      aria-hidden="true"
+                    />
                   </td>
                   <td className="px-4">
-                    <div className="skeleton-shimmer h-4 w-16 rounded-sm" aria-hidden="true" />
+                    <div
+                      className="skeleton-shimmer h-4 w-16 rounded-sm"
+                      aria-hidden="true"
+                    />
                   </td>
                   <td className="px-4">
-                    <div className="skeleton-shimmer ml-auto h-4 w-20 rounded-sm" aria-hidden="true" />
+                    <div
+                      className="skeleton-shimmer ml-auto h-4 w-20 rounded-sm"
+                      aria-hidden="true"
+                    />
                   </td>
                   <td className="px-4">
-                    <div className="skeleton-shimmer h-5 w-24 rounded-full" aria-hidden="true" />
+                    <div
+                      className="skeleton-shimmer h-5 w-24 rounded-full"
+                      aria-hidden="true"
+                    />
                   </td>
                   <td className="px-4" />
                   <td className="px-4" />
@@ -228,7 +355,11 @@ export default function ServicesPage() {
               <tr>
                 <td colSpan={columnCount} className="px-6 py-12 text-center">
                   <p className="flex items-center justify-center gap-2 text-sm text-danger-ink">
-                    <CircleAlert size={16} aria-hidden="true" className="shrink-0" />
+                    <CircleAlert
+                      size={16}
+                      aria-hidden="true"
+                      className="shrink-0"
+                    />
                     {listError}
                   </p>
                   <Button
@@ -248,10 +379,13 @@ export default function ServicesPage() {
               // EmptyState table variant (§3.27): reduced padding, no icon well
               <tr>
                 <td colSpan={columnCount} className="px-6 py-12 text-center">
-                  <p className="text-base font-semibold text-ink">No services yet</p>
-                  <p className="mt-1 text-sm text-ink-muted">
-                    Add your first service — it will appear on your booking page.
-                  </p>
+                  <EmptyState
+                    compact
+                    className="border-0 bg-transparent"
+                    icon={<Sparkles size={24} />}
+                    title="No services yet"
+                    body="Add your first service and it will appear on the booking page."
+                  />
                 </td>
               </tr>
             ) : (
@@ -261,7 +395,9 @@ export default function ServicesPage() {
                   className="h-[52px] border-b border-border transition-colors duration-fast ease-out last:border-0 hover:bg-eucalyptus-50"
                 >
                   <td className="max-w-[320px] px-4 py-2">
-                    <p className="truncate font-medium text-ink">{service.name}</p>
+                    <p className="truncate font-medium text-ink">
+                      {service.name}
+                    </p>
                     {service.description ? (
                       <p className="truncate text-[13px] leading-[1.45] text-ink-faint">
                         {service.description}
@@ -284,9 +420,14 @@ export default function ServicesPage() {
                             ? `Deactivate ${service.name}`
                             : `Activate ${service.name}`
                         }
-                        onChange={(active) => void handleToggle(service, active)}
+                        onChange={(active) =>
+                          void handleToggle(service, active)
+                        }
                       />
-                      <Badge variant={service.active ? "success" : "neutral"} dot>
+                      <Badge
+                        variant={service.active ? "success" : "neutral"}
+                        dot
+                      >
                         {service.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>

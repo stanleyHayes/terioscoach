@@ -5,17 +5,19 @@ export function EmptyState({
   title,
   description,
   action,
+  compact = false,
   className = "",
 }: {
   icon: ReactNode;
   title: string;
   description: string;
   action?: ReactNode;
+  compact?: boolean;
   className?: string;
 }) {
   return (
     <div
-      className={`mx-auto flex max-w-[390px] flex-col items-center px-6 py-12 text-center ${className}`}
+      className={`mx-auto flex max-w-[390px] flex-col items-center px-6 text-center ${compact ? "py-7" : "py-12"} ${className}`}
     >
       <span
         aria-hidden="true"

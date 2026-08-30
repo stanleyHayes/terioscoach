@@ -1,6 +1,7 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
+import { BarChart3, ChartNoAxesCombined } from "lucide-react";
+import { EmptyState } from "@/components/content/states";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -33,11 +34,15 @@ export default function ReportsPage() {
   const [granularity, setGranularity] = useState<Granularity>("day");
 
   const report = useResource<PracticeReport>(
-    (session, callbacks) => reportsApi.practice(session, callbacks, { ...range, granularity }),
+    (session, callbacks) =>
+      reportsApi.practice(session, callbacks, { ...range, granularity }),
     [range.from, range.to, granularity],
   );
 
   const data = report.data;
+  const hasSeriesActivity = data?.series.some(
+    (bucket) => bucket.sessions > 0 || bucket.incomeKobo > 0,
+  );
   const monthLabel = new Date(range.from).toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
@@ -55,16 +60,32 @@ export default function ReportsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setRange(shiftMonthRange(range, -1))}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(shiftMonthRange(range, -1))}
+          >
             Previous
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setRange(currentMonthRange())}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(currentMonthRange())}
+          >
             This month
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setRange(shiftMonthRange(range, 1))}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(shiftMonthRange(range, 1))}
+          >
             Next
           </Button>
-          <div className="ml-2 flex gap-1" role="group" aria-label="Chart grouping">
+          <div
+            className="ml-2 flex gap-1"
+            role="group"
+            aria-label="Chart grouping"
+          >
             {(["day", "week", "month"] as const).map((value) => (
               <button
                 key={value}
@@ -86,7 +107,10 @@ export default function ReportsPage() {
       </header>
 
       {report.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{report.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={report.refresh}>
@@ -97,17 +121,32 @@ export default function ReportsPage() {
       ) : data === null ? (
         <div role="status" aria-busy="true" className="flex flex-col gap-4">
           <span className="sr-only">Loading the report…</span>
-          <span aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
-          <span aria-hidden="true" className="h-64 rounded-lg bg-surface-sunken" />
+          <span
+            aria-hidden="true"
+            className="h-24 rounded-lg bg-surface-sunken"
+          />
+          <span
+            aria-hidden="true"
+            className="h-64 rounded-lg bg-surface-sunken"
+          />
         </div>
       ) : (
         <>
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Sessions" value={String(data.summary.sessionsCompleted)} />
-            <Stat label="Coming up" value={String(data.summary.sessionsUpcoming)} />
+            <Stat
+              label="Sessions"
+              value={String(data.summary.sessionsCompleted)}
+            />
+            <Stat
+              label="Coming up"
+              value={String(data.summary.sessionsUpcoming)}
+            />
             <Stat
               label="Taken"
-              value={formatMoney(data.summary.incomeKobo, data.summary.currency || "GHS")}
+              value={formatMoney(
+                data.summary.incomeKobo,
+                data.summary.currency || "GHS",
+              )}
             />
             <Stat label="New clients" value={String(data.summary.newClients)} />
           </dl>
@@ -115,10 +154,17 @@ export default function ReportsPage() {
           <dl className="grid gap-4 sm:grid-cols-3">
             <Stat
               label="Refunded"
-              value={formatMoney(data.summary.refundedKobo, data.summary.currency || "GHS")}
+              value={formatMoney(
+                data.summary.refundedKobo,
+                data.summary.currency || "GHS",
+              )}
               muted
             />
-            <Stat label="Cancellations" value={String(data.summary.cancellations)} muted />
+            <Stat
+              label="Cancellations"
+              value={String(data.summary.cancellations)}
+              muted
+            />
             <Stat label="No shows" value={String(data.summary.noShows)} muted />
           </dl>
 
@@ -126,17 +172,29 @@ export default function ReportsPage() {
             aria-labelledby="income-chart-heading"
             className="rounded-lg border border-border bg-surface-raised p-5"
           >
-            <h2 id="income-chart-heading" className="text-base font-semibold text-ink">
+            <h2
+              id="income-chart-heading"
+              className="text-base font-semibold text-ink"
+            >
               Income by {granularity}
             </h2>
 
-            {data.series.length === 0 ? (
-              <p className="mt-4 text-sm text-ink-muted">Nothing in this period.</p>
+            {!hasSeriesActivity ? (
+              <EmptyState
+                compact
+                className="mt-4 border-0 bg-transparent"
+                icon={<ChartNoAxesCombined size={24} />}
+                title="Nothing in this period"
+                body="Choose another reporting period to compare income and sessions."
+              />
             ) : (
               <>
                 {/* The table is the accessible truth; the bars are a visual
                     reading of the same numbers. */}
-                <ul className="mt-6 flex h-48 items-end gap-1" aria-hidden="true">
+                <ul
+                  className="mt-6 flex h-48 items-end gap-1"
+                  aria-hidden="true"
+                >
                   {data.series.map((bucket) => (
                     <li
                       key={bucket.start}
@@ -159,9 +217,16 @@ export default function ReportsPage() {
                   <tbody>
                     {data.series.map((bucket) => (
                       <tr key={bucket.start}>
-                        <td>{new Date(bucket.start).toLocaleDateString("en-GB")}</td>
+                        <td>
+                          {new Date(bucket.start).toLocaleDateString("en-GB")}
+                        </td>
                         <td>{bucket.sessions}</td>
-                        <td>{formatMoney(bucket.incomeKobo, data.summary.currency || "GHS")}</td>
+                        <td>
+                          {formatMoney(
+                            bucket.incomeKobo,
+                            data.summary.currency || "GHS",
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -174,11 +239,20 @@ export default function ReportsPage() {
             aria-labelledby="by-service-heading"
             className="overflow-hidden rounded-lg border border-border bg-surface-raised"
           >
-            <h2 id="by-service-heading" className="px-5 py-4 text-base font-semibold text-ink">
+            <h2
+              id="by-service-heading"
+              className="px-5 py-4 text-base font-semibold text-ink"
+            >
               By service
             </h2>
             {data.byService.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-ink-muted">No sessions in this period.</p>
+              <EmptyState
+                compact
+                className="m-4 border-0 bg-surface-sunken"
+                icon={<BarChart3 size={24} />}
+                title="No sessions in this period"
+                body="Service totals appear after a completed or paid session."
+              />
             ) : (
               <table className="w-full border-collapse text-left">
                 <thead>
@@ -197,12 +271,17 @@ export default function ReportsPage() {
                 <tbody className="divide-y divide-border">
                   {data.byService.map((row) => (
                     <tr key={row.serviceId}>
-                      <td className="px-5 py-4 text-sm text-ink">{row.name || "Retired service"}</td>
+                      <td className="px-5 py-4 text-sm text-ink">
+                        {row.name || "Retired service"}
+                      </td>
                       <td className="px-5 py-4 text-sm tabular-nums text-ink-muted">
                         {row.sessions}
                       </td>
                       <td className="px-5 py-4 text-sm font-medium tabular-nums text-ink">
-                        {formatMoney(row.incomeKobo, data.summary.currency || "GHS")}
+                        {formatMoney(
+                          row.incomeKobo,
+                          data.summary.currency || "GHS",
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -213,13 +292,19 @@ export default function ReportsPage() {
 
           {data.reviews.count > 0 ? (
             <section className="flex items-center gap-4 rounded-lg border border-border bg-surface-raised p-5">
-              <BarChart3 size={20} aria-hidden="true" className="text-ink-faint" />
+              <BarChart3
+                size={20}
+                aria-hidden="true"
+                className="text-ink-faint"
+              />
               <p className="text-sm text-ink-muted">
                 <span className="font-display text-xl font-medium tabular-nums text-ink">
                   {data.reviews.average.toFixed(1)}
                 </span>{" "}
                 average from {data.reviews.count}{" "}
-                {data.reviews.count === 1 ? "published review" : "published reviews"}
+                {data.reviews.count === 1
+                  ? "published review"
+                  : "published reviews"}
               </p>
             </section>
           ) : null}
@@ -229,7 +314,15 @@ export default function ReportsPage() {
   );
 }
 
-function Stat({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+function Stat({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
   return (
     <div className="rounded-lg border border-border bg-surface-raised p-4">
       <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">

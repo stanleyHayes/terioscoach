@@ -5,6 +5,7 @@ import { Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/content/states";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 import { cn } from "@/lib/cn";
 import { clientsApi, type ClientSummary } from "@/lib/clients";
@@ -68,6 +69,38 @@ export default function ClientsPage() {
           </div>
         }
       />
+
+      {clients.data ? (
+        <KpiStrip
+          label="Client summary"
+          items={[
+            {
+              label: "Total clients",
+              value: String(items.length),
+              detail: "in the care directory",
+            },
+            {
+              label: "Visible now",
+              value: String(visible.length),
+              detail: query ? "matching this search" : "all client records",
+            },
+            {
+              label: "Sessions",
+              value: String(
+                items.reduce((sum, client) => sum + client.totalSessions, 0),
+              ),
+              detail: "across all clients",
+            },
+            {
+              label: "Tagged",
+              value: String(
+                items.filter((client) => client.tags.length > 0).length,
+              ),
+              detail: "with care labels",
+            },
+          ]}
+        />
+      ) : null}
 
       {clients.error ? (
         <div

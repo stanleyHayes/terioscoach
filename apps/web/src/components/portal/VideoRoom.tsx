@@ -80,7 +80,9 @@ function ControlButton({
       disabled={disabled}
       className={cn(
         "relative flex size-12 items-center justify-center rounded-full transition-colors duration-instant ease-out disabled:opacity-40",
-        danger ? "bg-danger text-on-primary" : "bg-surface-sunken text-ink hover:bg-border",
+        danger
+          ? "bg-danger text-on-primary"
+          : "bg-surface-sunken text-ink hover:bg-border",
       )}
     >
       {children}
@@ -109,7 +111,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
     return () => clearTimeout(fade);
   }, [room.activeReaction]);
   const visibleReaction =
-    room.activeReaction && room.activeReaction.at > dismissedAt ? room.activeReaction : null;
+    room.activeReaction && room.activeReaction.at > dismissedAt
+      ? room.activeReaction
+      : null;
 
   useEffect(() => {
     if (localVideo.current) localVideo.current.srcObject = room.localStream;
@@ -161,14 +165,19 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
   if (room.state === "idle") {
     return (
       <div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-surface-raised px-6 py-16 text-center">
-        <h2 className="font-display text-[1.5rem] font-medium text-ink">Ready when you are</h2>
+        <h2 className="font-display text-[1.5rem] font-medium text-ink">
+          Ready when you are
+        </h2>
         <p className="max-w-[46ch] text-sm leading-[1.55] text-ink-muted">
           Joining will ask for your camera and microphone. You can turn either
           off once you are in.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button onClick={() => room.join()}>Join the session</Button>
-          <Button variant="secondary" onClick={() => room.join({ video: false })}>
+          <Button
+            variant="secondary"
+            onClick={() => room.join({ video: false })}
+          >
             Join without camera
           </Button>
         </div>
@@ -185,7 +194,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         <h2 className="font-display text-[1.5rem] font-medium text-ink">
           The session couldn&rsquo;t start
         </h2>
-        <p className="max-w-[48ch] text-sm leading-[1.55] text-ink-muted">{room.error}</p>
+        <p className="max-w-[48ch] text-sm leading-[1.55] text-ink-muted">
+          {room.error}
+        </p>
         <Button variant="secondary" onClick={() => room.join()}>
           Try again
         </Button>
@@ -196,7 +207,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
   if (room.state === "ended") {
     return (
       <div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-surface-raised px-6 py-16 text-center">
-        <h2 className="font-display text-[1.5rem] font-medium text-ink">Session ended</h2>
+        <h2 className="font-display text-[1.5rem] font-medium text-ink">
+          Session ended
+        </h2>
         <p className="max-w-[46ch] text-sm leading-[1.55] text-ink-muted">
           Your camera and microphone have been released.
         </p>
@@ -227,7 +240,8 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
             <p role="status" className="text-base font-medium text-surface">
               {room.reconnecting
                 ? "Reconnecting…"
-                : room.state === "connecting" || room.state === "requesting-media"
+                : room.state === "connecting" ||
+                    room.state === "requesting-media"
                   ? "Connecting…"
                   : `Waiting for ${peerLabel} to join`}
             </p>
@@ -274,7 +288,11 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
                   bar === 1 && "h-1.5",
                   bar === 2 && "h-2.5",
                   bar === 3 && "h-3.5",
-                  (room.quality === "good" ? 3 : room.quality === "fair" ? 2 : 1) >= bar
+                  (room.quality === "good"
+                    ? 3
+                    : room.quality === "fair"
+                      ? 2
+                      : 1) >= bar
                     ? room.quality === "poor"
                       ? "bg-danger"
                       : room.quality === "fair"
@@ -308,7 +326,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
             aria-hidden="true"
             className={cn(
               "absolute z-10 animate-bounce text-4xl",
-              visibleReaction.from === "peer" ? "left-6 top-1/3" : "bottom-20 right-6",
+              visibleReaction.from === "peer"
+                ? "left-6 top-1/3"
+                : "bottom-20 right-6",
             )}
           >
             {visibleReaction.emoji}
@@ -359,7 +379,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
               onChange={(event) => room.selectMic(event.target.value)}
               className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
             >
-              {room.mics.length === 0 ? <option value="">Default microphone</option> : null}
+              {room.mics.length === 0 ? (
+                <option value="">Default microphone</option>
+              ) : null}
               {room.mics.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label || "Microphone"}
@@ -375,7 +397,9 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
               onChange={(event) => room.selectCamera(event.target.value)}
               className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
             >
-              {room.cameras.length === 0 ? <option value="">Default camera</option> : null}
+              {room.cameras.length === 0 ? (
+                <option value="">Default camera</option>
+              ) : null}
               {room.cameras.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label || "Camera"}
@@ -395,7 +419,11 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
           disabled={!live}
           onClick={room.toggleMic}
         >
-          {room.micOn ? <Mic size={20} aria-hidden="true" /> : <MicOff size={20} aria-hidden="true" />}
+          {room.micOn ? (
+            <Mic size={20} aria-hidden="true" />
+          ) : (
+            <MicOff size={20} aria-hidden="true" />
+          )}
         </ControlButton>
 
         <ControlButton
@@ -413,7 +441,11 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         </ControlButton>
 
         <ControlButton
-          label={room.sharingScreen ? "Stop sharing your screen" : "Share your screen"}
+          label={
+            room.sharingScreen
+              ? "Stop sharing your screen"
+              : "Share your screen"
+          }
           pressed={room.sharingScreen}
           disabled={!live}
           onClick={room.toggleScreenShare}
@@ -475,7 +507,11 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         </ControlButton>
 
         <ControlButton
-          label={room.captionsSupported ? "Toggle captions" : "Captions (Chrome only)"}
+          label={
+            room.captionsSupported
+              ? "Toggle captions"
+              : "Captions (Chrome only)"
+          }
           pressed={room.captionsEnabled}
           disabled={!live || !room.captionsSupported}
           title={
@@ -505,7 +541,11 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         </ControlButton>
 
         {pipSupported ? (
-          <ControlButton label="Picture in picture" disabled={!room.remoteStream} onClick={togglePictureInPicture}>
+          <ControlButton
+            label="Picture in picture"
+            disabled={!room.remoteStream}
+            onClick={togglePictureInPicture}
+          >
             <PictureInPicture2 size={20} aria-hidden="true" />
           </ControlButton>
         ) : null}
@@ -550,9 +590,21 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
             className="flex max-h-56 flex-col gap-1.5 overflow-y-auto px-1"
           >
             {room.messages.length === 0 ? (
-              <p className="py-4 text-center text-sm text-ink-muted">
-                Messages here stay between the two of you and disappear when the session ends.
-              </p>
+              <div className="flex flex-col items-center px-4 py-5 text-center">
+                <span
+                  aria-hidden="true"
+                  className="terios-empty-icon flex size-9 items-center justify-center rounded-full bg-surface-sunken text-ink-faint"
+                >
+                  <MessageSquare size={17} />
+                </span>
+                <p className="mt-3 text-sm font-semibold text-ink">
+                  No messages yet
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                  Messages stay between the two of you and disappear when the
+                  session ends.
+                </p>
+              </div>
             ) : (
               room.messages.map((message) => (
                 <div

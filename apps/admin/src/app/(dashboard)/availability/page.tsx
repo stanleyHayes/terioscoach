@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, CircleAlert, Plus, X } from "lucide-react";
+import { CalendarOff, CheckCircle2, CircleAlert, Plus, X } from "lucide-react";
+import { EmptyState } from "@/components/content/states";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -547,7 +548,7 @@ export default function AvailabilityPage() {
         </div>
       )}
 
-      <Card className="flex flex-col gap-5">
+      <Card className="z-[1] flex flex-col gap-5 overflow-visible">
         <div>
           <h2 className="text-base leading-[1.4] font-semibold tracking-[-0.005em] text-ink">
             Time off
@@ -654,10 +655,12 @@ export default function AvailabilityPage() {
             })}
           </ul>
         ) : (
-          <p className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
-            No time off added this session. Entries you add block booking across
-            their whole range.
-          </p>
+          <EmptyState
+            compact
+            icon={<CalendarOff size={24} />}
+            title="No time off added"
+            body="Entries you add here block booking across their whole date range."
+          />
         )}
       </Card>
 

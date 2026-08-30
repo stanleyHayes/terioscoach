@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         />
         <main
           id="admin-content"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
         >
           <div className="mx-auto w-full max-w-[1480px] px-4 pt-7 pb-14 sm:px-6 lg:px-8 lg:pt-9">
             {children}

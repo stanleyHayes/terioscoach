@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/content/states";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import { IconButton } from "@/components/ui/IconButton";
 import { cn } from "@/lib/cn";
 import {
@@ -128,6 +129,34 @@ export default function EnquiriesPage() {
           ))}
         </div>
       </header>
+
+      {enquiries.data ? (
+        <KpiStrip
+          label="Enquiry summary"
+          items={[
+            {
+              label: "Inbox",
+              value: String(items.length),
+              detail: "total enquiries",
+            },
+            { label: "New", value: String(unread), detail: "not opened yet" },
+            {
+              label: "Replied",
+              value: String(
+                items.filter((enquiry) => enquiry.status === "replied").length,
+              ),
+              detail: "marked complete",
+            },
+            {
+              label: "Archived",
+              value: String(
+                items.filter((enquiry) => enquiry.status === "archived").length,
+              ),
+              detail: "kept out of view",
+            },
+          ]}
+        />
+      ) : null}
 
       {action.error ? (
         <div

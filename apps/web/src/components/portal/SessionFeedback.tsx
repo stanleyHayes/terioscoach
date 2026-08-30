@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, MessageSquareText } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -74,7 +75,10 @@ export function SessionFeedback({ bookingId }: SessionFeedbackProps) {
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className={cn("transition-transform duration-fast ease-out", open && "rotate-180")}
+          className={cn(
+            "transition-transform duration-fast ease-out",
+            open && "rotate-180",
+          )}
         />
       </button>
 
@@ -88,10 +92,12 @@ export function SessionFeedback({ bookingId }: SessionFeedbackProps) {
             {action.error ?? "That didn't load. Try again in a moment."}
           </p>
         ) : state === "none" ? (
-          <p className="text-sm leading-[1.55] text-ink-muted">
-            Nothing has been shared for this session yet. If your practitioner
-            adds feedback, it appears here.
-          </p>
+          <EmptyState
+            compact
+            icon={<MessageSquareText size={24} />}
+            title="Nothing has been shared for this session yet"
+            description="If your practitioner adds feedback or resources, they will appear here."
+          />
         ) : note ? (
           <div className="flex flex-col gap-4">
             {note.sharedFeedback ? (

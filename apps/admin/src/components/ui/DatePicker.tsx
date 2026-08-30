@@ -101,7 +101,7 @@ export function DatePicker({
       </label>
       <button
         type="button"
-      aria-label={label}
+        aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => {
@@ -135,7 +135,7 @@ export function DatePicker({
         <div
           role="dialog"
           aria-label={`${label} calendar`}
-          className="absolute top-full left-0 z-dropdown mt-2 w-[300px] rounded-2xl border border-border bg-surface-raised p-4 shadow-lg"
+          className="absolute top-full left-0 z-[50] mt-2 w-[min(300px,calc(100vw-3rem))] rounded-2xl border border-border bg-surface-raised p-4 shadow-lg sm:top-auto sm:bottom-full sm:mt-0 sm:mb-2"
         >
           <div className="flex items-center justify-between">
             <button

@@ -1,6 +1,7 @@
 "use client";
 
-import { CircleAlert, Plus } from "lucide-react";
+import { CircleAlert, ListPlus, Plus } from "lucide-react";
+import { EmptyState } from "@/components/content/states";
 import { useState, type FormEvent } from "react";
 import { FieldEditor } from "@/components/forms/FieldEditor";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +28,13 @@ import {
  */
 
 function newField(taken: string[]): FormField {
-  return { key: uniqueFieldKey("question", taken), label: "", type: "text", required: false, options: [] };
+  return {
+    key: uniqueFieldKey("question", taken),
+    label: "",
+    type: "text",
+    required: false,
+    options: [],
+  };
 }
 
 export function FormBuilder({
@@ -61,9 +68,12 @@ export function FormBuilder({
     description !== initial.description ||
     JSON.stringify(fields) !== JSON.stringify(initial.fields);
 
-  const titleProblem = showErrors && !title.trim() ? "Give the form a title" : undefined;
+  const titleProblem =
+    showErrors && !title.trim() ? "Give the form a title" : undefined;
   const fieldsProblem =
-    showErrors && fields.length === 0 ? "A form needs at least one question" : undefined;
+    showErrors && fields.length === 0
+      ? "A form needs at least one question"
+      : undefined;
 
   function addField() {
     setFields((current) => [...current, newField(current.map((f) => f.key))]);
@@ -95,7 +105,12 @@ export function FormBuilder({
     setShowErrors(true);
     setFormError(null);
 
-    if (!title.trim() || fields.length === 0 || fields.some((f) => fieldProblem(f))) return;
+    if (
+      !title.trim() ||
+      fields.length === 0 ||
+      fields.some((f) => fieldProblem(f))
+    )
+      return;
 
     setSubmitting(true);
     try {
@@ -113,7 +128,9 @@ export function FormBuilder({
       onClose();
     } catch (error) {
       setFormError(
-        error instanceof ApiError ? error.message : "Something went wrong. Try again.",
+        error instanceof ApiError
+          ? error.message
+          : "Something went wrong. Try again.",
       );
     } finally {
       setSubmitting(false);
@@ -138,13 +155,22 @@ export function FormBuilder({
         </>
       }
     >
-      <form id="form-builder" noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form
+        id="form-builder"
+        noValidate
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-5"
+      >
         {formError ? (
           <div
             role="alert"
             className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
           >
-            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <CircleAlert
+              size={16}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0"
+            />
             {formError}
           </div>
         ) : null}
@@ -203,14 +229,21 @@ export function FormBuilder({
                   count={fields.length}
                   onChange={(next) => changeField(index, next)}
                   onMove={(direction) => moveField(index, direction)}
-                  onRemove={() => setFields((current) => current.filter((_, i) => i !== index))}
+                  onRemove={() =>
+                    setFields((current) =>
+                      current.filter((_, i) => i !== index),
+                    )
+                  }
                 />
               ))}
             </ul>
           ) : (
-            <p className="rounded-md border border-dashed border-border-strong px-4 py-6 text-center text-[13px] text-ink-muted">
-              No questions yet. Add the first one above.
-            </p>
+            <EmptyState
+              compact
+              icon={<ListPlus size={24} />}
+              title="No questions yet"
+              body="Use the Add question button above to begin building this form."
+            />
           )}
         </div>
       </form>

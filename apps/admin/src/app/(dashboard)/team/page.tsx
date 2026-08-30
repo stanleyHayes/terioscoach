@@ -3,6 +3,7 @@
 import { Check, Copy, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
+import { KpiStrip } from "@/components/insights/KpiStrip";
 import {
   EmptyState,
   ErrorBanner,
@@ -132,6 +133,38 @@ export default function TeamPage() {
           ) : undefined
         }
       />
+      {items ? (
+        <KpiStrip
+          label="Team access summary"
+          items={[
+            {
+              label: "Staff accounts",
+              value: String(
+                items.filter((member) => member.role === "staff").length,
+              ),
+              detail: "plus the practice owner",
+            },
+            {
+              label: "Active",
+              value: String(items.filter((member) => !member.disabled).length),
+              detail: "can currently sign in",
+            },
+            {
+              label: "MFA enabled",
+              value: String(items.filter((member) => member.mfaEnabled).length),
+              detail: "protected accounts",
+            },
+            {
+              label: "Roles in use",
+              value: String(
+                new Set(items.map((member) => member.roleName || member.role))
+                  .size,
+              ),
+              detail: "access profiles",
+            },
+          ]}
+        />
+      ) : null}
       <ErrorBanner message={error ?? team.error} />
       {items === null && !error && !team.error ? (
         <Skeletons label="Loading team…" />

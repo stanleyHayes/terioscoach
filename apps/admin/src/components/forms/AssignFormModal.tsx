@@ -1,6 +1,7 @@
 "use client";
 
-import { CircleAlert, Search } from "lucide-react";
+import { CircleAlert, Search, UserRoundSearch } from "lucide-react";
+import { EmptyState } from "@/components/content/states";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -57,7 +58,9 @@ export function AssignFormModal({
       onClose();
     } catch (failure) {
       setError(
-        failure instanceof ApiError ? failure.message : "Something went wrong. Try again.",
+        failure instanceof ApiError
+          ? failure.message
+          : "Something went wrong. Try again.",
       );
     } finally {
       setSubmitting(false);
@@ -76,7 +79,11 @@ export function AssignFormModal({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={!selected} loading={submitting} onClick={() => void handleAssign()}>
+          <Button
+            disabled={!selected}
+            loading={submitting}
+            onClick={() => void handleAssign()}
+          >
             Send it
           </Button>
         </>
@@ -88,7 +95,11 @@ export function AssignFormModal({
             role="alert"
             className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
           >
-            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <CircleAlert
+              size={16}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0"
+            />
             {error}
           </div>
         ) : null}
@@ -111,9 +122,28 @@ export function AssignFormModal({
             Loading clients…
           </p>
         ) : matches.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            {query ? "No one matches that." : "You have no clients yet."}
-          </p>
+          <EmptyState
+            compact
+            icon={<UserRoundSearch size={24} />}
+            title={query ? "No one matches that" : "You have no clients yet"}
+            body={
+              query
+                ? "Try a shorter name or email address."
+                : "A client appears here after their first booking."
+            }
+            action={
+              query ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setQuery("")}
+                >
+                  Clear search
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <ul
             role="radiogroup"
@@ -137,7 +167,9 @@ export function AssignFormModal({
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-sm text-ink">{client.name}</span>
+                    <span className="block truncate text-sm text-ink">
+                      {client.name}
+                    </span>
                     <span className="block truncate text-[13px] text-ink-muted">
                       {client.email}
                     </span>

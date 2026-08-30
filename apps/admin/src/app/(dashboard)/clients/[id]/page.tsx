@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CircleAlert, FileText, FolderOpen } from "lucide-react";
 import { useState } from "react";
-import { NotesComposer, isMissingNote } from "@/components/clients/NotesComposer";
+import {
+  NotesComposer,
+  isMissingNote,
+} from "@/components/clients/NotesComposer";
+import { EmptyState } from "@/components/content/states";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
@@ -51,7 +55,9 @@ export default function ClientRecordPage() {
 
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
   const [note, setNote] = useState<SessionNote | null>(null);
-  const [noteState, setNoteState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [noteState, setNoteState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
   const [noteError, setNoteError] = useState<string | null>(null);
 
   const record = useResource<ClientRecord>(
@@ -79,14 +85,17 @@ export default function ClientRecordPage() {
     setNoteError(null);
     setNoteState("loading");
 
-    const loaded = await action.run(`note:${bookingId}`, async (session, callbacks) => {
-      try {
-        return await notesApi.get(session, callbacks, bookingId);
-      } catch (error) {
-        if (isMissingNote(error)) return null;
-        throw error;
-      }
-    });
+    const loaded = await action.run(
+      `note:${bookingId}`,
+      async (session, callbacks) => {
+        try {
+          return await notesApi.get(session, callbacks, bookingId);
+        } catch (error) {
+          if (isMissingNote(error)) return null;
+          throw error;
+        }
+      },
+    );
 
     if (loaded === undefined) {
       setNoteState("error");
@@ -126,7 +135,8 @@ export default function ClientRecordPage() {
     }
   }
 
-  const profileDirty = phone !== null || practiceNotes !== null || tags !== null;
+  const profileDirty =
+    phone !== null || practiceNotes !== null || tags !== null;
 
   return (
     <div data-admin-page="client-record" className="flex flex-col gap-6">
@@ -139,7 +149,10 @@ export default function ClientRecordPage() {
       </Link>
 
       {record.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{record.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={record.refresh}>
@@ -151,7 +164,11 @@ export default function ClientRecordPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-3">
           <span className="sr-only">Loading the client file…</span>
           {[0, 1, 2].map((i) => (
-            <span key={i} aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
+            <span
+              key={i}
+              aria-hidden="true"
+              className="h-24 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : (
@@ -168,11 +185,17 @@ export default function ClientRecordPage() {
             <Stat label="Sessions" value={String(data.recentBookings.length)} />
             <Stat
               label="Paid"
-              value={formatMoney(data.payments.totalPaidKobo, data.payments.currency)}
+              value={formatMoney(
+                data.payments.totalPaidKobo,
+                data.payments.currency,
+              )}
             />
             <Stat
               label="Refunded"
-              value={formatMoney(data.payments.totalRefundedKobo, data.payments.currency)}
+              value={formatMoney(
+                data.payments.totalRefundedKobo,
+                data.payments.currency,
+              )}
             />
             <Stat
               label="Files & forms"
@@ -185,28 +208,44 @@ export default function ClientRecordPage() {
               role="alert"
               className="flex items-start gap-3 rounded-lg border border-danger-bg bg-danger-bg px-4 py-3"
             >
-              <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-danger-ink" />
+              <CircleAlert
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-danger-ink"
+              />
               <p className="text-sm text-danger-ink">{action.error}</p>
             </div>
           ) : null}
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             {/* Sessions and their notes. */}
-            <section aria-labelledby="sessions-heading" className="flex flex-col gap-4">
-              <h2 id="sessions-heading" className="font-display text-xl font-medium text-ink">
+            <section
+              aria-labelledby="sessions-heading"
+              className="flex flex-col gap-4"
+            >
+              <h2
+                id="sessions-heading"
+                className="font-display text-xl font-medium text-ink"
+              >
                 Sessions
               </h2>
 
               {data.recentBookings.length === 0 ? (
-                <p className="rounded-lg border border-border bg-surface-raised p-6 text-sm text-ink-muted">
-                  No sessions on file yet.
-                </p>
+                <EmptyState
+                  compact
+                  icon={<FolderOpen size={24} />}
+                  title="No sessions on file yet"
+                  body="The client's booking history and session notes will appear here."
+                />
               ) : (
                 <ul className="flex flex-col gap-3">
                   {[...upcoming, ...past].map((booking) => {
                     const open = selectedBooking === booking.id;
                     return (
-                      <li key={booking.id} className="rounded-lg border border-border bg-surface-raised">
+                      <li
+                        key={booking.id}
+                        className="rounded-lg border border-border bg-surface-raised"
+                      >
                         <button
                           type="button"
                           aria-expanded={open}
@@ -216,13 +255,16 @@ export default function ClientRecordPage() {
                         >
                           <span className="flex flex-wrap items-center gap-3">
                             <span className="text-sm font-medium tabular-nums text-ink">
-                              {new Date(booking.startAt).toLocaleString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(booking.startAt).toLocaleString(
+                                "en-GB",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </span>
                             <Badge variant={statusVariant[booking.status]}>
                               {statusLabel[booking.status]}
@@ -238,7 +280,11 @@ export default function ClientRecordPage() {
                           </span>
                         </button>
 
-                        <div id={`notes-${booking.id}`} hidden={!open} className="border-t border-border p-5">
+                        <div
+                          id={`notes-${booking.id}`}
+                          hidden={!open}
+                          className="border-t border-border p-5"
+                        >
                           {noteState === "loading" ? (
                             <p role="status" className="text-sm text-ink-muted">
                               Loading notes…
@@ -268,7 +314,10 @@ export default function ClientRecordPage() {
                 aria-labelledby="practice-detail-heading"
                 className="rounded-lg border border-border bg-surface-raised p-5"
               >
-                <h2 id="practice-detail-heading" className="text-base font-semibold text-ink">
+                <h2
+                  id="practice-detail-heading"
+                  className="text-base font-semibold text-ink"
+                >
                   Practice detail
                 </h2>
                 <p className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
@@ -305,14 +354,25 @@ export default function ClientRecordPage() {
               </section>
 
               <section className="rounded-lg border border-border bg-surface-raised p-5">
-                <h2 className="text-base font-semibold text-ink">Files and forms</h2>
+                <h2 className="text-base font-semibold text-ink">
+                  Files and forms
+                </h2>
                 <ul className="mt-3 flex flex-col gap-2 text-sm text-ink-muted">
                   <li className="flex items-center gap-2">
-                    <FolderOpen size={16} aria-hidden="true" className="text-ink-faint" />
-                    {data.documentCount} {data.documentCount === 1 ? "document" : "documents"}
+                    <FolderOpen
+                      size={16}
+                      aria-hidden="true"
+                      className="text-ink-faint"
+                    />
+                    {data.documentCount}{" "}
+                    {data.documentCount === 1 ? "document" : "documents"}
                   </li>
                   <li className="flex items-center gap-2">
-                    <FileText size={16} aria-hidden="true" className="text-ink-faint" />
+                    <FileText
+                      size={16}
+                      aria-hidden="true"
+                      className="text-ink-faint"
+                    />
                     {data.formSubmissionCount}{" "}
                     {data.formSubmissionCount === 1 ? "form" : "forms"} on file
                   </li>
@@ -328,11 +388,15 @@ export default function ClientRecordPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className={cn("rounded-lg border border-border bg-surface-raised p-4")}>
+    <div
+      className={cn("rounded-lg border border-border bg-surface-raised p-4")}
+    >
       <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
         {label}
       </dt>
-      <dd className="mt-1.5 font-display text-xl font-medium tabular-nums text-ink">{value}</dd>
+      <dd className="mt-1.5 font-display text-xl font-medium tabular-nums text-ink">
+        {value}
+      </dd>
     </div>
   );
 }
