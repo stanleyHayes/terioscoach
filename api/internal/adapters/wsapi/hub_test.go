@@ -32,6 +32,14 @@ func drain(ch <-chan Envelope) []Envelope {
 	}
 }
 
+func admit(t *testing.T, hub *Hub, bookingID string, from domain.Participant, recipient <-chan Envelope) {
+	t.Helper()
+	if err := hub.Relay(bookingID, from, Envelope{Type: domain.TypeAdmissionGrant}); err != nil {
+		t.Fatalf("admit room: %v", err)
+	}
+	drain(recipient)
+}
+
 // TestJoinAnnouncesEachArrival: the peer already in the room is told
 // someone arrived, so it can start negotiating without polling.
 func TestJoinAnnouncesEachArrival(t *testing.T) {
@@ -116,6 +124,7 @@ func TestReconnectionReplacesYourOwnConnection(t *testing.T) {
 	// that the channel ends rather than that it is empty.
 	for range stale { //nolint:revive // draining to the close
 	}
+	admit(t, hub, "booking-1", practitioner("peer-2"), fresh)
 
 	if err := hub.Relay("booking-1", practitioner("peer-2"), Envelope{Type: domain.TypeOffer}); err != nil {
 		t.Fatalf("relay: %v", err)
@@ -137,6 +146,7 @@ func TestRelayReachesOnlyTheOtherPeer(t *testing.T) {
 		t.Fatalf("second join: %v", err)
 	}
 	drain(first) // the peer-joined announcement
+	admit(t, hub, "booking-1", practitioner("peer-2"), first)
 
 	payload := json.RawMessage(`{"sdp":"v=0"}`)
 	if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: domain.TypeOffer, Payload: payload}); err != nil {
@@ -166,6 +176,7 @@ func TestSenderIsStampedByTheServer(t *testing.T) {
 		t.Fatalf("second join: %v", err)
 	}
 	drain(second)
+	admit(t, hub, "booking-1", practitioner("peer-2"), firstChannel(hub, "booking-1", "peer-1"))
 
 	forged := Envelope{
 		Type:   domain.TypeOffer,
@@ -189,6 +200,73 @@ func TestSenderIsStampedByTheServer(t *testing.T) {
 	}
 	if received[0].Reason != "" {
 		t.Errorf("reason = %q, want the server-only field cleared", received[0].Reason)
+	}
+}
+
+func firstChannel(hub *Hub, bookingID, peerID string) <-chan Envelope {
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	return hub.rooms[bookingID][peerID].send
+}
+
+func TestClinicalRoomControlsAreRoleRestricted(t *testing.T) {
+	hub := NewHub()
+	clientMessages, _, err := hub.Join("booking-1", client("peer-1"))
+	if err != nil {
+		t.Fatalf("client join: %v", err)
+	}
+	practitionerMessages, _, err := hub.Join("booking-1", practitioner("peer-2"))
+	if err != nil {
+		t.Fatalf("practitioner join: %v", err)
+	}
+	drain(clientMessages)
+	drain(practitionerMessages)
+
+	for _, messageType := range []domain.MessageType{
+		domain.TypeAdmissionGrant, domain.TypeAdmissionDeny, domain.TypeSessionEnd,
+	} {
+		if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: messageType}); !errors.Is(err, domain.ErrInvalidMessage) {
+			t.Errorf("client relay %q = %v, want ErrInvalidMessage", messageType, err)
+		}
+	}
+	if err := hub.Relay("booking-1", practitioner("peer-2"), Envelope{Type: domain.TypeAdmissionRequest}); !errors.Is(err, domain.ErrInvalidMessage) {
+		t.Errorf("practitioner admission request = %v, want ErrInvalidMessage", err)
+	}
+
+	for _, allowed := range []struct {
+		from  domain.Participant
+		type_ domain.MessageType
+	}{
+		{client("peer-1"), domain.TypeAdmissionRequest},
+		{practitioner("peer-2"), domain.TypeAdmissionGrant},
+		{client("peer-1"), domain.TypeRecordingRequest},
+		{practitioner("peer-2"), domain.TypeRecordingConsent},
+	} {
+		if err := hub.Relay("booking-1", allowed.from, Envelope{Type: allowed.type_}); err != nil {
+			t.Errorf("allowed relay %q = %v", allowed.type_, err)
+		}
+	}
+}
+
+func TestNegotiationRequiresPractitionerAdmission(t *testing.T) {
+	hub := NewHub()
+	clientMessages, _, err := hub.Join("booking-1", client("peer-1"))
+	if err != nil {
+		t.Fatalf("client join: %v", err)
+	}
+	practitionerMessages, _, err := hub.Join("booking-1", practitioner("peer-2"))
+	if err != nil {
+		t.Fatalf("practitioner join: %v", err)
+	}
+	drain(clientMessages)
+	drain(practitionerMessages)
+
+	if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: domain.TypeOffer}); !errors.Is(err, domain.ErrInvalidMessage) {
+		t.Fatalf("offer before admission = %v, want ErrInvalidMessage", err)
+	}
+	admit(t, hub, "booking-1", practitioner("peer-2"), clientMessages)
+	if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: domain.TypeOffer}); err != nil {
+		t.Fatalf("offer after admission: %v", err)
 	}
 }
 
@@ -228,7 +306,7 @@ func TestRoomsAreIsolated(t *testing.T) {
 		t.Fatalf("join: %v", err)
 	}
 
-	if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: domain.TypeOffer}); err != nil {
+	if err := hub.Relay("booking-1", client("peer-1"), Envelope{Type: domain.TypeReaction}); err != nil {
 		t.Fatalf("relay: %v", err)
 	}
 	if got := drain(otherRoom); len(got) != 0 {
@@ -246,6 +324,7 @@ func TestLeaveTellsWhoeverIsLeft(t *testing.T) {
 	if _, _, err := hub.Join("booking-1", practitioner("peer-2")); err != nil {
 		t.Fatalf("join: %v", err)
 	}
+	admit(t, hub, "booking-1", practitioner("peer-2"), firstChannel(hub, "booking-1", "peer-1"))
 	drain(first)
 
 	hub.Leave("booking-1", "peer-2")
@@ -276,6 +355,7 @@ func TestSlowPeerDoesNotBlockTheHub(t *testing.T) {
 	if _, _, err := hub.Join("booking-1", practitioner("peer-2")); err != nil {
 		t.Fatalf("join: %v", err)
 	}
+	admit(t, hub, "booking-1", practitioner("peer-2"), firstChannel(hub, "booking-1", "peer-1"))
 
 	// Nobody is reading peer-2's channel. Far more than its buffer is
 	// sent; every call must still return.

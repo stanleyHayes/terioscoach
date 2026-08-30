@@ -145,6 +145,8 @@ func TestOnlySessionTrafficIsRelayable(t *testing.T) {
 	for _, relayable := range []MessageType{
 		TypeOffer, TypeAnswer, TypeCandidate,
 		TypeChat, TypeState, TypeReaction, TypeCaption,
+		TypeAdmissionRequest, TypeAdmissionGrant, TypeAdmissionDeny,
+		TypeRecordingRequest, TypeRecordingConsent, TypeSessionEnd,
 	} {
 		if !relayable.Relayable() || !relayable.Valid() {
 			t.Errorf("%q is not relayable, want it passed between peers", relayable)

@@ -133,12 +133,12 @@ Public website         Client portal             Practice dashboard
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
-| CX-01 | WebRTC signaling server: authenticated WebSocket, session-bound rooms, join-window enforcement | Backend | BE-05, BE-02 | Done |
+| CX-01 | WebRTC signaling server: authenticated WebSocket, session-bound rooms, join-window enforcement | Backend | BE-05, BE-02 | Done — practitioner-only admission and end-for-everyone authority are enforced by the signaling hub; offer/answer/candidate traffic is refused until admission. |
 | CX-02 | Cloudflare Calls TURN: create TURN key, wire API-side credential endpoint, connectivity test harness | DevOps | FND-08 | **Verified live** — the Cloudflare Realtime TURN key mints real credentials: 2 ICE entries with stun:, turn: and turns: URLs and base64 username/credential. A bad token is refused with 401 and the token never reaches the error text. Not yet proven between two real networks — that is the e2e video spec. |
 | CX-03 | Portal auth screens + account area shell | FE-Customer | WEB-01, BE-01 | Done |
 | CX-04 | Portal bookings: book new, view upcoming, reschedule within rules | FE-Customer | CX-03, BE-05 | Done |
-| CX-05 | Portal video room: raw WebRTC client (custom UI — no native call chrome), one-click join, reconnect handling | FE-Customer | CX-01, CX-02, CX-04 | Done — **and now actually reachable.** The room component and its hook were complete and tested but imported by nothing: `/portal/sessions/[id]/room` did not exist, so the Join link every client was offered 404'd. Route added with its own tests; the id comes from the route, leaving returns to the sessions list. |
-| CX-06 | Admin video room: start session from dashboard, session record attaches to client file | FE-Admin + Backend | CX-01, ADM-02 | Done |
+| CX-05 | Portal video room: raw WebRTC client (custom UI — no native call chrome), one-click join, reconnect handling | FE-Customer | CX-01, CX-02, CX-04 | Done — reachable at `/portal/sessions/[id]/room`, with practitioner-controlled waiting, explicit recording consent, speaker selection where supported, and safe leave/end semantics. |
+| CX-06 | Admin video room: start session from dashboard, session record attaches to client file | FE-Admin + Backend | CX-01, ADM-02 | Done — includes admit/deny waiting-room controls, explicit recording-consent requests, speaker output selection and practitioner-only end-for-everyone. |
 | CX-07 | Portal forms & signatures: complete, sign (custom signature pad), submit | FE-Customer | CX-03, BE-10 | Done |
 | CX-08 | Portal session history + shared feedback & resources | FE-Customer | CX-03, BE-08 | Done |
 | CX-09 | Portal documents library | FE-Customer | CX-03, BE-11 | Done |
@@ -175,7 +175,7 @@ Public website         Client portal             Practice dashboard
 1. **Version pins** — "latest stable" recorded at scaffold time (FND-01); Go / Next.js / mongo-driver / Paystack & Cloudinary SDKs verified that day.
 2. **Currencies** — default settlement currency(s) in Paystack (GHS base? USD for internationals?).
 3. **Analytics** — privacy-friendly choice for the "website visits / content engagement" reporting (e.g. Plausible vs first-party collection into MongoDB).
-4. **Session video length / recording** — recording exists as **client-local** capture (MediaRecorder → `.webm` download on the recorder's own machine, with a ● Rec indicator relayed to the other party). Server-side recording/storage remains a scope change (needs a media server).
+4. **Session video length / recording** — recording exists as **client-local** capture after explicit consent from the other participant (MediaRecorder → `.webm` download on the recorder's own machine, with a ● Rec indicator relayed to the other party). Server-side recording/storage remains a scope change (needs a media server and retention/compliance design).
 5. **Reminders** — email-only via Resend per current scope; SMS/WhatsApp reminders would be a scope addition.
 
 ## 12. Product-wide redesign and review (12 Aug 2026)

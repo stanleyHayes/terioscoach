@@ -403,6 +403,77 @@ describe("useVideoRoom collaboration and recovery", () => {
     expect(result.current.peerState.recording).toBe(false);
   });
 
+  it("keeps a client in the waiting room until the practitioner admits them", async () => {
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+
+    act(() =>
+      sockets[0]!.onmessage?.({
+        data: JSON.stringify({ type: "joined", payload: { peers: [{ peerId: "practitioner", role: "practitioner" }] } }),
+      }),
+    );
+    expect(result.current.waitingForAdmission).toBe(true);
+    expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({ type: "admission-request" });
+    expect(FakePeerConnection.instances[0]!.createOffer).not.toHaveBeenCalled();
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "admission-granted" }) }));
+    await waitFor(() => expect(FakePeerConnection.instances[0]!.createOffer).toHaveBeenCalled());
+    expect(result.current.waitingForAdmission).toBe(false);
+  });
+
+  it("lets only the practitioner actively admit the waiting client", async () => {
+    join.mockResolvedValue({ ...access, role: "practitioner" });
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    act(() =>
+      sockets[0]!.onmessage?.({
+        data: JSON.stringify({ type: "joined", payload: { peers: [{ peerId: "client", role: "client" }] } }),
+      }),
+    );
+    expect(result.current.admissionRequested).toBe(true);
+    act(() => result.current.admitClient());
+    expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({ type: "admission-granted" });
+    await waitFor(() => expect(FakePeerConnection.instances[0]!.createOffer).toHaveBeenCalled());
+  });
+
+  it("requests recording consent and handles a decline without recording", async () => {
+    vi.stubGlobal("MediaRecorder", class {});
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    const remote = { getTracks: () => [], getAudioTracks: () => [], getVideoTracks: () => [] } as unknown as MediaStream;
+    act(() => FakePeerConnection.instances[0]!.ontrack?.({ streams: [remote] }));
+    act(() => result.current.toggleRecording());
+    expect(result.current.recordingConsentPending).toBe(true);
+    expect(result.current.recording).toBe(false);
+    expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({ type: "recording-request" });
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "recording-consent", payload: { approved: false } }) }));
+    expect(result.current.recordingConsentPending).toBe(false);
+    expect(result.current.error).toMatch(/declined/i);
+  });
+
+  it("ignores unsolicited recording approval", async () => {
+    vi.stubGlobal("MediaRecorder", class {});
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "recording-consent", payload: { approved: true } }) }));
+    expect(result.current.recording).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("allows the practitioner to end the call for both participants", async () => {
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    act(() => result.current.endForAll());
+    expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({ type: "session-ended" });
+    expect(result.current.state).toBe("ended");
+  });
+
   it("exposes the e2e debug surface after joining", async () => {
     const { result } = renderHook(() => useVideoRoom("booking-1"));
     act(() => result.current.join());

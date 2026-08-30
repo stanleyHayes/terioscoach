@@ -20,6 +20,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { BrandedSelect } from "@/components/ui/ChoiceControls";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { useVideoRoom } from "@/lib/use-video-room";
 
@@ -102,6 +103,8 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [speakerId, setSpeakerId] = useState("");
   // A reaction floats briefly, then fades. Keying the timeout on the
   // reaction itself means back-to-back reactions each get their moment.
   const [dismissedAt, setDismissedAt] = useState(0);
@@ -161,6 +164,14 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
   const submitChat = () => {
     room.sendChat(chatDraft);
     setChatDraft("");
+  };
+
+  const selectSpeaker = (deviceId: string) => {
+    setSpeakerId(deviceId);
+    const video = remoteVideo.current as HTMLVideoElement & {
+      setSinkId?: (id: string) => Promise<void>;
+    };
+    void video?.setSinkId?.(deviceId).catch(() => {});
   };
 
   if (room.state === "idle") {
@@ -241,6 +252,8 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
             <p role="status" className="text-base font-medium text-surface">
               {room.reconnecting
                 ? "Reconnecting…"
+                : room.waitingForAdmission
+                  ? "Waiting for your practitioner to admit you"
                 : room.state === "connecting" ||
                     room.state === "requesting-media"
                   ? "Connecting…"
@@ -374,6 +387,7 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row">
           <div className="flex-1"><BrandedSelect compact label="Microphone" value={room.selectedMicId ?? ""} placeholder="Default microphone" onChange={room.selectMic} options={room.mics.map((device)=>({value:device.deviceId,label:device.label||"Microphone"}))}/></div>
           <div className="flex-1"><BrandedSelect compact label="Camera" value={room.selectedCameraId ?? ""} placeholder="Default camera" onChange={room.selectCamera} options={room.cameras.map((device)=>({value:device.deviceId,label:device.label||"Camera"}))}/></div>
+          {room.speakers.length > 0 ? <div className="flex-1"><BrandedSelect compact label="Speaker" value={speakerId} placeholder="Default speaker" onChange={selectSpeaker} options={room.speakers.map((device)=>({value:device.deviceId,label:device.label||"Speaker"}))}/></div> : null}
         </div>
       ) : null}
 
@@ -424,12 +438,14 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
           label={room.recording ? "Stop recording" : "Record this session"}
           pressed={room.recording}
           danger={room.recording}
-          disabled={!live || !room.recordingSupported}
+          disabled={!live || !room.recordingSupported || room.recordingConsentPending}
           title={
             room.recordingSupported
               ? room.recording
                 ? "Stop and download the recording"
-                : "Record to a file on this device"
+                : room.recordingConsentPending
+                  ? "Waiting for the other participant to consent"
+                  : "Request consent and record to this device"
               : "Recording isn't supported in this browser"
           }
           onClick={room.toggleRecording}
@@ -520,10 +536,7 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         <ControlButton
           label="Leave the session"
           danger
-          onClick={() => {
-            room.leave();
-            onLeave?.();
-          }}
+          onClick={() => setLeaveOpen(true)}
         >
           <PhoneOff size={20} aria-hidden="true" />
         </ControlButton>
@@ -610,6 +623,52 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
           </form>
         </div>
       ) : null}
+
+      <Modal
+        open={room.admissionRequested}
+        onClose={room.denyClient}
+        title={`${peerLabel} is waiting`}
+        description="Admit the client only when you are ready to begin this private consultation."
+        footer={
+          <>
+            <Button variant="secondary" onClick={room.denyClient}>Not now</Button>
+            <Button data-autofocus onClick={room.admitClient}>Admit client</Button>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink-muted">Their camera and microphone are connected only to the waiting room until you admit them.</p>
+      </Modal>
+
+      <Modal
+        open={room.recordingConsentRequested}
+        onClose={() => room.respondToRecordingRequest(false)}
+        title="Allow this session to be recorded?"
+        description="The recording will be saved only on the other participant's device."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => room.respondToRecordingRequest(false)}>Decline</Button>
+            <Button data-autofocus onClick={() => room.respondToRecordingRequest(true)}>Allow recording</Button>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink-muted">Nothing is recorded unless you explicitly allow it. A red recording indicator remains visible for the entire recording.</p>
+      </Modal>
+
+      <Modal
+        open={leaveOpen}
+        onClose={() => setLeaveOpen(false)}
+        title={room.access?.role === "practitioner" ? "Leave or end this session?" : "Leave this session?"}
+        description="Your camera and microphone will be released immediately."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setLeaveOpen(false)}>Stay</Button>
+            <Button variant="secondary" onClick={() => { setLeaveOpen(false); room.leave(); onLeave?.(); }}>Leave only</Button>
+            {room.access?.role === "practitioner" ? <Button onClick={() => { setLeaveOpen(false); room.endForAll(); onLeave?.(); }}>End for everyone</Button> : null}
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink-muted">Ending for everyone closes the current call for both participants. The appointment record remains available in the dashboard.</p>
+      </Modal>
     </div>
   );
 }

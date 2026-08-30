@@ -59,6 +59,12 @@ export type SignalType =
   | "state"
   | "reaction"
   | "caption"
+  | "admission-request"
+  | "admission-granted"
+  | "admission-denied"
+  | "recording-request"
+  | "recording-consent"
+  | "session-ended"
   | "joined"
   | "peer-joined"
   | "peer-left"
@@ -104,6 +110,10 @@ export interface ReactionPayload {
 export interface CaptionPayload {
   text: string;
   final: boolean;
+}
+
+export interface RecordingConsentPayload {
+  approved: boolean;
 }
 
 /** One line in the room's chat panel. */

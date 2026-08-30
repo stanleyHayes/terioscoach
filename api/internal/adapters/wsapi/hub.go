@@ -52,13 +52,17 @@ const sendBuffer = 32
 
 // Hub holds the live rooms.
 type Hub struct {
-	mu    sync.Mutex
-	rooms map[string]map[string]*peer // bookingID -> peerID -> peer
+	mu       sync.Mutex
+	rooms    map[string]map[string]*peer // bookingID -> peerID -> peer
+	admitted map[string]bool             // bookingID -> practitioner admitted client
 }
 
 // NewHub builds an empty hub.
 func NewHub() *Hub {
-	return &Hub{rooms: make(map[string]map[string]*peer)}
+	return &Hub{
+		rooms:    make(map[string]map[string]*peer),
+		admitted: make(map[string]bool),
+	}
 }
 
 // Join adds a peer to a room, returning its send channel and the
@@ -135,6 +139,7 @@ func (h *Hub) Leave(bookingID, peerID string) {
 	}
 	if len(room) == 0 {
 		delete(h.rooms, bookingID)
+		delete(h.admitted, bookingID)
 	}
 }
 
@@ -147,12 +152,22 @@ func (h *Hub) Relay(bookingID string, from domain.Participant, message Envelope)
 	if !message.Type.Relayable() {
 		return domain.ErrInvalidMessage
 	}
+	if !roleMaySend(from.Role, message.Type) {
+		return domain.ErrInvalidMessage
+	}
 	message.From = from.PeerID
 	message.Role = from.Role
 	message.Reason = ""
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if message.Type == domain.TypeAdmissionGrant {
+		h.admitted[bookingID] = true
+	} else if message.Type == domain.TypeAdmissionDeny {
+		h.admitted[bookingID] = false
+	} else if isNegotiation(message.Type) && !h.admitted[bookingID] {
+		return domain.ErrInvalidMessage
+	}
 
 	room := h.rooms[bookingID]
 	for peerID, other := range room {
@@ -162,6 +177,23 @@ func (h *Hub) Relay(bookingID string, from domain.Participant, message Envelope)
 		deliver(other, message)
 	}
 	return nil
+}
+
+func isNegotiation(messageType domain.MessageType) bool {
+	return messageType == domain.TypeOffer || messageType == domain.TypeAnswer || messageType == domain.TypeCandidate
+}
+
+// roleMaySend keeps clinical room authority on the server. A modified client
+// cannot admit itself or end the practitioner's session by forging UI events.
+func roleMaySend(role domain.Role, messageType domain.MessageType) bool {
+	switch messageType {
+	case domain.TypeAdmissionRequest:
+		return role == domain.RoleClient
+	case domain.TypeAdmissionGrant, domain.TypeAdmissionDeny, domain.TypeSessionEnd:
+		return role == domain.RolePractitioner
+	default:
+		return true
+	}
 }
 
 // Occupancy reports how many peers are in a room. It exists for tests and

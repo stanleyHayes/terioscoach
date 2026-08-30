@@ -152,6 +152,9 @@ Start from the calendar: open the session, press **Start video session**.
   else's session.
 - **Only the two of you can join.** Nobody else, with any link.
 - Your browser will ask for the camera and microphone the first time.
+- The client first waits in a private lobby. Their camera and microphone stay
+  local until you choose **Admit client**; only the practitioner can admit or
+  refuse entry.
 - **Chrome, Edge or Safari.** Firefox works but is less reliable for this.
 - Closing the tab ends your side of the call and releases the camera.
 
@@ -163,14 +166,17 @@ In the room you can:
 - **Send chat messages** — they stay between the two of you and disappear
   when the session ends; nothing is stored.
 - **Raise a hand** or send a quick **reaction**.
-- **Record the session** — the file downloads to *your* computer when you
-  stop, and the client always sees a red **● Rec** light while it runs.
-  Tell them before you press it.
-- Switch **microphone or camera** from the settings button without leaving
-  the call.
+- **Record the session** — pressing record sends a consent request to the
+  other participant. Recording starts only after they approve. The file
+  downloads to *your* computer when you stop, and both sides see a red
+  **● Rec** light while it runs.
+- Switch **microphone, camera or speaker** from settings without leaving the
+  call (speaker choice appears only in browsers that support it).
 - Turn on **captions** (Chrome only) — each side's speech is transcribed
   on its own computer and shown to the other.
 - A dropped connection **reconnects itself**; you do not need to rejoin.
+- **Leave only** exits your side. **End for everyone** is practitioner-only
+  and closes the consultation for the client too.
 
 If the video fails to connect, the usual cause is the client's network
 rather than yours. Ask them to try a phone on mobile data — that almost

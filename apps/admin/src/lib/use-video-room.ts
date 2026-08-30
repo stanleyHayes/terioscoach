@@ -19,6 +19,7 @@ import {
   type ConnectionQuality,
   type PeerState,
   type ReactionPayload,
+  type RecordingConsentPayload,
   type SessionAccess,
   type SignalEnvelope,
 } from "./video";
@@ -78,6 +79,12 @@ export interface VideoRoom {
   toggleCamera: () => void;
   join: (options?: JoinOptions) => void;
   leave: () => void;
+  /** The client waits until the practitioner explicitly admits them. */
+  waitingForAdmission: boolean;
+  admissionRequested: boolean;
+  admitClient: () => void;
+  denyClient: () => void;
+  endForAll: () => void;
   /** Screen share — the camera track is parked and restored afterwards. */
   sharingScreen: boolean;
   toggleScreenShare: () => void;
@@ -96,6 +103,7 @@ export interface VideoRoom {
   /** Input devices, listed once permission has made labels available. */
   mics: MediaDeviceInfo[];
   cameras: MediaDeviceInfo[];
+  speakers: MediaDeviceInfo[];
   selectedMicId: string | null;
   selectedCameraId: string | null;
   selectMic: (deviceId: string) => void;
@@ -107,6 +115,9 @@ export interface VideoRoom {
   recording: boolean;
   recordingSeconds: number;
   toggleRecording: () => void;
+  recordingConsentPending: boolean;
+  recordingConsentRequested: boolean;
+  respondToRecordingRequest: (approved: boolean) => void;
   /** Chrome-only captions: own mic transcribed and relayed to the peer. */
   captionsSupported: boolean;
   captionsEnabled: boolean;
@@ -145,11 +156,18 @@ export function useVideoRoom(bookingId: string): VideoRoom {
   const [activeReaction, setActiveReaction] = useState<ActiveReaction | null>(null);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
   const [selectedMicId, setSelectedMicId] = useState<string | null>(null);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [quality, setQuality] = useState<ConnectionQuality | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingConsentPending, setRecordingConsentPending] = useState(false);
+  const [recordingConsentRequested, setRecordingConsentRequested] = useState(false);
+  const recordingConsentPendingRef = useRef(false);
+  const startRecordingRef = useRef<() => void>(() => {});
+  const [waitingForAdmission, setWaitingForAdmission] = useState(false);
+  const [admissionRequested, setAdmissionRequested] = useState(false);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [peerCaption, setPeerCaption] = useState<CaptionPayload | null>(null);
 
@@ -189,6 +207,8 @@ export function useVideoRoom(bookingId: string): VideoRoom {
   const handRaisedRef = useRef(false);
   const recordingRef = useRef(false);
   const captionsEnabledRef = useRef(false);
+  const admittedRef = useRef(false);
+  const offerAfterAdmissionRef = useRef(false);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -291,6 +311,11 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     setSharingScreen(false);
     setRecording(false);
     setRecordingSeconds(0);
+    setRecordingConsentPending(false);
+    recordingConsentPendingRef.current = false;
+    setRecordingConsentRequested(false);
+    setWaitingForAdmission(false);
+    setAdmissionRequested(false);
     setPeerCaption(null);
   }, [clearTimers, exposeDebug, stopCaptionsInternals, stopRecordingInternals]);
 
@@ -515,9 +540,21 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       switch (envelope.type) {
         case "joined": {
           if (!peer) return;
-          const payload = envelope.payload as { peers?: unknown[] } | undefined;
-          const already = payload?.peers?.length ?? 0;
-          if (shouldOffer(already)) {
+          const payload = envelope.payload as
+            | { peers?: Array<{ role?: "client" | "practitioner" }> }
+            | undefined;
+          const peers = payload?.peers ?? [];
+          const already = peers.length;
+          offerAfterAdmissionRef.current = shouldOffer(already);
+
+          if (!admittedRef.current && accessRef.current?.role === "client") {
+            setWaitingForAdmission(true);
+            setState("waiting");
+            send({ type: "admission-request" });
+          } else if (!admittedRef.current && accessRef.current?.role === "practitioner" && peers.some((candidate) => candidate.role === "client")) {
+            setAdmissionRequested(true);
+            setState("waiting");
+          } else if (shouldOffer(already)) {
             offererRef.current = true;
             await makeOffer(peer);
           } else {
@@ -527,10 +564,61 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         }
 
         case "peer-joined":
+          if (!admittedRef.current && envelope.role === "client" && accessRef.current?.role === "practitioner") {
+            setAdmissionRequested(true);
+            setState("waiting");
+            break;
+          }
           // The other side arrived after us, so they will offer. Nothing to
           // do but wait for it — and tell them where our toggles stand.
           setState("waiting");
           emitState();
+          break;
+
+        case "admission-request":
+          if (accessRef.current?.role === "practitioner") {
+            setAdmissionRequested(true);
+            setState("waiting");
+          }
+          break;
+
+        case "admission-granted":
+          admittedRef.current = true;
+          setWaitingForAdmission(false);
+          setState("connecting");
+          if (peer && offerAfterAdmissionRef.current) {
+            offererRef.current = true;
+            await makeOffer(peer);
+          }
+          break;
+
+        case "admission-denied":
+          teardown();
+          setError("The practitioner could not admit you to this session.");
+          setState("failed");
+          break;
+
+        case "recording-request":
+          setRecordingConsentRequested(true);
+          break;
+
+        case "recording-consent": {
+          const payload = envelope.payload as RecordingConsentPayload;
+          if (!recordingConsentPendingRef.current) break;
+          recordingConsentPendingRef.current = false;
+          setRecordingConsentPending(false);
+          if (payload?.approved === true) {
+            startRecordingRef.current();
+          } else {
+            setError("Recording was not started because the other participant declined.");
+          }
+          break;
+        }
+
+        case "session-ended":
+          intentionalLeaveRef.current = true;
+          teardown();
+          setState("ended");
           break;
 
         case "offer": {
@@ -606,6 +694,9 @@ export function useVideoRoom(bookingId: string): VideoRoom {
           setPeerState(initialPeerState);
           setPeerCaption(null);
           setQuality(null);
+          setRecordingConsentPending(false);
+          setRecordingConsentRequested(false);
+          setAdmissionRequested(false);
           setState("waiting");
           break;
 
@@ -617,7 +708,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
           break;
       }
     },
-    [drainCandidates, emitState, makeOffer, send],
+    [drainCandidates, emitState, makeOffer, send, teardown],
   );
 
   const refreshDevices = useCallback(async () => {
@@ -625,6 +716,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       (await navigator.mediaDevices?.enumerateDevices?.().catch(() => [])) ?? [];
     setMics(devices.filter((device) => device.kind === "audioinput"));
     setCameras(devices.filter((device) => device.kind === "videoinput"));
+    setSpeakers(devices.filter((device) => device.kind === "audiooutput"));
   }, []);
 
   const join = useCallback(
@@ -689,6 +781,29 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     teardown();
     setState("ended");
   }, [teardown]);
+
+  const admitClient = useCallback(() => {
+    admittedRef.current = true;
+    setAdmissionRequested(false);
+    setState("connecting");
+    send({ type: "admission-granted" });
+    const peer = peerRef.current;
+    if (peer && offerAfterAdmissionRef.current) {
+      offererRef.current = true;
+      void makeOffer(peer);
+    }
+  }, [makeOffer, send]);
+
+  const denyClient = useCallback(() => {
+    setAdmissionRequested(false);
+    send({ type: "admission-denied" });
+  }, [send]);
+
+  const endForAll = useCallback(() => {
+    send({ type: "session-ended" });
+    teardown();
+    setState("ended");
+  }, [send, teardown]);
 
   const toggleMic = useCallback(() => {
     const track = localRef.current?.getAudioTracks()[0];
@@ -843,15 +958,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
 
   const recordingSupported = typeof MediaRecorder !== "undefined";
 
-  const toggleRecording = useCallback(() => {
-    if (recordingRef.current) {
-      stopRecordingInternals();
-      recordingRef.current = false;
-      setRecording(false);
-      setRecordingSeconds(0);
-      emitState();
-      return;
-    }
+  const startRecording = useCallback(() => {
     if (!recordingSupported) {
       setError("Recording isn't supported in this browser.");
       return;
@@ -907,7 +1014,45 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     } catch {
       setError("Recording couldn't start in this browser.");
     }
-  }, [bookingId, emitState, recordingSupported, stopRecordingInternals]);
+  }, [bookingId, emitState, recordingSupported]);
+
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+  }, [startRecording]);
+
+  const toggleRecording = useCallback(() => {
+    if (recordingRef.current) {
+      stopRecordingInternals();
+      recordingRef.current = false;
+      setRecording(false);
+      setRecordingSeconds(0);
+      emitState();
+      return;
+    }
+    if (!recordingSupported) {
+      setError("Recording isn't supported in this browser.");
+      return;
+    }
+    if (!remoteRef.current) {
+      setError("Wait for the other participant before requesting a recording.");
+      return;
+    }
+    setError(null);
+    recordingConsentPendingRef.current = true;
+    setRecordingConsentPending(true);
+    send({ type: "recording-request" });
+  }, [emitState, recordingSupported, send, stopRecordingInternals]);
+
+  const respondToRecordingRequest = useCallback(
+    (approved: boolean) => {
+      setRecordingConsentRequested(false);
+      send({
+        type: "recording-consent",
+        payload: { approved } satisfies RecordingConsentPayload,
+      });
+    },
+    [send],
+  );
 
   const captionsSupported = hasSpeechRecognition();
 
@@ -979,6 +1124,11 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     toggleCamera,
     join,
     leave,
+    waitingForAdmission,
+    admissionRequested,
+    admitClient,
+    denyClient,
+    endForAll,
     sharingScreen,
     toggleScreenShare,
     messages,
@@ -992,6 +1142,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     sendReaction,
     mics,
     cameras,
+    speakers,
     selectedMicId,
     selectedCameraId,
     selectMic,
@@ -1001,6 +1152,9 @@ export function useVideoRoom(bookingId: string): VideoRoom {
     recording,
     recordingSeconds,
     toggleRecording,
+    recordingConsentPending,
+    recordingConsentRequested,
+    respondToRecordingRequest,
     captionsSupported,
     captionsEnabled,
     toggleCaptions,

@@ -156,6 +156,14 @@ const (
 	TypeState    MessageType = "state"    // {micOn, cameraOn, handRaised, recording} — presence
 	TypeReaction MessageType = "reaction" // {emoji} — one transient reaction
 	TypeCaption  MessageType = "caption"  // {text, final} — own-mic transcription relay
+	// Clinical-room control messages. The hub enforces which role may send
+	// admission and end-session commands; recording consent remains mutual.
+	TypeAdmissionRequest MessageType = "admission-request"
+	TypeAdmissionGrant   MessageType = "admission-granted"
+	TypeAdmissionDeny    MessageType = "admission-denied"
+	TypeRecordingRequest MessageType = "recording-request"
+	TypeRecordingConsent MessageType = "recording-consent"
+	TypeSessionEnd       MessageType = "session-ended"
 	// Server-originated room events.
 	TypeJoined    MessageType = "joined"
 	TypePeerJoin  MessageType = "peer-joined"
@@ -172,7 +180,9 @@ const (
 func (t MessageType) Relayable() bool {
 	switch t {
 	case TypeOffer, TypeAnswer, TypeCandidate,
-		TypeChat, TypeState, TypeReaction, TypeCaption:
+		TypeChat, TypeState, TypeReaction, TypeCaption,
+		TypeAdmissionRequest, TypeAdmissionGrant, TypeAdmissionDeny,
+		TypeRecordingRequest, TypeRecordingConsent, TypeSessionEnd:
 		return true
 	}
 	return false

@@ -148,7 +148,7 @@ function FeaturedTestimonial({ testimonial }: { testimonial: Testimonial }) {
             Client reflection
           </div>
           <blockquote className="mt-8 max-w-[30ch]">
-            <p className="font-display text-[clamp(1.65rem,4vw,2.65rem)] leading-[1.22] font-medium tracking-[-0.02em] text-sand-0 [text-wrap:pretty]">
+            <p className="font-display text-[clamp(1.35rem,2.6vw,2rem)] leading-[1.4] font-medium tracking-[-0.015em] text-sand-0 [text-wrap:pretty]">
               &ldquo;{testimonial.quote}&rdquo;
             </p>
           </blockquote>

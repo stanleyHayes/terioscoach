@@ -113,6 +113,7 @@ describe("Client session room route", () => {
     render(<ClientSessionRoomPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /leave|end/i }));
+    fireEvent.click(screen.getByRole("button", { name: /leave only/i }));
 
     expect(leave).toHaveBeenCalled();
     // Leaving must not strand them on a dead room page.

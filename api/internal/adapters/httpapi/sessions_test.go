@@ -271,6 +271,14 @@ func TestSocketRelaysBetweenBothParties(t *testing.T) {
 		t.Fatalf("announcement = %+v, want peer-joined", announcement)
 	}
 
+	// Only the practitioner can admit the client. Negotiation is rejected
+	// server-side until this frame has crossed the room.
+	writeEnvelope(t, practitionerConn, wsapi.Envelope{Type: domainsignaling.TypeAdmissionGrant})
+	admitted := readEnvelope(t, clientConn)
+	if admitted.Type != domainsignaling.TypeAdmissionGrant {
+		t.Fatalf("admission = %+v, want admission-granted", admitted)
+	}
+
 	// Offer travels client → practitioner.
 	writeEnvelope(t, clientConn, wsapi.Envelope{
 		Type:    domainsignaling.TypeOffer,

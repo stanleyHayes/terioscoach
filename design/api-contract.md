@@ -160,6 +160,11 @@ A video room **is** a booking: there is no separate room entity. Entry is a two-
 | Type | Direction | Payload | Purpose |
 |---|---|---|---|
 | `offer` / `answer` / `candidate` | peer ↔ peer (relayed) | opaque SDP/ICE | WebRTC negotiation — the server never inspects payloads |
+| `admission-request` | client → practitioner | — | asks to enter the clinical room |
+| `admission-granted` / `admission-denied` | practitioner → client | — | controls entry; negotiation frames are rejected by the server until admission is granted |
+| `recording-request` | either peer → other peer | — | asks for explicit consent before a local recording starts |
+| `recording-consent` | either peer → other peer | `{approved}` | accepts or refuses that recording request |
+| `session-ended` | practitioner → client | — | ends the consultation for both participants |
 | `chat` | peer ↔ peer (relayed) | `{text}` (≤500 chars client-side) | one chat line |
 | `state` | peer ↔ peer (relayed) | `{micOn, cameraOn, handRaised, recording}` | presence — drives the peer's tile indicators |
 | `reaction` | peer ↔ peer (relayed) | `{emoji}` | one transient reaction |
@@ -169,7 +174,7 @@ A video room **is** a booking: there is no separate room entity. Entry is a two-
 | `error` | server → peer | `reason` | refused message or protocol problem |
 | `ping` / `pong` | peer ↔ server | — | liveness; handled by the server, never relayed |
 
-- **Client-side features over this protocol:** automatic rejoin with fresh ticket on socket drop (bounded backoff, reusing the camera stream), ICE restart on transport failure, screen share (in-band `replaceTrack`, no signaling change), in-call chat, mute/hand/recording presence, reactions, device switching, connection-quality stats, local recording (MediaRecorder → `.webm` download on the recorder's machine; relayed via `state.recording` so the other side always sees the ● Rec indicator), and Chrome-only captions (each side transcribes its own mic and relays the text).
+- **Client-side features over this protocol:** practitioner-controlled waiting room, explicit two-party recording consent, leave-only versus practitioner **End for everyone**, automatic rejoin with fresh ticket on socket drop (bounded backoff, reusing the camera stream), ICE restart on transport failure, screen share (in-band `replaceTrack`, no signaling change), in-call chat, mute/hand/recording presence, reactions, camera/microphone/speaker switching (speaker output where the browser supports `setSinkId`), connection-quality stats, local recording (MediaRecorder → `.webm` download on the recorder's machine; relayed via `state.recording` so the other side always sees the ● Rec indicator), and Chrome-only captions (each side transcribes its own mic and relays the text).
 - **Scaling note:** rooms live in one API process (correct for the single-instance deployment). Scaling out needs peers pinned to one instance or a shared relay.
 - When the database or signaling is not configured, both routes answer 503 `service_unavailable`.
 
