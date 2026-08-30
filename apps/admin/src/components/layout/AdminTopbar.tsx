@@ -1,55 +1,173 @@
 "use client";
-
-import { LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/components/layout/AdminSidebar";
+import {
+  Bell,
+  ChevronDown,
+  CircleHelp,
+  ExternalLink,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+import { NAV_ITEMS } from "./AdminSidebar";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-
-/**
- * Admin top bar — practitioner identity on the right with a sign-out action.
- * 64px, surface-raised, hairline bottom border. Copy is terse per the admin voice.
- */
 
 export function AdminTopbar({
   userName,
+  userRole = "Owner",
   onSignOut,
   signingOut = false,
+  collapsed = false,
+  onToggleCollapse,
+  onOpenMobileNav,
 }: {
   userName: string;
+  userRole?: string;
   onSignOut: () => void;
   signingOut?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onOpenMobileNav?: () => void;
 }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const current = NAV_ITEMS.filter((item) =>
+    item.href === "/"
+      ? pathname === "/"
+      : pathname === item.href || pathname.startsWith(`${item.href}/`),
+  ).sort((a, b) => b.href.length - a.href.length)[0];
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
   return (
-    <header className="sticky top-0 z-sticky border-b border-border/80 bg-surface-raised/88 backdrop-blur-xl">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="font-display text-xl font-semibold tracking-[-0.025em] text-ink lg:hidden">Terios</Link>
-        <p className="hidden text-xs font-semibold tracking-[0.08em] text-ink-faint uppercase lg:block">Practice workspace</p>
-        <div className="flex items-center gap-3">
-        <p className="hidden text-sm leading-[1.55] text-ink-muted sm:block">
-          Signed in as <span className="font-medium text-ink">{userName}</span>
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          loading={signingOut}
-          onClick={onSignOut}
-        >
-          <LogOut size={16} aria-hidden="true" />
-          Sign out
-        </Button>
+    <header className="z-sticky shrink-0 border-b border-border/80 bg-surface-raised/92 backdrop-blur-xl">
+      <div className="flex h-[72px] items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onOpenMobileNav}
+            aria-label="Open navigation"
+            className="rounded-xl p-2.5 text-ink hover:bg-surface-sunken lg:hidden"
+          >
+            <Menu size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden rounded-xl p-2.5 text-ink hover:bg-surface-sunken lg:inline-flex"
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={19} />
+            ) : (
+              <PanelLeftClose size={19} />
+            )}
+          </button>
+          <div className="ml-2 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-ink-faint">
+              Practice workspace
+            </p>
+            <p className="truncate text-sm font-semibold text-ink">
+              {current?.label ?? "Terios"}
+            </p>
+          </div>
+        </div>
+        <div className="hidden max-w-md flex-1 px-8 md:block">
+          <Link
+            href="/clients"
+            className="flex h-10 items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 text-sm text-ink-muted hover:border-border-strong"
+          >
+            <Search size={16} />
+            <span className="flex-1">Find clients and records</span>
+            <kbd className="rounded border border-border bg-surface-raised px-1.5 py-0.5 text-[10px]">
+              ⌘K
+            </kbd>
+          </Link>
+        </div>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/enquiries"
+            aria-label="Enquiries and notifications"
+            className="rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink"
+          >
+            <Bell size={18} />
+          </Link>
+          <Link
+            href="/content"
+            aria-label="Content help"
+            className="hidden rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink sm:inline-flex"
+          >
+            <CircleHelp size={18} />
+          </Link>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-haspopup="menu"
+              onClick={() => setOpen((value) => !value)}
+              className="ml-1 flex items-center gap-2 rounded-xl border border-border bg-surface-raised px-2 py-1.5 hover:bg-surface-sunken"
+            >
+              <span className="flex size-8 items-center justify-center rounded-lg bg-eucalyptus-100 text-xs font-bold text-eucalyptus-800">
+                {userName.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="hidden max-w-32 truncate text-sm font-medium text-ink sm:block">
+                {userName}
+              </span>
+              <ChevronDown size={14} className="text-ink-muted" />
+            </button>
+            {open ? (
+              <div
+                role="menu"
+                className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-surface-raised p-2 shadow-lg"
+              >
+                <div className="border-b border-border px-3 py-3">
+                  <p className="text-sm font-semibold text-ink">{userName}</p>
+                  <p className="text-xs text-ink-muted">{userRole}</p>
+                </div>
+                <Link
+                  role="menuitem"
+                  href="/security"
+                  className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                >
+                  <ShieldCheck size={16} />
+                  Security and MFA
+                </Link>
+                <Link
+                  role="menuitem"
+                  href="https://terioscoach.com"
+                  target="_blank"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                >
+                  <ExternalLink size={16} />
+                  View website
+                </Link>
+                <div className="mt-1 border-t border-border pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    loading={signingOut}
+                    onClick={onSignOut}
+                  >
+                    <UserRound size={16} />
+                    Sign out
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
-      <nav aria-label="Practice sections" className="overflow-x-auto border-t border-border/60 px-3 lg:hidden">
-        <ul className="flex min-w-max gap-1 py-2">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return <li key={href}><Link href={href} aria-current={active ? "page" : undefined} className={cn("flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink", active && "bg-primary/12 text-primary")}><Icon size={15} aria-hidden="true" />{label}</Link></li>;
-          })}
-        </ul>
-      </nav>
     </header>
   );
 }

@@ -113,15 +113,22 @@ type authResponse struct {
 
 // userBody is the contract identity shape: {id, email, role, name}.
 type userBody struct {
-	ID         string `json:"id"`
-	Email      string `json:"email"`
-	Role       string `json:"role"`
-	Name       string `json:"name"`
-	MFAEnabled bool   `json:"mfaEnabled"`
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	Role        string   `json:"role"`
+	Name        string   `json:"name"`
+	MFAEnabled  bool     `json:"mfaEnabled"`
+	RoleName    string   `json:"roleName,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 func newUserBody(u identity.User) userBody {
-	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name, MFAEnabled: u.MFAEnabled}
+	permissionList := u.Permissions.List()
+	permissions := make([]string, len(permissionList))
+	for index, permission := range permissionList {
+		permissions[index] = string(permission)
+	}
+	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name, MFAEnabled: u.MFAEnabled, RoleName: u.RoleName, Permissions: permissions}
 }
 
 func newAuthResponse(res ports.AuthResult) authResponse {

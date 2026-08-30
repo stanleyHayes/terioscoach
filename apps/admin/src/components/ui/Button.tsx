@@ -21,7 +21,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "terios-button relative isolate inline-flex select-none items-center justify-center gap-2 overflow-hidden rounded-full font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 active:scale-[.975] active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
+  "terios-button relative isolate inline-flex select-none items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 active:scale-[.975] active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
   primary:

@@ -27,7 +27,8 @@ type JWTIssuer struct {
 
 // accessClaims carries the identity — sub (user id) and role, nothing more.
 type accessClaims struct {
-	Role string `json:"role"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -52,6 +53,14 @@ func (i *JWTIssuer) IssueAccessToken(id identity.Identity) (string, time.Time, e
 	expiresAt := now.Add(i.ttl)
 	claims := accessClaims{
 		Role: string(id.Role),
+		Permissions: func() []string {
+			list := id.Permissions.List()
+			values := make([]string, len(list))
+			for index, permission := range list {
+				values[index] = string(permission)
+			}
+			return values
+		}(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   id.UserID,
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -85,7 +94,15 @@ func (i *JWTIssuer) VerifyAccessToken(token string) (identity.Identity, error) {
 	if claims.Subject == "" || !role.Valid() {
 		return identity.Identity{}, identity.ErrTokenInvalid
 	}
-	return identity.Identity{UserID: claims.Subject, Role: role}, nil
+	permissions := make([]identity.Permission, 0, len(claims.Permissions))
+	for _, raw := range claims.Permissions {
+		permission := identity.Permission(raw)
+		if !permission.Valid() {
+			return identity.Identity{}, identity.ErrTokenInvalid
+		}
+		permissions = append(permissions, permission)
+	}
+	return identity.Identity{UserID: claims.Subject, Role: role, Permissions: identity.NewPermissionSet(permissions...)}, nil
 }
 
 // NewRefreshToken returns a fresh opaque token and the SHA-256 hash to

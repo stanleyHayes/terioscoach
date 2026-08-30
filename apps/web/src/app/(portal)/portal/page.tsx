@@ -7,6 +7,7 @@ import { SessionRow } from "@/components/booking/SessionRow";
 import { useMyBookings } from "@/components/booking/use-my-bookings";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { splitBookings } from "@/lib/bookings";
 import { useAuth } from "@/lib/auth";
 import { browserTimeZone } from "@/lib/format";
@@ -25,14 +26,23 @@ export default function PortalOverviewPage() {
   const { bookings, servicesById, error, refresh } = useMyBookings();
 
   const upcoming = useMemo(
-    () => (bookings ? splitBookings(bookings).upcoming.slice(0, UPCOMING_PREVIEW_COUNT) : []),
+    () =>
+      bookings
+        ? splitBookings(bookings).upcoming.slice(0, UPCOMING_PREVIEW_COUNT)
+        : [],
     [bookings],
   );
 
   return (
-    <div data-portal-page="overview" className="animate-fade-in flex flex-col gap-8">
+    <div
+      data-portal-page="overview"
+      className="animate-fade-in flex flex-col gap-8"
+    >
       <Card className="relative overflow-hidden border-eucalyptus-800 bg-eucalyptus-900 p-8 text-sand-0 shadow-[0_24px_70px_rgba(28,51,40,.18)] sm:p-10">
-        <div aria-hidden="true" className="absolute -right-20 -top-24 size-64 rounded-full bg-eucalyptus-300/15 blur-3xl" />
+        <div
+          aria-hidden="true"
+          className="absolute -right-20 -top-24 size-64 rounded-full bg-eucalyptus-300/15 blur-3xl"
+        />
         <p className="relative text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">
           Overview
         </p>
@@ -40,8 +50,8 @@ export default function PortalOverviewPage() {
           Welcome back, {user?.name}
         </h1>
         <p className="relative mt-4 max-w-[60ch] text-base leading-[1.7] text-eucalyptus-200">
-          This is your private space for sessions, forms and documents — everything
-          between you and your practitioner, in one calm place.
+          This is your private space for sessions, forms and documents —
+          everything between you and your practitioner, in one calm place.
         </p>
       </Card>
 
@@ -65,13 +75,24 @@ export default function PortalOverviewPage() {
           <div role="status" aria-busy="true" className="flex flex-col gap-4">
             <span className="sr-only">Loading your sessions…</span>
             {[0, 1].map((index) => (
-              <span key={index} aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
+              <span
+                key={index}
+                aria-hidden="true"
+                className="h-24 rounded-lg bg-surface-sunken"
+              />
             ))}
           </div>
         ) : error ? (
           <Card>
-            <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
-              <CircleAlert size={20} aria-hidden="true" className="text-danger-ink" />
+            <div
+              role="alert"
+              className="flex flex-col items-center gap-3 py-6 text-center"
+            >
+              <CircleAlert
+                size={20}
+                aria-hidden="true"
+                className="text-danger-ink"
+              />
               <p className="text-sm leading-[1.55] text-ink-muted">{error}</p>
               <button
                 type="button"
@@ -84,26 +105,19 @@ export default function PortalOverviewPage() {
           </Card>
         ) : upcoming.length === 0 ? (
           <Card>
-            <div className="mx-auto flex max-w-[360px] flex-col items-center px-6 py-12 text-center">
-              <span
-                aria-hidden="true"
-                className="flex size-16 items-center justify-center rounded-full bg-surface-sunken text-ink-faint"
-              >
-                <Calendar size={32} />
-              </span>
-              <h3 className="mt-6 font-display text-[1.5rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink">
-                No sessions yet
-              </h3>
-              <p className="mt-2 text-sm leading-[1.55] text-ink-muted">
-                Your upcoming sessions will appear here. When you book one, this page
-                is where you will find it.
-              </p>
-              <div className="mt-6">
-                <Link href="/portal/book" className={buttonClasses({ size: "sm" })}>
+            <EmptyState
+              icon={<Calendar size={32} />}
+              title="No sessions yet"
+              description="Your upcoming sessions will appear here. When you book one, this page is where you will find it."
+              action={
+                <Link
+                  href="/portal/book"
+                  className={buttonClasses({ size: "sm" })}
+                >
                   Book a session
                 </Link>
-              </div>
-            </div>
+              }
+            />
           </Card>
         ) : (
           <ul className="flex flex-col gap-4">

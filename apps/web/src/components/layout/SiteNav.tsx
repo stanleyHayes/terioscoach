@@ -165,7 +165,7 @@ export function SiteNav() {
           role="dialog"
           aria-modal="true"
           aria-label="Site menu"
-          className="pointer-events-auto fixed inset-0 z-overlay flex flex-col overflow-hidden bg-eucalyptus-900 text-sand-0 lg:hidden"
+          className="pointer-events-auto fixed inset-0 z-overlay flex w-full max-w-full flex-col overflow-x-hidden overflow-y-hidden bg-eucalyptus-900 text-sand-0 lg:hidden"
         >
           <div className="flex h-[76px] items-center justify-between border-b border-sand-0/12 px-6">
             <span className="inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em]"><span className="relative flex size-9 items-center justify-center rounded-[.85rem] bg-sand-0 text-eucalyptus-900"><Leaf size={15} aria-hidden="true" /><span className="absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-eucalyptus-900 bg-clay-300" /></span>Terios Wellness</span>
@@ -179,7 +179,7 @@ export function SiteNav() {
             </button>
           </div>
 
-          <nav aria-label="Mobile" className="relative flex-1 overflow-y-auto px-6 py-8">
+          <nav aria-label="Mobile" className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-8">
             <div aria-hidden="true" className="absolute -right-24 top-8 size-64 rounded-full border border-eucalyptus-700" />
             <p className="mb-6 text-[10px] font-semibold uppercase tracking-[.16em] text-eucalyptus-300">Navigate the practice</p>
             <ul className="relative flex flex-col">
@@ -197,7 +197,7 @@ export function SiteNav() {
                         active ? "text-sand-0" : "text-eucalyptus-200 hover:text-sand-0",
                       )}
                     >
-                      <span><span className="mr-4 font-mono text-[10px] font-normal text-eucalyptus-400">{String(index + 1).padStart(2, '0')}</span>{link.label}</span>
+                      <span className="min-w-0"><span className="mr-4 font-mono text-[10px] font-normal text-eucalyptus-400">{String(index + 1).padStart(2, '0')}</span>{link.label}</span>
                       <ArrowUpRight aria-hidden="true" className="size-5 text-eucalyptus-400 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                     </Link>
                   </li>

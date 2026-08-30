@@ -48,12 +48,46 @@ func RequireRole(role identity.Role) func(http.Handler) http.Handler {
 				writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 				return
 			}
-			if id.Role != role {
+			if id.Role != role && !(role == identity.RolePractitioner && id.Role == identity.RoleStaff && id.HasPermission(permissionForRequest(r))) {
 				writeError(w, http.StatusForbidden, "forbidden", "insufficient role")
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+func permissionForRequest(r *http.Request) identity.Permission {
+	path := r.URL.Path
+	switch {
+	case strings.HasPrefix(path, "/v1/admin/team"):
+		return identity.PermissionTeam
+	case strings.HasPrefix(path, "/v1/admin/content"):
+		return identity.PermissionContent
+	case strings.HasPrefix(path, "/v1/admin/forms"):
+		return identity.PermissionForms
+	case strings.HasPrefix(path, "/v1/admin/enquiries"):
+		return identity.PermissionEnquiries
+	case strings.HasPrefix(path, "/v1/admin/reviews"):
+		return identity.PermissionReviews
+	case strings.HasPrefix(path, "/v1/admin/payments"):
+		return identity.PermissionPayments
+	case strings.HasPrefix(path, "/v1/admin/reports"), strings.HasPrefix(path, "/v1/admin/ops"):
+		return identity.PermissionReports
+	case strings.HasPrefix(path, "/v1/admin/documents"):
+		return identity.PermissionDocuments
+	case strings.HasPrefix(path, "/v1/admin/services"), strings.HasPrefix(path, "/v1/services"):
+		return identity.PermissionServices
+	case strings.HasPrefix(path, "/v1/admin/clients"), strings.HasPrefix(path, "/v1/clients"):
+		return identity.PermissionClients
+	case strings.Contains(path, "/notes"):
+		return identity.PermissionClients
+	case strings.HasPrefix(path, "/v1/sessions"):
+		return identity.PermissionSchedule
+	case strings.HasPrefix(path, "/v1/availability"), strings.HasPrefix(path, "/v1/admin/bookings"), strings.HasPrefix(path, "/v1/bookings"):
+		return identity.PermissionSchedule
+	default:
+		return identity.PermissionDashboard
 	}
 }
 

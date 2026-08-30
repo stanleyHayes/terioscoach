@@ -205,6 +205,9 @@ func (s *Service) LoginWithMFA(ctx context.Context, email, password, code string
 	if !ok {
 		return ports.AuthResult{}, s.recordFailure(ctx, identifier)
 	}
+	if user.Disabled {
+		return ports.AuthResult{}, identity.ErrAccountDisabled
+	}
 	if user.MFAEnabled {
 		if strings.TrimSpace(code) == "" {
 			return ports.AuthResult{}, identity.ErrMFARequired
@@ -359,6 +362,10 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (ports.AuthR
 	user, err := s.users.FindByID(ctx, session.UserID)
 	if err != nil {
 		return ports.AuthResult{}, err
+	}
+	if user.Disabled {
+		_ = s.sessions.RevokeAllForUser(ctx, user.ID)
+		return ports.AuthResult{}, identity.ErrAccountDisabled
 	}
 	if err := s.sessions.Revoke(ctx, hash); err != nil {
 		return ports.AuthResult{}, fmt.Errorf("revoke rotated session: %w", err)

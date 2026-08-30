@@ -76,6 +76,9 @@ export const dynamic = "force-dynamic";
 
 export default async function About() {
   const page = await getPage("about").catch(() => undefined);
+  const practitionerStory = page?.body?.trim()
+    ? page.body!.split(/\n\s*\n/).filter(Boolean)
+    : storyParagraphs;
   return (
     <>
       <PageIntro eyebrow="About" title="A practice built on calm, clinical care" description="Terios Wellness is the one-woman practice of a registered nurse and wellness coach — care that is credentialed, confidential and genuinely unhurried." />
@@ -101,7 +104,7 @@ export default async function About() {
               The practitioner
             </h2>
             <div className="mt-6 flex max-w-[68ch] flex-col gap-5">
-              {storyParagraphs.map((paragraph) => (
+              {practitionerStory.map((paragraph) => (
                 <p
                   key={paragraph.slice(0, 32)}
                   className="text-base leading-[1.6] text-ink-muted [text-wrap:pretty]"

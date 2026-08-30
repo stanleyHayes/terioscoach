@@ -42,6 +42,7 @@ import (
 	reviewsapp "github.com/xcreativs/terios/api/internal/app/reviews"
 	schedulingapp "github.com/xcreativs/terios/api/internal/app/scheduling"
 	signalingapp "github.com/xcreativs/terios/api/internal/app/signaling"
+	teamapp "github.com/xcreativs/terios/api/internal/app/team"
 	"github.com/xcreativs/terios/api/internal/config"
 	domainbooking "github.com/xcreativs/terios/api/internal/domain/booking"
 	"github.com/xcreativs/terios/api/internal/domain/notification"
@@ -94,6 +95,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		userRepository := mongodb.NewUserRepository(db)
+		teamService := teamapp.NewService(userRepository, userRepository, security.NewArgon2Hasher())
 
 		// Video signaling (CX-01) and its TURN credentials (CX-02).
 		// Rooms live in this process; see wsapi's package comment.
@@ -117,6 +120,7 @@ func run() error {
 				Limit:  cfg.AuthRateLimit,
 				Window: cfg.AuthRateLimitWindow,
 			})),
+			httpapi.WithTeam(teamService, authService),
 			httpapi.WithCatalog(buildCatalogService(db), authService),
 			httpapi.WithScheduling(buildSchedulingService(db), authService),
 			httpapi.WithBooking(buildBookingService(db, notifier), authService),
@@ -157,6 +161,7 @@ func run() error {
 				return errors.New("mongodb not configured")
 			}),
 			httpapi.WithAuth(nil),
+			httpapi.WithTeam(nil, nil),
 			httpapi.WithCatalog(nil, nil),
 			httpapi.WithScheduling(nil, nil),
 			httpapi.WithBooking(nil, nil),
@@ -232,12 +237,16 @@ func buildAuthService(cfg config.Config, db *mongo.Database) (*auth.Service, err
 	mfaKey := cfg.MFAEncryptionKey
 	if mfaKey == "" {
 		buf := make([]byte, 32)
-		if _, err := rand.Read(buf); err != nil { return nil, fmt.Errorf("generate dev MFA key: %w", err) }
+		if _, err := rand.Read(buf); err != nil {
+			return nil, fmt.Errorf("generate dev MFA key: %w", err)
+		}
 		mfaKey = base64.RawStdEncoding.EncodeToString(buf)
 		slog.Warn("MFA_ENCRYPTION_KEY not set; using ephemeral dev key, pending/enabled MFA enrollment will not survive restart")
 	}
 	protector, err := security.NewSecretBox(mfaKey)
-	if err != nil { return nil, fmt.Errorf("build MFA secret protector: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("build MFA secret protector: %w", err)
+	}
 
 	var resetMailer ports.Mailer = unconfiguredMailer{}
 	if cfg.ResendAPIKey != "" {

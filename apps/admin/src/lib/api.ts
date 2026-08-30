@@ -18,6 +18,8 @@ export interface User {
   role: string;
   name: string;
   mfaEnabled: boolean;
+  roleName?: string;
+  permissions?: string[];
 }
 
 export interface AuthTokens {
@@ -57,7 +59,10 @@ interface RequestOptions {
   accessToken?: string;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { method = "GET", body, accessToken } = options;
 
   let response: Response;
@@ -111,11 +116,17 @@ export const authApi = {
   },
 
   forgotPassword(email: string): Promise<void> {
-    return request<void>("/v1/auth/forgot-password", { method: "POST", body: { email } });
+    return request<void>("/v1/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
   },
 
   resetPassword(token: string, password: string): Promise<void> {
-    return request<void>("/v1/auth/reset-password", { method: "POST", body: { token, password } });
+    return request<void>("/v1/auth/reset-password", {
+      method: "POST",
+      body: { token, password },
+    });
   },
 
   refresh(refreshToken: string): Promise<AuthTokens> {
@@ -136,16 +147,26 @@ export const authApi = {
     return request<{ user: User }>("/v1/auth/me", { accessToken });
   },
 
-  beginMfa(accessToken: string): Promise<{ secret: string; otpAuthUrl: string }> {
+  beginMfa(
+    accessToken: string,
+  ): Promise<{ secret: string; otpAuthUrl: string }> {
     return request("/v1/auth/mfa/enroll", { method: "POST", accessToken });
   },
 
   confirmMfa(accessToken: string, code: string): Promise<void> {
-    return request("/v1/auth/mfa/confirm", { method: "POST", accessToken, body: { code } });
+    return request("/v1/auth/mfa/confirm", {
+      method: "POST",
+      accessToken,
+      body: { code },
+    });
   },
 
   disableMfa(accessToken: string, code: string): Promise<void> {
-    return request("/v1/auth/mfa/disable", { method: "POST", accessToken, body: { code } });
+    return request("/v1/auth/mfa/disable", {
+      method: "POST",
+      accessToken,
+      body: { code },
+    });
   },
 };
 
@@ -191,10 +212,16 @@ export function resetTokenRotation(tokens: AuthTokens | null = null): void {
 
 /** Rotates `session`'s refresh token, joining an in-flight rotation if there
  * is one and skipping it entirely if this caller is already behind. */
-function rotate(session: Session, callbacks: RefreshCallbacks): Promise<AuthTokens> {
+function rotate(
+  session: Session,
+  callbacks: RefreshCallbacks,
+): Promise<AuthTokens> {
   // Someone else already rotated past this caller's snapshot. Presenting the
   // token it holds is precisely the replay the server revokes for.
-  if (latestTokens !== null && latestTokens.refreshToken !== session.refreshToken) {
+  if (
+    latestTokens !== null &&
+    latestTokens.refreshToken !== session.refreshToken
+  ) {
     return Promise.resolve(latestTokens);
   }
   if (refreshInFlight !== null) {
@@ -233,7 +260,10 @@ export async function authedRequest<T>(
   options: Omit<RequestOptions, "accessToken"> = {},
 ): Promise<T> {
   try {
-    return await request<T>(path, { ...options, accessToken: session.accessToken });
+    return await request<T>(path, {
+      ...options,
+      accessToken: session.accessToken,
+    });
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401) {
       throw error;
@@ -251,7 +281,10 @@ export async function authedRequest<T>(
   }
 
   try {
-    return await request<T>(path, { ...options, accessToken: tokens.accessToken });
+    return await request<T>(path, {
+      ...options,
+      accessToken: tokens.accessToken,
+    });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       throw new SessionExpiredError();

@@ -378,3 +378,13 @@
 @media (prefers-reduced-motion: reduce) {
   .terios-route-stage { opacity: 1 !important; transform: none !important; filter: none !important; }
 }
+
+@keyframes terios-empty-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+  50% { transform: translate3d(0, -7px, 0) rotate(2deg); }
+}
+.terios-empty-icon {
+  animation: terios-empty-float 3.2s var(--ease-out) infinite;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+@media (prefers-reduced-motion: reduce) { .terios-empty-icon { animation: none; } }

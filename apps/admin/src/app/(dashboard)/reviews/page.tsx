@@ -4,8 +4,14 @@ import { CircleAlert, Star } from "lucide-react";
 import { useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/content/states";
 import { cn } from "@/lib/cn";
-import { REVIEW_STATUSES, reviewsApi, type Review, type ReviewStatus } from "@/lib/inbox";
+import {
+  REVIEW_STATUSES,
+  reviewsApi,
+  type Review,
+  type ReviewStatus,
+} from "@/lib/inbox";
 import { useAction, useResource } from "@/lib/use-resource";
 
 /**
@@ -41,7 +47,8 @@ export default function ReviewsPage() {
   const action = useAction();
 
   const items = reviews.data ?? [];
-  const visible = filter === "all" ? items : items.filter((r) => r.status === filter);
+  const visible =
+    filter === "all" ? items : items.filter((r) => r.status === filter);
   const pendingCount = items.filter((r) => r.status === "pending").length;
 
   async function moderate(review: Review, approve: boolean) {
@@ -69,7 +76,11 @@ export default function ReviewsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Filter by status"
+        >
           {(["all", ...REVIEW_STATUSES] as const).map((value) => (
             <button
               key={value}
@@ -94,13 +105,20 @@ export default function ReviewsPage() {
           role="alert"
           className="flex items-start gap-3 rounded-lg border border-danger-bg bg-danger-bg px-4 py-3"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-danger-ink" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-danger-ink"
+          />
           <p className="text-sm text-danger-ink">{action.error}</p>
         </div>
       ) : null}
 
       {reviews.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{reviews.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={reviews.refresh}>
@@ -112,28 +130,28 @@ export default function ReviewsPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-3">
           <span className="sr-only">Loading reviews…</span>
           {[0, 1, 2].map((i) => (
-            <span key={i} aria-hidden="true" className="h-28 rounded-lg bg-surface-sunken" />
+            <span
+              key={i}
+              aria-hidden="true"
+              className="h-28 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-border bg-surface-raised px-6 py-16 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-surface-sunken">
-            <Star size={26} aria-hidden="true" className="text-ink-faint" />
-          </span>
-          <h2 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">
-            {filter === "pending" ? "Nothing waiting" : "No reviews here"}
-          </h2>
-          <p className="mt-2 max-w-[42ch] text-sm leading-[1.55] text-ink-muted">
-            Clients can review a session once it is complete. Approved reviews
-            appear on the public site; nothing appears until you say so.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Star size={26} />}
+          title={filter === "pending" ? "Nothing waiting" : "No reviews here"}
+          body="Clients can review a session once it is complete. Approved reviews appear on the public site; nothing appears until you say so."
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {visible.map((review) => {
             const busy = action.pending === review.id;
             return (
-              <li key={review.id} className="rounded-lg border border-border bg-surface-raised p-5">
+              <li
+                key={review.id}
+                className="rounded-lg border border-border bg-surface-raised p-5"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
@@ -166,8 +184,14 @@ export default function ReviewsPage() {
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   {review.status !== "approved" ? (
-                    <Button size="sm" disabled={busy} onClick={() => void moderate(review, true)}>
-                      {review.status === "rejected" ? "Publish after all" : "Publish"}
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void moderate(review, true)}
+                    >
+                      {review.status === "rejected"
+                        ? "Publish after all"
+                        : "Publish"}
                     </Button>
                   ) : null}
                   {review.status !== "rejected" ? (
@@ -177,7 +201,9 @@ export default function ReviewsPage() {
                       disabled={busy}
                       onClick={() => void moderate(review, false)}
                     >
-                      {review.status === "approved" ? "Take off the site" : "Don't publish"}
+                      {review.status === "approved"
+                        ? "Take off the site"
+                        : "Don't publish"}
                     </Button>
                   ) : null}
                 </div>
@@ -202,7 +228,9 @@ function Stars({ rating }: { rating: number }) {
           key={star}
           size={16}
           aria-hidden="true"
-          className={cn(star <= filled ? "fill-primary text-primary" : "text-border-strong")}
+          className={cn(
+            star <= filled ? "fill-primary text-primary" : "text-border-strong",
+          )}
         />
       ))}
     </span>

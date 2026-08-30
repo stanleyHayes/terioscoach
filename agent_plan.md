@@ -10,7 +10,7 @@ One platform, three layers: **Public Website** + **Client Portal** (customer-fac
 
 | Decision | Choice |
 |---|---|
-| Backend | One Go API, hexagonal architecture (domain / ports / adapters), RBAC (`client`, `practitioner`) |
+| Backend | One Go API, hexagonal architecture (domain / ports / adapters), RBAC (`client`, `practitioner`, permission-scoped `staff`) |
 | Database | MongoDB (Atlas), daily backups, encryption at rest |
 | Email | Resend (confirmations, reminders, enquiries, feedback delivery) |
 | Media & documents | Cloudinary (signed uploads, client documents, CMS images) |
@@ -117,7 +117,7 @@ Public site + Client portal   Practice dashboard
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
-| ADM-01 | Admin shell: login (brand-styled), layout, route guards | FE-Admin | FND-03, BE-01 | Done (v1 scope cut: no sidebar-collapse/mobile-drawer variants yet) |
+| ADM-01 | Admin shell: login (brand-styled), fixed independently scrolling sidebar, collapsible desktop groups, mobile drawer, topbar menus, route guards | FE-Admin | FND-03, BE-01 | Done |
 | ADM-02 | Calendar & scheduling: custom calendar component, availability/buffer editor, booking states | FE-Admin | ADM-01, BE-04, BE-05 | Done — `WeekCalendar` built from scratch (no calendar library), `/availability` covers weekly windows, per-day buffers and time off, and every booking state transition is a separate explicit action. |
 | ADM-03 | Client records UI: full client file (details, sessions, notes, forms, docs, payments, feedback) | FE-Admin | ADM-01, BE-07 | Done |
 | ADM-04 | Session notes & feedback composer (private vs shared toggle) | FE-Admin | ADM-03, BE-08 | Done |
@@ -153,7 +153,7 @@ Public site + Client portal   Practice dashboard
 | LCH-02 | E2E suite: book → pay → remind → video → notes → feedback → review, across both apps | QA & Security | CX-11, ADM-11 | Done (API half runs now; browser half needs a deployment) — `journey_test.go` drives the whole story over real HTTP with in-memory adapters and runs on every commit. `e2e/` holds the Playwright suite for the same story across both apps, including a two-browser WebRTC test that asserts `bytesReceived > 0`, not just a visible `<video>`. It is gated on FND-05/FND-09 and a seeded practitioner account. |
 | LCH-03 | SonarQube gates green across api/web/admin; coverage threshold met | QA & Security | LCH-02 | Done bar the live gate (needs SONAR_TOKEN) — enforced coverage ratchets in CI: API 65% floor (measured with `-coverpkg=./internal/...`, which reports 68% where the naive figure reads 48%), web 65/67/60/64, admin 73/72/68/71. Added `govulncheck` and `npm audit --audit-level=high`, closing LCH-01's dependency-scanning gap. Ratchets rise, never fall. |
 | LCH-04 | Atlas daily backups verified + restore drill | DevOps | FND-05 | Procedure written; needs an Atlas cluster — `design/go-live-runbook.md` §1, including why M0 cannot satisfy this task at all and what the drill has to prove (a booking, its payment, and a signed form still reporting `integrityOk`). |
-| LCH-05 | Content placement: client copy, testimonials, service descriptions, images — refined and loaded via CMS | Design | ADM-07 | Blocked on the client's own copy, photographs and testimonials. The CMS that receives them is built and tested (ADM-07); this task is the content itself, which cannot be invented. |
+| LCH-05 | Content placement: supplied copy, testimonials, service descriptions, portraits, blog images and logo masters refined and loaded through CMS-ready paths | Design | ADM-07 | Done — the supplied archive was fully inventoried; 28 optimized portraits, 20 blog images and six final SVG logo variants are retained. Page copy and initial posts are idempotently seeded; testimonials remain approve-before-publish. See `design/brand-assets.md`. |
 | LCH-06 | Load/performance pass: booking concurrency, video room stress, Lighthouse | QA & Security | LCH-02 | Booking concurrency done — `concurrency_test.go` runs 32 simultaneous bookings of one slot under `-race`: exactly one 201, the rest a clean 409 `slot_unavailable`, plus repeated-tap, unrelated-slot and read-under-write cases. Video stress and Lighthouse need a deployment (FND-05/FND-09). |
 | LCH-07 | Practitioner training & handover runbook | Program | All above | Done — `design/handover-runbook.md`, written for the practitioner rather than an engineer: what each screen is for, which actions cannot be undone and why, the private-vs-shared notes rule, and the three symptoms that should be reported rather than worked around. |
 | LCH-08 | Domain cutover (Google-registered domain → Vercel/Render), SSL, go-live | DevOps | LCH-01–06 | Runbook written; needs the domain and DNS access — `design/go-live-runbook.md` §7: lower the TTL the day before, verify in a fixed order, switch Paystack to live keys last and refund the first real payment. Rollback is a DNS revert with nothing to undo in the database. |
@@ -258,6 +258,17 @@ The first redesign pass was rejected because it leaned too heavily on shared pri
 | PROD-03 | Prevent indexing and caching of private/auth surfaces | Done | Admin emits metadata and response-header noindex/noarchive plus private no-store; customer portal/auth group emits noindex metadata; recovery routes excluded from robots |
 | SEO-01 | Strengthen link-preview presentation | Done | Generated 1200×630 branded Open Graph image is automatically attached through Next metadata conventions and statically verified in production build |
 | SEO-02 | Re-verify canonical, robots and sitemap controls | Done | Focused robots/sitemap suite 6/6; preview indexing remains opt-out and portal/recovery routes stay outside sitemap |
+
+## 20. Production content, admin access and interaction hardening (30 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| PROD-04 | Make MFA opt-in and provide scannable authenticator enrollment with segmented OTP entry | Done | Enrollment does not activate MFA until a valid TOTP is confirmed; QR and manual secret are shown; six single-character OTP fields support paste and focus advance |
+| PROD-05 | Add staff user, role and permission management | Done | Owner-managed `/team`; staff accounts, named role presets, 12 granular permissions, disable control, generated one-time password, JWT claims and server-side route enforcement |
+| PROD-06 | Fix the admin shell and mobile navigation behavior | Done | Sidebar and main canvas scroll independently within `h-dvh`; grouped navigation collapses; mobile drawer stays viewport-bound without horizontal page overflow; MFA actions do not wrap |
+| PROD-07 | Replace typed availability dates/times with custom controls | Done | Custom month-grid date picker and 15-minute time picker with min-date protection, outside-click/Escape close behavior and focused interaction tests |
+| PROD-08 | Standardize empty states | Done | Shared animated icon/title/description/action states across admin, marketing and portal routes; animation is disabled under `prefers-reduced-motion` |
+| PROD-09 | Integrate the supplied brand archive | Done | 28 optimized portraits, 20 blog images, six final vectors and two legal templates retained; all 48 editorial images appear in the CMS picker; disposition documented in `design/brand-assets.md` |
 | PROD-04 | Run first dependency and production-build gate | Done | npm audit reports 0 vulnerabilities in web/admin; both production builds pass; relevant API packages pass; local `govulncheck` binary unavailable but CI already runs it |
 | PROD-05 | Live edge/TLS/email/Lighthouse verification | Blocked on deployment | Must be run against real origins; tracked in `design/security-review.md` open items |
 | PROD-06 | Strict nonce-based browser CSP | Done | See §20 |

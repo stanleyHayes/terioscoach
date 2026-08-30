@@ -113,6 +113,12 @@ func mapIdentityError(err error) (apiError, bool) {
 	case errors.Is(err, identity.ErrInvalidCredentials):
 		// Uniform message on purpose: no user enumeration.
 		return apiError{http.StatusUnauthorized, "invalid_credentials", "invalid email or password"}, true
+	case errors.Is(err, identity.ErrAccountDisabled):
+		return apiError{http.StatusForbidden, "account_disabled", "this staff account has been disabled"}, true
+	case errors.Is(err, identity.ErrLastOwner):
+		return apiError{http.StatusConflict, "owner_protected", err.Error()}, true
+	case errors.Is(err, identity.ErrUserNotFound):
+		return apiError{http.StatusNotFound, "user_not_found", "staff member not found"}, true
 	case errors.Is(err, identity.ErrMFARequired):
 		return apiError{http.StatusUnauthorized, "mfa_required", "enter the code from your authenticator app"}, true
 	case errors.Is(err, identity.ErrMFAInvalid):
@@ -131,6 +137,8 @@ func mapIdentityError(err error) (apiError, bool) {
 		return apiError{http.StatusBadRequest, "validation_error", "a valid email address is required"}, true
 	case errors.Is(err, identity.ErrPasswordTooShort):
 		return apiError{http.StatusBadRequest, "validation_error", "password must be at least 12 characters"}, true
+	case errors.Is(err, identity.ErrInvalidRole), errors.Is(err, identity.ErrInvalidPermission):
+		return validationError(err)
 	}
 	return apiError{}, false
 }

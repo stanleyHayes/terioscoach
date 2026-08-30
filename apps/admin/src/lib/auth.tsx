@@ -11,7 +11,7 @@
  * body, so an httpOnly cookie session is not available without a backend
  * change; localStorage is the accepted trade-off for v1.)
  *
- * Role enforcement: only users with role "practitioner" may use this app —
+ * Role enforcement: only practitioners and permission-scoped staff may use this app —
  * enforced both at login and when restoring a session via GET /v1/auth/me.
  */
 
@@ -35,11 +35,12 @@ import {
 } from "@/lib/api";
 
 export const PRACTITIONER_ROLE = "practitioner";
+export const STAFF_ROLE = "staff";
 export const REFRESH_TOKEN_KEY = "terios.admin.refreshToken";
 export const SIGN_OUT_MESSAGE_KEY = "terios.admin.signOutMessage";
 
 export const NOT_PRACTITIONER_MESSAGE =
-  "This account doesn't have practitioner access. Sign in with the practitioner account for this practice.";
+  "This account doesn't have practice-dashboard access. Sign in with an owner or staff account for this practice.";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -118,10 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const nextTokens = await authApi.refresh(refreshToken);
         const { user: nextUser } = await authApi.me(nextTokens.accessToken);
-        if (nextUser.role !== PRACTITIONER_ROLE) {
+        if (![PRACTITIONER_ROLE, STAFF_ROLE].includes(nextUser.role)) {
           // Best-effort server-side invalidation of the rotated token.
           await authApi.logout(nextTokens.refreshToken).catch(() => {});
-          throw new ApiError(403, "not_a_practitioner", NOT_PRACTITIONER_MESSAGE);
+          throw new ApiError(
+            403,
+            "not_a_practitioner",
+            NOT_PRACTITIONER_MESSAGE,
+          );
         }
         if (!cancelled) applySession(nextTokens, nextUser);
       } catch (error) {
@@ -146,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string, code?: string) => {
       const response = await authApi.login(email, password, code);
-      if (response.user.role !== PRACTITIONER_ROLE) {
+      if (![PRACTITIONER_ROLE, STAFF_ROLE].includes(response.user.role)) {
         // Invalidate the just-issued refresh token; this account may not hold
         // a session on the practice dashboard.
         await authApi.logout(response.refreshToken).catch(() => {});
@@ -176,7 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const setMfaEnabled = useCallback((enabled: boolean) => {
-    setUser((current) => current ? { ...current, mfaEnabled: enabled } : current);
+    setUser((current) =>
+      current ? { ...current, mfaEnabled: enabled } : current,
+    );
   }, []);
 
   // Handed to authedRequest callers: keeps the in-memory token pair (and the

@@ -4,6 +4,7 @@ import { CircleAlert, Mail, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/content/states";
 import { IconButton } from "@/components/ui/IconButton";
 import { cn } from "@/lib/cn";
 import {
@@ -49,7 +50,8 @@ export default function EnquiriesPage() {
   const action = useAction();
 
   const items = enquiries.data ?? [];
-  const visible = filter === "all" ? items : items.filter((e) => e.status === filter);
+  const visible =
+    filter === "all" ? items : items.filter((e) => e.status === filter);
   const unread = items.filter((e) => e.status === "new").length;
 
   /** Applies a triage change, replacing the row in place so the list does
@@ -72,7 +74,9 @@ export default function EnquiriesPage() {
       enquiriesApi.remove(session, callbacks, enquiry.id).then(() => true),
     );
     if (done) {
-      enquiries.set((current) => (current ?? []).filter((e) => e.id !== enquiry.id));
+      enquiries.set((current) =>
+        (current ?? []).filter((e) => e.id !== enquiry.id),
+      );
       setOpenId((current) => (current === enquiry.id ? null : current));
     }
   }
@@ -101,7 +105,11 @@ export default function EnquiriesPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Filter by status"
+        >
           {(["all", ...ENQUIRY_STATUSES] as const).map((value) => (
             <button
               key={value}
@@ -126,13 +134,20 @@ export default function EnquiriesPage() {
           role="alert"
           className="flex items-start gap-3 rounded-lg border border-danger-bg bg-danger-bg px-4 py-3"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-danger-ink" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-danger-ink"
+          />
           <p className="text-sm text-danger-ink">{action.error}</p>
         </div>
       ) : null}
 
       {enquiries.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{enquiries.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={enquiries.refresh}>
@@ -144,23 +159,27 @@ export default function EnquiriesPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-3">
           <span className="sr-only">Loading enquiries…</span>
           {[0, 1, 2].map((i) => (
-            <span key={i} aria-hidden="true" className="h-20 rounded-lg bg-surface-sunken" />
+            <span
+              key={i}
+              aria-hidden="true"
+              className="h-20 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-border bg-surface-raised px-6 py-16 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-surface-sunken">
-            <Mail size={26} aria-hidden="true" className="text-ink-faint" />
-          </span>
-          <h2 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">
-            {filter === "all" ? "No enquiries yet" : `Nothing marked ${statusLabel[filter].toLowerCase()}`}
-          </h2>
-          <p className="mt-2 max-w-[42ch] text-sm leading-[1.55] text-ink-muted">
-            {filter === "all"
+        <EmptyState
+          icon={<Mail size={26} />}
+          title={
+            filter === "all"
+              ? "No enquiries yet"
+              : `Nothing marked ${statusLabel[filter].toLowerCase()}`
+          }
+          body={
+            filter === "all"
               ? "Messages from the website's contact form arrive here, and you are emailed when one does."
-              : "Try another filter to see the rest of the inbox."}
-          </p>
-        </div>
+              : "Try another filter to see the rest of the inbox."
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {visible.map((enquiry) => {
@@ -180,7 +199,9 @@ export default function EnquiriesPage() {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-base font-semibold text-ink">{enquiry.name}</span>
+                      <span className="text-base font-semibold text-ink">
+                        {enquiry.name}
+                      </span>
                       <Badge variant={statusTone[enquiry.status]}>
                         {statusLabel[enquiry.status]}
                       </Badge>
@@ -200,7 +221,11 @@ export default function EnquiriesPage() {
                   </time>
                 </button>
 
-                <div id={`enquiry-${enquiry.id}`} hidden={!expanded} className="border-t border-border p-5">
+                <div
+                  id={`enquiry-${enquiry.id}`}
+                  hidden={!expanded}
+                  className="border-t border-border p-5"
+                >
                   <dl className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
@@ -220,7 +245,9 @@ export default function EnquiriesPage() {
                         <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
                           Phone
                         </dt>
-                        <dd className="mt-1 text-sm text-ink">{enquiry.phone}</dd>
+                        <dd className="mt-1 text-sm text-ink">
+                          {enquiry.phone}
+                        </dd>
                       </div>
                     ) : null}
                   </dl>
@@ -230,7 +257,9 @@ export default function EnquiriesPage() {
                   </p>
 
                   <div className="mt-6 flex flex-wrap items-center gap-2">
-                    {ENQUIRY_STATUSES.filter((status) => status !== enquiry.status).map((status) => (
+                    {ENQUIRY_STATUSES.filter(
+                      (status) => status !== enquiry.status,
+                    ).map((status) => (
                       <Button
                         key={status}
                         variant="secondary"

@@ -64,7 +64,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center rounded-lg border border-border bg-surface-raised px-6 py-16 text-center">
-      <span className="flex size-14 items-center justify-center rounded-full bg-surface-sunken">
+      <span aria-hidden="true" className="terios-empty-icon flex size-14 items-center justify-center rounded-full bg-surface-sunken text-ink-faint">
         {icon}
       </span>
       <h3 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">{title}</h3>

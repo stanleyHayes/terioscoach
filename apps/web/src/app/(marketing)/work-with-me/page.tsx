@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, CalendarCheck, Clock3, CreditCard, ListChecks } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarCheck,
+  Clock3,
+  CreditCard,
+  ListChecks,
+} from "lucide-react";
 import { Section } from "@/components/marketing/Section";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { listServices } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatDuration, formatMoney } from "@/lib/format";
@@ -53,7 +60,8 @@ export default async function WorkWithMePage({
   // ?service=<id> (from a "Book this" card on /services) pre-highlights the
   // chosen service in the list below.
   const { service: serviceParam } = await searchParams;
-  const selectedId = typeof serviceParam === "string" ? serviceParam : undefined;
+  const selectedId =
+    typeof serviceParam === "string" ? serviceParam : undefined;
 
   const [services, page] = await Promise.all([
     listServices().catch(() => null),
@@ -62,7 +70,14 @@ export default async function WorkWithMePage({
 
   return (
     <>
-      <PageIntro eyebrow="Work with me" title="Begin with a single step" description="Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal." />
+      <PageIntro
+        eyebrow="Work with me"
+        title="Begin with a single step"
+        description={
+          page?.body ||
+          "Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal."
+        }
+      />
 
       <Section containerClassName="pt-0 pb-0">
         <div className="relative aspect-[3/2] max-h-[520px] overflow-hidden rounded-[2rem] bg-eucalyptus-50 lg:aspect-[21/9]">
@@ -109,9 +124,13 @@ export default async function WorkWithMePage({
             </div>
           </div>
         ) : services.length === 0 ? (
-          <p className="mt-12 text-sm leading-[1.55] text-ink-muted">
-            The service menu is being refreshed. Check back soon.
-          </p>
+          <div className="mt-12">
+            <EmptyState
+              icon={<ListChecks className="size-8" />}
+              title="The service menu is being refreshed"
+              description="When a service is published, it appears here. Check back soon."
+            />
+          </div>
         ) : (
           <ul className="mt-12 flex flex-col gap-4">
             {services.map((service, index) => {
@@ -127,7 +146,12 @@ export default async function WorkWithMePage({
                         : "border-border/80 bg-surface-raised text-ink",
                     )}
                   >
-                    <span className="terios-choice-index font-display" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                    <span
+                      className="terios-choice-index font-display"
+                      aria-hidden="true"
+                    >
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
                     <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
                       <div className="flex flex-wrap items-center gap-3">
                         <h3 className="font-display text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">
@@ -148,12 +172,18 @@ export default async function WorkWithMePage({
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:border-l sm:px-6 sm:py-7 group-[.is-selected]:border-white/15">
-                      <span className="font-display text-xl font-medium tabular-nums">{formatMoney(service.priceKobo, service.currency)}</span>
+                      <span className="font-display text-xl font-medium tabular-nums">
+                        {formatMoney(service.priceKobo, service.currency)}
+                      </span>
                       {/* Straight into the booking flow (WEB-09), service
                           preselected. */}
                       <Link
                         href={`/portal/book?service=${service.id}`}
-                        className={cn(buttonClasses({ size: "sm" }), selected && "border-white/20 bg-sand-0 text-eucalyptus-900 hover:bg-sand-100")}
+                        className={cn(
+                          buttonClasses({ size: "sm" }),
+                          selected &&
+                            "border-white/20 bg-sand-0 text-eucalyptus-900 hover:bg-sand-100",
+                        )}
                       >
                         Choose <ArrowUpRight size={15} aria-hidden="true" />
                       </Link>

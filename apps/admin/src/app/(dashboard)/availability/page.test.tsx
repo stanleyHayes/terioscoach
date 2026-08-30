@@ -58,6 +58,19 @@ function saveButton() {
   return screen.getByRole("button", { name: "Save changes" });
 }
 
+function chooseTime(region: HTMLElement, label: string, display: string) {
+  fireEvent.click(within(region).getByLabelText(label));
+  fireEvent.click(within(region).getByRole("option", { name: display }));
+}
+
+function chooseDate(label: string, value: string) {
+  fireEvent.click(screen.getByLabelText(label));
+  if (!screen.queryByRole("button", { name: `Choose ${value}` })) {
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  }
+  fireEvent.click(screen.getByRole("button", { name: `Choose ${value}` }));
+}
+
 afterEach(() => {
   logoutMock.mockReset();
   getRulesMock.mockReset();
@@ -74,8 +87,8 @@ describe("AvailabilityPage", () => {
     expect(
       (within(monday).getByRole("switch", { name: "Monday open" }).getAttribute("aria-checked")),
     ).toBe("true");
-    expect((within(monday).getByLabelText("Start") as HTMLInputElement).value).toBe("09:00");
-    expect((within(monday).getByLabelText("End") as HTMLInputElement).value).toBe("17:00");
+    expect(within(monday).getByLabelText("Start").textContent).toContain("9:00 AM");
+    expect(within(monday).getByLabelText("End").textContent).toContain("5:00 PM");
     expect(
       (within(monday).getByLabelText("Buffer (minutes)") as HTMLInputElement).value,
     ).toBe("15");
@@ -99,9 +112,7 @@ describe("AvailabilityPage", () => {
 
     expect((saveButton() as HTMLButtonElement).disabled).toBe(true);
 
-    fireEvent.change(within(mondayRegion()).getByLabelText("End"), {
-      target: { value: "12:30" },
-    });
+    chooseTime(mondayRegion(), "End", "12:30 PM");
     expect((saveButton() as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(saveButton());
@@ -136,12 +147,8 @@ describe("AvailabilityPage", () => {
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
-    fireEvent.change(within(mondayRegion()).getByLabelText("Start"), {
-      target: { value: "18:00" },
-    });
-    fireEvent.change(within(mondayRegion()).getByLabelText("End"), {
-      target: { value: "09:00" },
-    });
+    chooseTime(mondayRegion(), "Start", "6:00 PM");
+    chooseTime(mondayRegion(), "End", "9:00 AM");
     fireEvent.click(saveButton());
 
     expect(
@@ -158,12 +165,8 @@ describe("AvailabilityPage", () => {
     await screen.findByRole("region", { name: "Monday" });
 
     fireEvent.click(within(mondayRegion()).getByRole("button", { name: "Add window" }));
-    fireEvent.change(within(mondayRegion()).getByLabelText("Window 2 start"), {
-      target: { value: "16:00" },
-    });
-    fireEvent.change(within(mondayRegion()).getByLabelText("Window 2 end"), {
-      target: { value: "18:00" },
-    });
+    chooseTime(mondayRegion(), "Window 2 start", "4:00 PM");
+    chooseTime(mondayRegion(), "Window 2 end", "6:00 PM");
     fireEvent.click(saveButton());
 
     expect(
@@ -215,12 +218,8 @@ describe("AvailabilityPage", () => {
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
-    fireEvent.change(screen.getByLabelText(/^Start date/), {
-      target: { value: "2026-09-01" },
-    });
-    fireEvent.change(screen.getByLabelText(/^End date/), {
-      target: { value: "2026-09-03" },
-    });
+    chooseDate("Start date", "2026-09-01");
+    chooseDate("End date", "2026-09-03");
     fireEvent.change(screen.getByLabelText(/Reason/), {
       target: { value: "Family trip" },
     });
@@ -238,22 +237,16 @@ describe("AvailabilityPage", () => {
     expect(screen.getByText("Time off saved.")).toBeTruthy();
   });
 
-  it("validates time-off dates before submit", async () => {
+  it("prevents an end date before the selected start date", async () => {
     getRulesMock.mockResolvedValue(RULES);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
-    fireEvent.change(screen.getByLabelText(/^Start date/), {
-      target: { value: "2026-09-10" },
-    });
-    fireEvent.change(screen.getByLabelText(/^End date/), {
-      target: { value: "2026-09-05" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add time off" }));
-
-    expect(
-      screen.getByText("The end date must be on or after the start date."),
-    ).toBeTruthy();
+    chooseDate("Start date", "2026-09-10");
+    // The end picker prevents dates before the selected start.
+    fireEvent.click(screen.getByLabelText("End date"));
+    expect((screen.getByRole("button", { name: "Choose 2026-09-05" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByLabelText("End date").textContent).toContain("Choose date");
     expect(addTimeOffMock).not.toHaveBeenCalled();
   });
 });

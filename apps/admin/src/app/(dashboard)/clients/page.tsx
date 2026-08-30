@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/content/states";
 import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 import { cn } from "@/lib/cn";
 import { clientsApi, type ClientSummary } from "@/lib/clients";
@@ -33,34 +34,46 @@ export default function ClientsPage() {
 
   return (
     <div data-admin-page="clients" className="flex flex-col gap-6">
-      <AdminPageHeader eyebrow="Care directory" title="Clients" description={items.length === 0 ? "Everyone who books becomes a client here." : `${items.length} ${items.length === 1 ? "client" : "clients"} in your practice.`} actions={
-        <div className="relative w-full max-w-[280px]">
-          <label htmlFor="client-search" className="sr-only">
-            Search clients
-          </label>
-          <Search
-            size={16}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
-          />
-          <input
-            id="client-search"
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Name, email or tag"
-            autoComplete="off"
-            className={cn(
-              "h-9 w-full rounded-md border border-border bg-surface-raised pl-9 pr-3 text-sm text-ink",
-              "placeholder:text-ink-faint transition-colors duration-instant ease-out",
-              "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
-            )}
-          />
-        </div>
-      } />
+      <AdminPageHeader
+        eyebrow="Care directory"
+        title="Clients"
+        description={
+          items.length === 0
+            ? "Everyone who books becomes a client here."
+            : `${items.length} ${items.length === 1 ? "client" : "clients"} in your practice.`
+        }
+        actions={
+          <div className="relative w-full max-w-[280px]">
+            <label htmlFor="client-search" className="sr-only">
+              Search clients
+            </label>
+            <Search
+              size={16}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
+            <input
+              id="client-search"
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name, email or tag"
+              autoComplete="off"
+              className={cn(
+                "h-9 w-full rounded-md border border-border bg-surface-raised pl-9 pr-3 text-sm text-ink",
+                "placeholder:text-ink-faint transition-colors duration-instant ease-out",
+                "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+              )}
+            />
+          </div>
+        }
+      />
 
       {clients.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{clients.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={clients.refresh}>
@@ -72,23 +85,23 @@ export default function ClientsPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-2">
           <span className="sr-only">Loading clients…</span>
           {[0, 1, 2, 3].map((i) => (
-            <span key={i} aria-hidden="true" className="h-14 rounded-lg bg-surface-sunken" />
+            <span
+              key={i}
+              aria-hidden="true"
+              className="h-14 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-border bg-surface-raised px-6 py-16 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-surface-sunken">
-            <Users size={26} aria-hidden="true" className="text-ink-faint" />
-          </span>
-          <h2 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">
-            {items.length === 0 ? "No clients yet" : "Nobody matches that"}
-          </h2>
-          <p className="mt-2 max-w-[42ch] text-sm leading-[1.55] text-ink-muted">
-            {items.length === 0
+        <EmptyState
+          icon={<Users size={26} />}
+          title={items.length === 0 ? "No clients yet" : "Nobody matches that"}
+          body={
+            items.length === 0
               ? "A client appears here as soon as they book their first session."
-              : "Try part of a name, an email address, or a tag you have used."}
-          </p>
-        </div>
+              : "Try part of a name, an email address, or a tag you have used."
+          }
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-surface-raised">
           <table className="w-full border-collapse text-left">
@@ -97,23 +110,38 @@ export default function ClientsPage() {
             </caption>
             <thead>
               <tr className="border-b border-border">
-                <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                <th
+                  scope="col"
+                  className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
+                >
                   Client
                 </th>
-                <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                <th
+                  scope="col"
+                  className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
+                >
                   Sessions
                 </th>
-                <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                <th
+                  scope="col"
+                  className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
+                >
                   Last seen
                 </th>
-                <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                <th
+                  scope="col"
+                  className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
+                >
                   Tags
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {visible.map((client) => (
-                <tr key={client.id} className="transition-colors duration-instant ease-out hover:bg-surface-sunken">
+                <tr
+                  key={client.id}
+                  className="transition-colors duration-instant ease-out hover:bg-surface-sunken"
+                >
                   <td className="px-5 py-4">
                     <Link
                       href={`/clients/${client.id}`}
@@ -121,17 +149,24 @@ export default function ClientsPage() {
                     >
                       {client.name}
                     </Link>
-                    <span className="mt-0.5 block text-[13px] text-ink-muted">{client.email}</span>
+                    <span className="mt-0.5 block text-[13px] text-ink-muted">
+                      {client.email}
+                    </span>
                   </td>
-                  <td className="px-5 py-4 text-sm tabular-nums text-ink">{client.totalSessions}</td>
+                  <td className="px-5 py-4 text-sm tabular-nums text-ink">
+                    {client.totalSessions}
+                  </td>
                   <td className="px-5 py-4 text-sm tabular-nums text-ink-muted">
                     {client.lastSessionAt ? (
                       <time dateTime={client.lastSessionAt}>
-                        {new Date(client.lastSessionAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {new Date(client.lastSessionAt).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )}
                       </time>
                     ) : (
                       <span className="text-ink-faint">Not yet</span>
@@ -165,7 +200,10 @@ export default function ClientsPage() {
 
 /** Local filter across name, email and tags — case- and accent-insensitive
  * so "Sero" finds "Séro". */
-export function filterClients(clients: ClientSummary[], query: string): ClientSummary[] {
+export function filterClients(
+  clients: ClientSummary[],
+  query: string,
+): ClientSummary[] {
   const needle = normalize(query);
   if (!needle) return clients;
   return clients.filter(

@@ -38,6 +38,9 @@ type userDoc struct {
 	PasswordResetExpiresAt bson.DateTime `bson:"passwordResetExpiresAt,omitempty"`
 	MFASecret              string        `bson:"mfaSecret,omitempty"`
 	MFAEnabled             bool          `bson:"mfaEnabled,omitempty"`
+	RoleName               string        `bson:"roleName,omitempty"`
+	Permissions            []string      `bson:"permissions,omitempty"`
+	Disabled               bool          `bson:"disabled,omitempty"`
 }
 
 func (r *UserRepository) SetMFAPending(ctx context.Context, userID, encryptedSecret string) error {
@@ -120,6 +123,9 @@ func (r *UserRepository) Create(ctx context.Context, user identity.User) (identi
 		CreatedAt:    bson.NewDateTimeFromTime(user.CreatedAt),
 		MFASecret:    user.MFASecret,
 		MFAEnabled:   user.MFAEnabled,
+		RoleName:     user.RoleName,
+		Permissions:  permissionStrings(user.Permissions.List()),
+		Disabled:     user.Disabled,
 	}
 	res, err := r.coll.InsertOne(ctx, doc)
 	if err != nil {
@@ -153,6 +159,39 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (identity.User
 	return r.findOne(ctx, bson.M{"_id": oid})
 }
 
+func (r *UserRepository) ListStaff(ctx context.Context) ([]identity.User, error) {
+	cursor, err := r.coll.Find(ctx, bson.M{"role": bson.M{"$in": []string{string(identity.RolePractitioner), string(identity.RoleStaff)}}}, options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}}))
+	if err != nil {
+		return nil, fmt.Errorf("list staff: %w", err)
+	}
+	defer cursor.Close(ctx)
+	var docs []userDoc
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode staff: %w", err)
+	}
+	users := make([]identity.User, 0, len(docs))
+	for _, doc := range docs {
+		users = append(users, userFromDoc(doc))
+	}
+	return users, nil
+}
+
+func (r *UserRepository) UpdateStaffAccess(ctx context.Context, userID, name, roleName string, permissions []identity.Permission, disabled bool) (identity.User, error) {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	var doc userDoc
+	err = r.coll.FindOneAndUpdate(ctx, bson.M{"_id": oid, "role": string(identity.RoleStaff)}, bson.M{"$set": bson.M{"name": name, "roleName": roleName, "permissions": permissionStrings(permissions), "disabled": disabled}}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	if err != nil {
+		return identity.User{}, fmt.Errorf("update staff access: %w", err)
+	}
+	return userFromDoc(doc), nil
+}
+
 func (r *UserRepository) findOne(ctx context.Context, filter bson.M) (identity.User, error) {
 	var doc userDoc
 	err := r.coll.FindOne(ctx, filter).Decode(&doc)
@@ -162,6 +201,10 @@ func (r *UserRepository) findOne(ctx context.Context, filter bson.M) (identity.U
 		}
 		return identity.User{}, fmt.Errorf("find user: %w", err)
 	}
+	return userFromDoc(doc), nil
+}
+
+func userFromDoc(doc userDoc) identity.User {
 	return identity.User{
 		ID:           doc.ID.Hex(),
 		Email:        doc.Email,
@@ -171,5 +214,26 @@ func (r *UserRepository) findOne(ctx context.Context, filter bson.M) (identity.U
 		CreatedAt:    doc.CreatedAt.Time(),
 		MFASecret:    doc.MFASecret,
 		MFAEnabled:   doc.MFAEnabled,
-	}, nil
+		RoleName:     doc.RoleName,
+		Permissions:  identity.NewPermissionSet(permissionsFromStrings(doc.Permissions)...),
+		Disabled:     doc.Disabled,
+	}
+}
+
+func permissionStrings(values []identity.Permission) []string {
+	out := make([]string, len(values))
+	for i, value := range values {
+		out[i] = string(value)
+	}
+	return out
+}
+func permissionsFromStrings(values []string) []identity.Permission {
+	out := make([]identity.Permission, 0, len(values))
+	for _, value := range values {
+		permission := identity.Permission(value)
+		if permission.Valid() {
+			out = append(out, permission)
+		}
+	}
+	return out
 }

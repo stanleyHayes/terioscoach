@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
 import { Switch } from "@/components/ui/Switch";
 import { TextInput } from "@/components/ui/TextInput";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { ApiError, SessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
@@ -29,8 +31,8 @@ import {
 /**
  * Availability editor (ADM-02, contract BE-04).
  *
- * Weekly rules: one row per weekday — an open/closed Switch, HH:MM text
- * window inputs (custom, validated; native time inputs are forbidden), and a
+ * Weekly rules: one row per weekday — an open/closed Switch, custom time
+ * pickers (native time inputs are forbidden), and a
  * per-day bufferMinutes field. PUT /v1/availability/rules replaces the whole
  * week, so "Save changes" sends every open day and omits closed ones. Dirty
  * tracking disables the button while the form matches the last saved state.
@@ -103,7 +105,9 @@ function draftsFromRules(rules: AvailabilityRule[]): DayDraft[] {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+  return error instanceof ApiError
+    ? error.message
+    : "Something went wrong. Try again.";
 }
 
 export default function AvailabilityPage() {
@@ -120,7 +124,10 @@ export default function AvailabilityPage() {
   const [timeOffStart, setTimeOffStart] = useState("");
   const [timeOffEnd, setTimeOffEnd] = useState("");
   const [timeOffReason, setTimeOffReason] = useState("");
-  const [timeOffErrors, setTimeOffErrors] = useState<{ start?: string; end?: string }>({});
+  const [timeOffErrors, setTimeOffErrors] = useState<{
+    start?: string;
+    end?: string;
+  }>({});
   const [timeOffError, setTimeOffError] = useState<string | null>(null);
   const [addingTimeOff, setAddingTimeOff] = useState(false);
 
@@ -158,11 +165,15 @@ export default function AvailabilityPage() {
   useEffect(() => load(), [load]);
 
   const dirty =
-    days !== null && savedDays !== null && JSON.stringify(days) !== JSON.stringify(savedDays);
+    days !== null &&
+    savedDays !== null &&
+    JSON.stringify(days) !== JSON.stringify(savedDays);
 
   function updateDay(weekday: number, patch: Partial<DayDraft>) {
     setDays((prev) =>
-      prev ? prev.map((d, i) => (i === weekday ? { ...d, ...patch } : d)) : prev,
+      prev
+        ? prev.map((d, i) => (i === weekday ? { ...d, ...patch } : d))
+        : prev,
     );
     // Editing a day clears its validation errors.
     setErrors((prev) => {
@@ -173,11 +184,17 @@ export default function AvailabilityPage() {
     });
   }
 
-  function updateWindow(weekday: number, index: number, patch: Partial<WindowDraft>) {
+  function updateWindow(
+    weekday: number,
+    index: number,
+    patch: Partial<WindowDraft>,
+  ) {
     const day = days?.[weekday];
     if (!day) return;
     updateDay(weekday, {
-      windows: day.windows.map((w, i) => (i === index ? { ...w, ...patch } : w)),
+      windows: day.windows.map((w, i) =>
+        i === index ? { ...w, ...patch } : w,
+      ),
     });
   }
 
@@ -205,7 +222,8 @@ export default function AvailabilityPage() {
 
       const dayErrors: DayErrors = { windows: {} };
       if (day.windows.length === 0) {
-        dayErrors.noWindows = "Add at least one window, or mark the day closed.";
+        dayErrors.noWindows =
+          "Add at least one window, or mark the day closed.";
       }
 
       const parsed: { startMin: number; endMin: number }[] = [];
@@ -223,7 +241,8 @@ export default function AvailabilityPage() {
           const previous = parsed[parsed.length - 1];
           if (startMin >= endMin) {
             // The API rejects overnight windows with a 400 — catch it here.
-            windowErrors.end = "End must be after start — overnight windows aren't allowed.";
+            windowErrors.end =
+              "End must be after start — overnight windows aren't allowed.";
           } else if (previous && startMin < previous.endMin) {
             windowErrors.start = "This window overlaps the one above.";
           } else {
@@ -240,7 +259,11 @@ export default function AvailabilityPage() {
         dayErrors.buffer = "Enter a buffer between 0 and 120 minutes.";
       }
 
-      if (dayErrors.noWindows || dayErrors.buffer || Object.keys(dayErrors.windows).length > 0) {
+      if (
+        dayErrors.noWindows ||
+        dayErrors.buffer ||
+        Object.keys(dayErrors.windows).length > 0
+      ) {
         nextErrors[weekday] = dayErrors;
       } else {
         rules.push({
@@ -263,7 +286,11 @@ export default function AvailabilityPage() {
 
     setSaving(true);
     try {
-      const saved = await scheduleApi.putRules(session, refreshCallbacks, rules);
+      const saved = await scheduleApi.putRules(
+        session,
+        refreshCallbacks,
+        rules,
+      );
       const drafts = draftsFromRules(saved);
       setDays(drafts);
       setSavedDays(drafts);
@@ -284,11 +311,15 @@ export default function AvailabilityPage() {
     const startCivil = parseDateInput(timeOffStart);
     const endCivil = parseDateInput(timeOffEnd);
     const fieldErrors: { start?: string; end?: string } = {};
-    if (!startCivil) fieldErrors.start = "Enter a start date as YYYY-MM-DD, e.g. 2026-09-01";
-    if (!endCivil) fieldErrors.end = "Enter an end date as YYYY-MM-DD, e.g. 2026-09-03";
+    if (!startCivil)
+      fieldErrors.start = "Enter a start date as YYYY-MM-DD, e.g. 2026-09-01";
+    if (!endCivil)
+      fieldErrors.end = "Enter an end date as YYYY-MM-DD, e.g. 2026-09-03";
     if (startCivil && endCivil) {
-      const startNum = startCivil.year * 10000 + startCivil.month * 100 + startCivil.day;
-      const endNum = endCivil.year * 10000 + endCivil.month * 100 + endCivil.day;
+      const startNum =
+        startCivil.year * 10000 + startCivil.month * 100 + startCivil.day;
+      const endNum =
+        endCivil.year * 10000 + endCivil.month * 100 + endCivil.day;
       if (endNum < startNum) {
         fieldErrors.end = "The end date must be on or after the start date.";
       }
@@ -317,7 +348,11 @@ export default function AvailabilityPage() {
 
     setAddingTimeOff(true);
     try {
-      const created = await scheduleApi.addTimeOff(session, refreshCallbacks, draft);
+      const created = await scheduleApi.addTimeOff(
+        session,
+        refreshCallbacks,
+        draft,
+      );
       setTimeOffs((prev) => [created, ...prev]);
       setTimeOffStart("");
       setTimeOffEnd("");
@@ -339,10 +374,15 @@ export default function AvailabilityPage() {
             Availability
           </h1>
           <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            The hours clients can book, week after week. Times are {timezoneShortName(PRACTICE_TIMEZONE)}.
+            The hours clients can book, week after week. Times are{" "}
+            {timezoneShortName(PRACTICE_TIMEZONE)}.
           </p>
         </div>
-        <Button onClick={() => void handleSave()} loading={saving} disabled={!dirty}>
+        <Button
+          onClick={() => void handleSave()}
+          loading={saving}
+          disabled={!dirty}
+        >
           Save changes
         </Button>
       </div>
@@ -352,7 +392,11 @@ export default function AvailabilityPage() {
           role="alert"
           className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          />
           {saveError}
         </div>
       ) : null}
@@ -361,7 +405,10 @@ export default function AvailabilityPage() {
         <RulesSkeleton />
       ) : loadError ? (
         <Card className="flex flex-col items-center gap-3 py-12 text-center">
-          <p role="alert" className="flex items-center gap-2 text-sm text-danger-ink">
+          <p
+            role="alert"
+            className="flex items-center gap-2 text-sm text-danger-ink"
+          >
             <CircleAlert size={16} aria-hidden="true" className="shrink-0" />
             {loadError}
           </p>
@@ -409,29 +456,29 @@ export default function AvailabilityPage() {
                     <>
                       {day.windows.map((window, index) => (
                         <div key={index} className="flex items-start gap-3">
-                          <div className="w-28">
-                            <TextInput
-                              label={index === 0 ? "Start" : `Window ${index + 1} start`}
-                              size="sm"
-                              inputMode="numeric"
-                              placeholder="09:00"
+                          <div className="w-36">
+                            <TimePicker
+                              label={
+                                index === 0
+                                  ? "Start"
+                                  : `Window ${index + 1} start`
+                              }
                               value={window.start}
                               error={dayErrors?.windows[index]?.start}
-                              onChange={(event) =>
-                                updateWindow(weekday, index, { start: event.target.value })
+                              onChange={(value) =>
+                                updateWindow(weekday, index, { start: value })
                               }
                             />
                           </div>
-                          <div className="w-28">
-                            <TextInput
-                              label={index === 0 ? "End" : `Window ${index + 1} end`}
-                              size="sm"
-                              inputMode="numeric"
-                              placeholder="17:00"
+                          <div className="w-36">
+                            <TimePicker
+                              label={
+                                index === 0 ? "End" : `Window ${index + 1} end`
+                              }
                               value={window.end}
                               error={dayErrors?.windows[index]?.end}
-                              onChange={(event) =>
-                                updateWindow(weekday, index, { end: event.target.value })
+                              onChange={(value) =>
+                                updateWindow(weekday, index, { end: value })
                               }
                             />
                           </div>
@@ -452,7 +499,11 @@ export default function AvailabilityPage() {
                           role="alert"
                           className="flex items-center gap-1.5 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-danger-ink"
                         >
-                          <CircleAlert size={14} aria-hidden="true" className="shrink-0" />
+                          <CircleAlert
+                            size={14}
+                            aria-hidden="true"
+                            className="shrink-0"
+                          />
                           {dayErrors.noWindows}
                         </p>
                       ) : null}
@@ -502,48 +553,55 @@ export default function AvailabilityPage() {
             Time off
           </h2>
           <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            Block whole days — vacations, holidays, errands. The end date is included.
+            Block whole days — vacations, holidays, errands. The end date is
+            included.
           </p>
         </div>
 
         {/* noValidate: native validation bubbles are forbidden — errors are custom */}
-        <form noValidate onSubmit={handleAddTimeOff} className="flex flex-col gap-4">
+        <form
+          noValidate
+          onSubmit={handleAddTimeOff}
+          className="flex flex-col gap-4"
+        >
           {timeOffError ? (
             <div
               role="alert"
               className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
             >
-              <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <CircleAlert
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0"
+              />
               {timeOffError}
             </div>
           ) : null}
           <div className="flex flex-wrap items-start gap-4">
-            <div className="w-44">
-              <TextInput
+            <div className="w-56">
+              <DatePicker
                 label="Start date"
                 required
-                inputMode="numeric"
-                placeholder="2026-09-01"
-                hint="YYYY-MM-DD"
                 value={timeOffStart}
                 error={timeOffErrors.start}
-                onChange={(event) => {
-                  setTimeOffStart(event.target.value);
-                  setTimeOffErrors((errors) => ({ ...errors, start: undefined }));
+                onChange={(value) => {
+                  setTimeOffStart(value);
+                  setTimeOffErrors((errors) => ({
+                    ...errors,
+                    start: undefined,
+                  }));
                 }}
               />
             </div>
-            <div className="w-44">
-              <TextInput
+            <div className="w-56">
+              <DatePicker
                 label="End date"
                 required
-                inputMode="numeric"
-                placeholder="2026-09-03"
-                hint="YYYY-MM-DD"
+                min={timeOffStart || undefined}
                 value={timeOffEnd}
                 error={timeOffErrors.end}
-                onChange={(event) => {
-                  setTimeOffEnd(event.target.value);
+                onChange={(value) => {
+                  setTimeOffEnd(value);
                   setTimeOffErrors((errors) => ({ ...errors, end: undefined }));
                 }}
               />
@@ -570,9 +628,15 @@ export default function AvailabilityPage() {
             {timeOffs.map((entry) => {
               const start = zonedParts(entry.startAt, PRACTICE_TIMEZONE);
               // endAt is exclusive; the last blocked day is the one before it.
-              const lastDay = addDaysCivil(zonedParts(entry.endAt, PRACTICE_TIMEZONE), -1);
+              const lastDay = addDaysCivil(
+                zonedParts(entry.endAt, PRACTICE_TIMEZONE),
+                -1,
+              );
               return (
-                <li key={entry.id} className="flex flex-wrap items-center gap-3 py-3">
+                <li
+                  key={entry.id}
+                  className="flex flex-wrap items-center gap-3 py-3"
+                >
                   <p className="text-sm tabular-nums text-ink">
                     {formatCivilDate(start)}
                     {formatCivilDate(start) !== formatCivilDate(lastDay)
@@ -591,8 +655,8 @@ export default function AvailabilityPage() {
           </ul>
         ) : (
           <p className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
-            No time off added this session. Entries you add block booking across their
-            whole range.
+            No time off added this session. Entries you add block booking across
+            their whole range.
           </p>
         )}
       </Card>
@@ -615,7 +679,11 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
         role="status"
         className="animate-modal-enter flex min-w-80 max-w-[420px] items-center gap-3 rounded-lg border border-border border-l-[3px] border-l-success bg-surface-raised px-4 py-3 shadow-lg"
       >
-        <CheckCircle2 size={18} aria-hidden="true" className="shrink-0 text-success-ink" />
+        <CheckCircle2
+          size={18}
+          aria-hidden="true"
+          className="shrink-0 text-success-ink"
+        />
         <p className="flex-1 text-sm leading-[1.55] text-ink">{message}</p>
         <IconButton aria-label="Dismiss" size="sm" onClick={onClose}>
           <X aria-hidden="true" />
@@ -628,13 +696,29 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 /** Skeleton mirroring the 7 day rows (§3.28). */
 function RulesSkeleton() {
   return (
-    <div role="status" aria-busy="true" className="overflow-hidden rounded-lg border border-border bg-surface-raised">
+    <div
+      role="status"
+      aria-busy="true"
+      className="overflow-hidden rounded-lg border border-border bg-surface-raised"
+    >
       <span className="sr-only">Loading your availability…</span>
       {Array.from({ length: 7 }, (_, i) => (
-        <div key={i} className="flex items-center gap-6 border-b border-border px-6 py-4 last:border-0">
-          <div className="skeleton-shimmer h-6 w-40 rounded-full" aria-hidden="true" />
-          <div className="skeleton-shimmer h-8 w-28 rounded-md" aria-hidden="true" />
-          <div className="skeleton-shimmer h-8 w-28 rounded-md" aria-hidden="true" />
+        <div
+          key={i}
+          className="flex items-center gap-6 border-b border-border px-6 py-4 last:border-0"
+        >
+          <div
+            className="skeleton-shimmer h-6 w-40 rounded-full"
+            aria-hidden="true"
+          />
+          <div
+            className="skeleton-shimmer h-8 w-28 rounded-md"
+            aria-hidden="true"
+          />
+          <div
+            className="skeleton-shimmer h-8 w-28 rounded-md"
+            aria-hidden="true"
+          />
         </div>
       ))}
     </div>

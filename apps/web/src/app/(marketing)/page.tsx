@@ -76,6 +76,7 @@ export default async function Home() {
     getPage("home").catch(() => undefined),
   ]);
   const hasSocialProof = testimonials.length > 0 || reviews.length > 0;
+  const homeLead = homePage?.body?.split(/\n\s*\n/).find(Boolean) ?? "Registered nursing and wellness coaching, brought together in one calm, private practice. Thoughtful video sessions. A plan that fits your real life. Care that travels with you.";
   return (
     <>
       {/* Hero — design-system §2: min-height 88vh, content vertically centered.
@@ -89,9 +90,7 @@ export default async function Home() {
             Care that lets you <em className="font-medium text-clay-300">exhale.</em>
           </h1>
           <p className="mt-7 max-w-[56ch] text-lg leading-[1.7] text-eucalyptus-200 [text-wrap:pretty]">
-            Registered nursing and wellness coaching, brought together in one
-            calm, private practice. Thoughtful video sessions. A plan that fits
-            your real life. Care that travels with you.
+            {homeLead}
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Link

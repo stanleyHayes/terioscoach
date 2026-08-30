@@ -36,6 +36,9 @@ var (
 	ErrMFARequired          = errors.New("multi-factor authentication code required")
 	ErrMFAInvalid           = errors.New("multi-factor authentication code invalid")
 	ErrMFANotPending        = errors.New("multi-factor authentication enrollment not pending")
+	ErrAccountDisabled      = errors.New("account disabled")
+	ErrLastOwner            = errors.New("the owner account cannot be changed or disabled")
+	ErrInvalidPermission    = errors.New("invalid permission")
 )
 
 // RetryAfterError carries how long a caller must wait before retrying. The

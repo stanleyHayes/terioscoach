@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { buttonClasses } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { listPosts, type Post } from "@/lib/content";
 import { formatSessionDate } from "@/lib/format";
 
@@ -42,7 +43,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <>
-      <PageIntro eyebrow="Journal" title="Notes for the time between sessions" description="Recovery is mostly what happens after you leave. These are the things worth knowing in between — written plainly, no hurry." />
+      <PageIntro
+        eyebrow="Journal"
+        title="Notes for the time between sessions"
+        description="Recovery is mostly what happens after you leave. These are the things worth knowing in between — written plainly, no hurry."
+      />
 
       <Section ariaLabelledby="journal-heading">
         <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
@@ -51,8 +56,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </h2>
           {filter ? (
             <p className="text-sm text-ink-muted">
-              Showing{" "}
-              <span className="font-medium text-ink">{filter}</span>
+              Showing <span className="font-medium text-ink">{filter}</span>
               <Link
                 href="/blog"
                 className="ml-3 text-sm font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
@@ -72,47 +76,60 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               The journal didn&rsquo;t load
             </h3>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              Something interrupted the connection on our side. Nothing is
-              wrong on yours — try again in a moment.
+              Something interrupted the connection on our side. Nothing is wrong
+              on yours — try again in a moment.
             </p>
             <div className="mt-6">
-              <Link href="/blog" className={buttonClasses({ variant: "secondary" })}>
+              <Link
+                href="/blog"
+                className={buttonClasses({ variant: "secondary" })}
+              >
                 Try again
               </Link>
             </div>
           </div>
         ) : posts.length === 0 ? (
-          <div className="mx-auto flex max-w-[360px] flex-col items-center px-6 py-12 text-center">
-            <span className="flex size-16 items-center justify-center rounded-full bg-surface-sunken">
-              <BookOpen aria-hidden="true" className="size-8 text-ink-faint" />
-            </span>
-            <h3 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">
-              {filter ? "Nothing under that heading yet" : "The first note is on its way"}
-            </h3>
-            <p className="mt-2 text-sm leading-[1.55] text-ink-muted">
-              {filter
+          <EmptyState
+            icon={<BookOpen className="size-8" />}
+            title={
+              filter
+                ? "Nothing under that heading yet"
+                : "The first note is on its way"
+            }
+            description={
+              filter
                 ? "Try the full journal — there may be something close by."
-                : "When an article is published it appears here. Check back soon."}
-            </p>
-            {filter ? (
-              <div className="mt-6">
-                <Link href="/blog" className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                : "When an article is published it appears here. Check back soon."
+            }
+            action={
+              filter ? (
+                <Link
+                  href="/blog"
+                  className={buttonClasses({
+                    variant: "secondary",
+                    size: "sm",
+                  })}
+                >
                   Read everything
                 </Link>
-              </div>
-            ) : null}
-          </div>
+              ) : undefined
+            }
+          />
         ) : (
           <ul className="grid gap-px overflow-hidden rounded-[2rem] border border-border bg-border lg:grid-cols-2">
             {posts.map((post, index) => (
               <li key={post.id} className={index === 0 ? "lg:col-span-2" : ""}>
-                <article className={`terios-journal-entry group flex h-full flex-col bg-surface-raised p-8 transition-colors hover:bg-eucalyptus-50 ${index === 0 ? "min-h-80 justify-end sm:p-12" : "min-h-72"}`}>
+                <article
+                  className={`terios-journal-entry group flex h-full flex-col bg-surface-raised p-8 transition-colors hover:bg-eucalyptus-50 ${index === 0 ? "min-h-80 justify-end sm:p-12" : "min-h-72"}`}
+                >
                   {post.category ? (
                     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
                       {post.category}
                     </p>
                   ) : null}
-                  <h3 className={`mt-3 font-display leading-[1.05] font-semibold tracking-[-0.035em] text-ink ${index === 0 ? "max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]" : "text-3xl"}`}>
+                  <h3
+                    className={`mt-3 font-display leading-[1.05] font-semibold tracking-[-0.035em] text-ink ${index === 0 ? "max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]" : "text-3xl"}`}
+                  >
                     {/* The card is not a link; the title is — one target,
                         no nested interactive elements (design-system §3.21). */}
                     <Link

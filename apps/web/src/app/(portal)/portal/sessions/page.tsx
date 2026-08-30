@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { Calendar, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SessionRow } from "@/components/booking/SessionRow";
@@ -10,6 +10,7 @@ import { useMyBookings } from "@/components/booking/use-my-bookings";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
@@ -65,7 +66,9 @@ export default function SessionsPage() {
   const [rescheduling, setRescheduling] = useState<Booking | null>(null);
   const [newSlot, setNewSlot] = useState<Slot | null>(null);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
-  const [rescheduleConflict, setRescheduleConflict] = useState<string | null>(null);
+  const [rescheduleConflict, setRescheduleConflict] = useState<string | null>(
+    null,
+  );
   const [reschedulingBusy, setReschedulingBusy] = useState(false);
 
   // Cancel modal state.
@@ -85,12 +88,10 @@ export default function SessionsPage() {
     setRescheduleError(null);
     setReschedulingBusy(true);
     try {
-      await rescheduleBooking(
-        session,
-        { onTokensRefreshed },
-        rescheduling.id,
-        { startAt: newSlot.startAt, tz: timeZone },
-      );
+      await rescheduleBooking(session, { onTokensRefreshed }, rescheduling.id, {
+        startAt: newSlot.startAt,
+        tz: timeZone,
+      });
       setRescheduling(null);
       refresh();
     } catch (error) {
@@ -100,7 +101,10 @@ export default function SessionsPage() {
         setNewSlot(null);
       } else {
         setRescheduleError(
-          actionErrorMessage(error, "The reschedule didn't go through. Try again in a moment."),
+          actionErrorMessage(
+            error,
+            "The reschedule didn't go through. Try again in a moment.",
+          ),
         );
       }
     } finally {
@@ -118,7 +122,10 @@ export default function SessionsPage() {
       refresh();
     } catch (error) {
       setCancelError(
-        actionErrorMessage(error, "The cancellation didn't go through. Try again in a moment."),
+        actionErrorMessage(
+          error,
+          "The cancellation didn't go through. Try again in a moment.",
+        ),
       );
     } finally {
       setCancelBusy(false);
@@ -145,13 +152,24 @@ export default function SessionsPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-4">
           <span className="sr-only">Loading your sessions…</span>
           {[0, 1, 2].map((index) => (
-            <span key={index} aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
+            <span
+              key={index}
+              aria-hidden="true"
+              className="h-24 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : error ? (
         <Card>
-          <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
-            <CircleAlert size={20} aria-hidden="true" className="text-danger-ink" />
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-3 py-6 text-center"
+          >
+            <CircleAlert
+              size={20}
+              aria-hidden="true"
+              className="text-danger-ink"
+            />
             <p className="text-sm leading-[1.55] text-ink-muted">{error}</p>
             <button
               type="button"
@@ -164,7 +182,10 @@ export default function SessionsPage() {
         </Card>
       ) : (
         <>
-          <section aria-labelledby="upcoming-heading" className="flex flex-col gap-4">
+          <section
+            aria-labelledby="upcoming-heading"
+            className="flex flex-col gap-4"
+          >
             <h2
               id="upcoming-heading"
               className="font-display text-[1.5rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink"
@@ -173,10 +194,19 @@ export default function SessionsPage() {
             </h2>
             {upcoming.length === 0 ? (
               <Card>
-                <p className="py-4 text-center text-sm leading-[1.55] text-ink-muted">
-                  Nothing on the calendar yet. When you book a session, it will
-                  appear here.
-                </p>
+                <EmptyState
+                  icon={<Calendar size={28} />}
+                  title="Nothing on the calendar yet"
+                  description="When you book a session, it will appear here."
+                  action={
+                    <Link
+                      href="/portal/book"
+                      className={buttonClasses({ size: "sm" })}
+                    >
+                      Book a session
+                    </Link>
+                  }
+                />
               </Card>
             ) : (
               <ul className="flex flex-col gap-4">
@@ -235,7 +265,10 @@ export default function SessionsPage() {
           </section>
 
           {past.length > 0 ? (
-            <section aria-labelledby="past-heading" className="flex flex-col gap-4">
+            <section
+              aria-labelledby="past-heading"
+              className="flex flex-col gap-4"
+            >
               <h2
                 id="past-heading"
                 className="font-display text-[1.5rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink"
@@ -311,7 +344,11 @@ export default function SessionsPage() {
                 role="alert"
                 className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
               >
-                <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <CircleAlert
+                  size={16}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0"
+                />
                 {rescheduleError}
               </p>
             ) : null}
@@ -331,7 +368,11 @@ export default function SessionsPage() {
             <Button variant="secondary" onClick={() => setCancelling(null)}>
               Keep session
             </Button>
-            <Button variant="danger" loading={cancelBusy} onClick={handleCancelConfirm}>
+            <Button
+              variant="danger"
+              loading={cancelBusy}
+              onClick={handleCancelConfirm}
+            >
               Cancel session
             </Button>
           </>
@@ -351,7 +392,11 @@ export default function SessionsPage() {
                 role="alert"
                 className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
               >
-                <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <CircleAlert
+                  size={16}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0"
+                />
                 {cancelError}
               </p>
             ) : null}

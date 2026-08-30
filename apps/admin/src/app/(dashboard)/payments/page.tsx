@@ -4,6 +4,7 @@ import { CircleAlert, CreditCard } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/content/states";
 import { formatMoney } from "@/lib/format";
 import { paymentsApi, type Payment, type PaymentStatus } from "@/lib/insights";
 import { currentMonthRange, shiftMonthRange } from "@/lib/insights";
@@ -79,24 +80,45 @@ export default function PaymentsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setRange(shiftMonthRange(range, -1))}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(shiftMonthRange(range, -1))}
+          >
             Previous month
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setRange(currentMonthRange())}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(currentMonthRange())}
+          >
             This month
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setRange(shiftMonthRange(range, 1))}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRange(shiftMonthRange(range, 1))}
+          >
             Next month
           </Button>
         </div>
       </header>
 
       <dl className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Taken" value={formatMoney(totals.paidKobo, totals.currency)} />
-        <Stat label="Refunded" value={formatMoney(totals.refundedKobo, totals.currency)} />
+        <Stat
+          label="Taken"
+          value={formatMoney(totals.paidKobo, totals.currency)}
+        />
+        <Stat
+          label="Refunded"
+          value={formatMoney(totals.refundedKobo, totals.currency)}
+        />
         <Stat
           label="Net"
-          value={formatMoney(totals.paidKobo - totals.refundedKobo, totals.currency)}
+          value={formatMoney(
+            totals.paidKobo - totals.refundedKobo,
+            totals.currency,
+          )}
         />
       </dl>
 
@@ -105,13 +127,20 @@ export default function PaymentsPage() {
           role="alert"
           className="flex items-start gap-3 rounded-lg border border-danger-bg bg-danger-bg px-4 py-3"
         >
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-danger-ink" />
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-danger-ink"
+          />
           <p className="text-sm text-danger-ink">{action.error}</p>
         </div>
       ) : null}
 
       {payments.error ? (
-        <div role="alert" className="rounded-lg border border-border bg-surface-raised p-8 text-center">
+        <div
+          role="alert"
+          className="rounded-lg border border-border bg-surface-raised p-8 text-center"
+        >
           <p className="text-sm text-ink-muted">{payments.error}</p>
           <div className="mt-4">
             <Button variant="secondary" size="sm" onClick={payments.refresh}>
@@ -123,36 +152,38 @@ export default function PaymentsPage() {
         <div role="status" aria-busy="true" className="flex flex-col gap-2">
           <span className="sr-only">Loading payments…</span>
           {[0, 1, 2, 3].map((i) => (
-            <span key={i} aria-hidden="true" className="h-14 rounded-lg bg-surface-sunken" />
+            <span
+              key={i}
+              aria-hidden="true"
+              className="h-14 rounded-lg bg-surface-sunken"
+            />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-border bg-surface-raised px-6 py-16 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-surface-sunken">
-            <CreditCard size={26} aria-hidden="true" className="text-ink-faint" />
-          </span>
-          <h2 className="mt-5 font-display text-xl leading-[1.3] font-medium text-ink">
-            Nothing in {monthLabel}
-          </h2>
-          <p className="mt-2 max-w-[42ch] text-sm leading-[1.55] text-ink-muted">
-            Payments appear here as clients pay for their sessions.
-          </p>
-        </div>
+        <EmptyState
+          icon={<CreditCard size={26} />}
+          title={`Nothing in ${monthLabel}`}
+          body="Payments appear here as clients pay for their sessions."
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-surface-raised">
           <table className="w-full border-collapse text-left">
-            <caption className="sr-only">Payments in {monthLabel}, newest first</caption>
+            <caption className="sr-only">
+              Payments in {monthLabel}, newest first
+            </caption>
             <thead>
               <tr className="border-b border-border">
-                {["Date", "Amount", "Status", "Method", ""].map((heading, i) => (
-                  <th
-                    key={heading || i}
-                    scope="col"
-                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
-                  >
-                    {heading || <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
+                {["Date", "Amount", "Status", "Method", ""].map(
+                  (heading, i) => (
+                    <th
+                      key={heading || i}
+                      scope="col"
+                      className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted"
+                    >
+                      {heading || <span className="sr-only">Actions</span>}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -206,7 +237,10 @@ export default function PaymentsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6"
         >
           <div className="w-full max-w-[420px] rounded-xl border border-border bg-surface-raised p-6">
-            <h2 id="refund-heading" className="font-display text-xl font-medium text-ink">
+            <h2
+              id="refund-heading"
+              className="font-display text-xl font-medium text-ink"
+            >
               Refund {formatMoney(confirming.amountKobo, confirming.currency)}?
             </h2>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
@@ -237,7 +271,9 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
         {label}
       </dt>
-      <dd className="mt-1.5 font-display text-2xl font-medium tabular-nums text-ink">{value}</dd>
+      <dd className="mt-1.5 font-display text-2xl font-medium tabular-nums text-ink">
+        {value}
+      </dd>
     </div>
   );
 }
