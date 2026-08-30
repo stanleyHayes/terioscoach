@@ -6,7 +6,8 @@ import Home from "./page";
 const listTestimonials = vi.hoisted(() => vi.fn());
 const listReviews = vi.hoisted(() => vi.fn());
 const getReviewSummary = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/content", () => ({ listTestimonials, listReviews, getReviewSummary }));
+const getPage = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/content", () => ({ listTestimonials, listReviews, getReviewSummary, getPage }));
 
 /** Renders the async server component. */
 async function renderHome() {
@@ -22,6 +23,7 @@ describe("Home page", () => {
     ]);
     listReviews.mockResolvedValue([]);
     getReviewSummary.mockResolvedValue({ count: 2, average: 5, distribution: { "5": 2 } });
+    getPage.mockResolvedValue({ slug: "home", coverImage: "/custom-home.webp" });
   });
 
   it("renders the hero headline and lead", async () => {

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, HeartPulse, Leaf, MessageSquareHeart, Video } from "lucide-react";
+import Image from "next/image";
+import { CalendarCheck, MessageSquareHeart, Video } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
+import { getPage } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "About",
@@ -21,9 +23,9 @@ export const metadata: Metadata = {
 // TODO(cms): replace with the practitioner bio from the CMS API (long-form
 // rich text + portrait). Copy below is placeholder grounded in the brand voice.
 const storyParagraphs = [
-  "Terios began with a simple observation: people do not need more information about their health — they need someone qualified, unhurried and on their side.",
-  "After years of nursing, I wanted to practice care the way it should feel: precise and confidential like a clinic, calm and personal like a retreat. So I built a practice that is both. Sessions happen by video, which means your care fits around your life — whether you are down the road or on another continent.",
-  "As the practice grows, so will the space around it: Terios is evolving toward a full wellness spa brand, with the same nursing backbone underneath everything it offers.",
+  "I’m Theresa Yirerong. After more than two decades as a registered nurse, I have come to believe that nothing is more valuable than your health and wellbeing.",
+  "After caring for thousands of people, many with preventable conditions, I reshaped my nursing practice around a simple truth: wellness can be pursued at every stage of life, whether or not you are living with a diagnosis.",
+  "Terios gives you one-to-one space to look honestly at where you are, decide what living well means for you, and build realistic steps toward it. Sessions happen by video, so care can fit around your life wherever you are.",
 ];
 
 const principles = [
@@ -47,9 +49,9 @@ const principles = [
 
 // TODO(cms): replace with verified credentials from the CMS API.
 const credentials = [
+  { value: "20+", label: "Years in nursing" },
   { value: "RN", label: "Registered nurse" },
-  { value: "Certified", label: "Wellness coach" },
-  { value: "Worldwide", label: "Clients across time zones" },
+  { value: "One-to-one", label: "Wellness coaching" },
 ];
 
 const steps = [
@@ -70,19 +72,26 @@ const steps = [
   },
 ];
 
-export default function About() {
+export const dynamic = "force-dynamic";
+
+export default async function About() {
+  const page = await getPage("about").catch(() => undefined);
   return (
     <>
       <PageIntro eyebrow="About" title="A practice built on calm, clinical care" description="Terios Wellness is the one-woman practice of a registered nurse and wellness coach — care that is credentialed, confidential and genuinely unhurried." />
 
-      {/* Practitioner story — a brand illustration stands in until the real portrait is supplied. */}
+      {/* Practitioner image is managed by the published `about` CMS page. */}
       <Section ariaLabelledby="story-heading">
         <div className="grid gap-10 lg:grid-cols-[2fr_3fr] lg:gap-16">
-          <div aria-label="Terios combines clinical care with restorative wellness" role="img" className="relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-[2rem_5rem_2rem_5rem] bg-eucalyptus-900 shadow-[0_30px_80px_rgba(28,51,40,.2)]">
-            <div aria-hidden="true" className="absolute inset-0 [background-image:radial-gradient(circle_at_70%_18%,rgba(157,195,174,.24),transparent_34%),radial-gradient(circle_at_20%_82%,rgba(222,166,132,.2),transparent_42%)]" />
-            <Leaf aria-hidden="true" strokeWidth={0.65} className="botanical-drift absolute -right-16 top-10 size-72 rotate-[-25deg] text-eucalyptus-300/25" />
-            <HeartPulse aria-hidden="true" strokeWidth={0.8} className="absolute bottom-16 left-10 size-24 text-clay-300/70" />
-            <p className="absolute inset-x-8 bottom-8 border-t border-sand-0/15 pt-5 font-display text-2xl font-semibold leading-tight tracking-[-0.025em] text-sand-0">Care with a clinical backbone and a human pulse.</p>
+          <div className="relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-[2rem_5rem_2rem_5rem] bg-eucalyptus-900 shadow-[0_30px_80px_rgba(28,51,40,.2)]">
+            <Image
+              src={page?.coverImage || "/images/brand/theresa-yirerong-about.webp"}
+              alt="Theresa Yirerong, founder of Terios Wellness"
+              fill
+              unoptimized
+              sizes="(min-width: 1024px) 400px, 90vw"
+              className="object-cover"
+            />
           </div>
           <div>
             <h2

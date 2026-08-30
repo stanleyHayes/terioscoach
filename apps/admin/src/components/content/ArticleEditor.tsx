@@ -47,7 +47,7 @@ function initialValues(article: Page | Post | null): ArticleValues {
     metaTitle: article?.metaTitle ?? "",
     metaDescription: article?.metaDescription ?? "",
     excerpt: post?.excerpt ?? "",
-    coverImage: post?.coverImage ?? "",
+    coverImage: article?.coverImage ?? "",
     category: post?.category ?? "",
     tags: post?.tags?.join(", ") ?? "",
   };
@@ -199,13 +199,14 @@ export function ArticleEditor({
               hint="The line that appears under the title on the blog index."
               onChange={(event) => update("excerpt", event.target.value)}
             />
-            <ImagePicker
-              value={values.coverImage}
-              disabled={submitting}
-              onChange={(url) => update("coverImage", url)}
-            />
           </>
         ) : null}
+
+        <ImagePicker
+          value={values.coverImage}
+          disabled={submitting}
+          onChange={(url) => update("coverImage", url)}
+        />
 
         <TextArea
           label="Body"
@@ -266,6 +267,7 @@ export function toArticleBody(kind: "page" | "post", values: ArticleValues) {
     body: values.body.trim(),
     metaTitle: values.metaTitle.trim(),
     metaDescription: values.metaDescription.trim(),
+    coverImage: values.coverImage.trim(),
   };
   if (kind === "page") return base;
   return {

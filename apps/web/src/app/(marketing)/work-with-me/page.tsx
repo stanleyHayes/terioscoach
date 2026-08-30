@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, CalendarCheck, Clock3, CreditCard, ListChecks } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
 import { listServices } from "@/lib/api";
-import type { ServiceSummary } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatDuration, formatMoney } from "@/lib/format";
+import { getPage } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Work With Me",
@@ -54,16 +55,27 @@ export default async function WorkWithMePage({
   const { service: serviceParam } = await searchParams;
   const selectedId = typeof serviceParam === "string" ? serviceParam : undefined;
 
-  let services: ServiceSummary[] | null;
-  try {
-    services = await listServices();
-  } catch {
-    services = null;
-  }
+  const [services, page] = await Promise.all([
+    listServices().catch(() => null),
+    getPage("work-with-me").catch(() => undefined),
+  ]);
 
   return (
     <>
       <PageIntro eyebrow="Work with me" title="Begin with a single step" description="Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal." />
+
+      <Section containerClassName="pt-0 pb-0">
+        <div className="relative aspect-[3/2] max-h-[520px] overflow-hidden rounded-[2rem] bg-eucalyptus-50 lg:aspect-[21/9]">
+          <Image
+            src={page?.coverImage || "/images/marketing/services-care.webp"}
+            alt="A calm virtual wellness consultation setting"
+            fill
+            unoptimized
+            sizes="(min-width: 1280px) 1200px, 94vw"
+            className="object-cover"
+          />
+        </div>
+      </Section>
 
       {/* Service chooser — compact rows from the same live catalog. Selected
           card treatment per design-system §3.8 (RadioCard): 1.5px primary

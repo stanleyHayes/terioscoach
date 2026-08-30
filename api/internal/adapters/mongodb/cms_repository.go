@@ -35,6 +35,7 @@ type pageDoc struct {
 	Slug        string         `bson:"slug"`
 	Title       string         `bson:"title"`
 	Body        string         `bson:"body"`
+	CoverImage  string         `bson:"coverImage,omitempty"`
 	MetaTitle   string         `bson:"metaTitle,omitempty"`
 	MetaDesc    string         `bson:"metaDescription,omitempty"`
 	Status      string         `bson:"status"`
@@ -45,14 +46,15 @@ type pageDoc struct {
 
 func newPageDoc(p cms.Page) pageDoc {
 	doc := pageDoc{
-		Slug:      p.Slug,
-		Title:     p.Title,
-		Body:      p.Body,
-		MetaTitle: p.MetaTitle,
-		MetaDesc:  p.MetaDesc,
-		Status:    string(p.Status),
-		CreatedAt: bson.NewDateTimeFromTime(p.CreatedAt),
-		UpdatedAt: bson.NewDateTimeFromTime(p.UpdatedAt),
+		Slug:       p.Slug,
+		Title:      p.Title,
+		Body:       p.Body,
+		CoverImage: p.CoverImage,
+		MetaTitle:  p.MetaTitle,
+		MetaDesc:   p.MetaDesc,
+		Status:     string(p.Status),
+		CreatedAt:  bson.NewDateTimeFromTime(p.CreatedAt),
+		UpdatedAt:  bson.NewDateTimeFromTime(p.UpdatedAt),
 	}
 	if p.PublishedAt != nil {
 		stamp := bson.NewDateTimeFromTime(*p.PublishedAt)
@@ -63,15 +65,16 @@ func newPageDoc(p cms.Page) pageDoc {
 
 func (d pageDoc) toDomain() cms.Page {
 	page := cms.Page{
-		ID:        d.ID.Hex(),
-		Slug:      d.Slug,
-		Title:     d.Title,
-		Body:      d.Body,
-		MetaTitle: d.MetaTitle,
-		MetaDesc:  d.MetaDesc,
-		Status:    cms.Status(d.Status),
-		CreatedAt: d.CreatedAt.Time().UTC(),
-		UpdatedAt: d.UpdatedAt.Time().UTC(),
+		ID:         d.ID.Hex(),
+		Slug:       d.Slug,
+		Title:      d.Title,
+		Body:       d.Body,
+		CoverImage: d.CoverImage,
+		MetaTitle:  d.MetaTitle,
+		MetaDesc:   d.MetaDesc,
+		Status:     cms.Status(d.Status),
+		CreatedAt:  d.CreatedAt.Time().UTC(),
+		UpdatedAt:  d.UpdatedAt.Time().UTC(),
 	}
 	if d.PublishedAt != nil {
 		at := d.PublishedAt.Time().UTC()
@@ -104,6 +107,7 @@ func (r *PageRepository) Update(ctx context.Context, page cms.Page) (cms.Page, e
 		"slug":            doc.Slug,
 		"title":           doc.Title,
 		"body":            doc.Body,
+		"coverImage":      doc.CoverImage,
 		"metaTitle":       doc.MetaTitle,
 		"metaDescription": doc.MetaDesc,
 		"status":          doc.Status,

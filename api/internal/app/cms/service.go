@@ -75,6 +75,9 @@ func (s *Service) CreatePage(ctx context.Context, in ports.PageInput) (domain.Pa
 	if err != nil {
 		return domain.Page{}, err
 	}
+	if err := page.Apply(domain.PagePatch{CoverImage: &in.CoverImage}, s.now()); err != nil {
+		return domain.Page{}, err
+	}
 	return s.pages.Create(ctx, page)
 }
 

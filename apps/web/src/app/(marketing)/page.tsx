@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Globe, HeartPulse, Leaf, ShieldCheck, Video } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Globe, HeartPulse, ShieldCheck, Video } from "lucide-react";
 import { Testimonials } from "@/components/content/Testimonials";
 import { Section } from "@/components/marketing/Section";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
 import {
   getReviewSummary,
+  getPage,
   listReviews,
   listTestimonials,
   type PublicReview,
@@ -69,7 +71,10 @@ async function loadSocialProof(): Promise<{
 }
 
 export default async function Home() {
-  const { testimonials, reviews, summary } = await loadSocialProof();
+  const [{ testimonials, reviews, summary }, homePage] = await Promise.all([
+    loadSocialProof(),
+    getPage("home").catch(() => undefined),
+  ]);
   const hasSocialProof = testimonials.length > 0 || reviews.length > 0;
   return (
     <>
@@ -109,9 +114,16 @@ export default async function Home() {
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[480px] lg:mr-0">
           <div className="absolute inset-5 rotate-3 rounded-[3rem_1.5rem_3rem_1.5rem] bg-eucalyptus-100" />
           <div className="absolute inset-0 -rotate-2 overflow-hidden rounded-[2rem_4.5rem_2rem_4.5rem] border border-eucalyptus-200 bg-eucalyptus-900 shadow-[0_35px_90px_rgba(28,51,40,.22)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_15%,rgba(198,220,207,.22),transparent_35%),radial-gradient(circle_at_30%_85%,rgba(222,166,132,.18),transparent_42%)]" />
-            <Leaf className="botanical-drift absolute -right-10 top-16 size-72 rotate-[-20deg] text-eucalyptus-300/30" strokeWidth={0.7} />
-            <Leaf className="botanical-drift absolute -left-16 bottom-12 size-64 rotate-[35deg] text-clay-300/20 [animation-delay:-4s]" strokeWidth={0.7} />
+            <Image
+              src={homePage?.coverImage || "/images/brand/theresa-yirerong-clinical.webp"}
+              alt="Theresa Yirerong, registered nurse and wellness coach"
+              fill
+              priority
+              unoptimized
+              sizes="(min-width: 1024px) 480px, 90vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-eucalyptus-950/75 via-transparent to-transparent" />
             <div className="absolute inset-x-8 bottom-8 rounded-[1.5rem] border border-sand-0/15 bg-sand-0/10 p-6 text-sand-0 backdrop-blur-md">
               <HeartPulse className="size-6 text-eucalyptus-300" aria-hidden="true" />
               <p className="mt-8 font-display text-3xl leading-tight">Clinical confidence.<br />Human warmth.</p>

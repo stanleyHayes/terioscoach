@@ -37,6 +37,7 @@ export interface Page {
   slug: string;
   title: string;
   body: string;
+  coverImage?: string;
   metaTitle?: string;
   metaDescription?: string;
   publishedAt?: string;

@@ -25,6 +25,7 @@ export interface Page {
   slug: string;
   title: string;
   body: string;
+  coverImage?: string;
   metaTitle?: string;
   metaDescription?: string;
   status: ContentStatus;
@@ -35,7 +36,6 @@ export interface Page {
 
 export interface Post extends Page {
   excerpt?: string;
-  coverImage?: string;
   category?: string;
   tags: string[];
 }
@@ -74,12 +74,12 @@ export type PagePatch = Partial<{
   body: string;
   metaTitle: string;
   metaDescription: string;
+  coverImage: string;
 }>;
 
 export type PostPatch = PagePatch &
   Partial<{
     excerpt: string;
-    coverImage: string;
     category: string;
     tags: string[];
   }>;

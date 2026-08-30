@@ -64,9 +64,10 @@ type TestimonialRepository interface {
 
 // PageInput is the create payload for a page.
 type PageInput struct {
-	Slug  string
-	Title string
-	Body  string
+	Slug       string
+	Title      string
+	Body       string
+	CoverImage string
 }
 
 // PostInput is the create payload for a post.

@@ -73,6 +73,7 @@ type Page struct {
 	Slug        string
 	Title       string
 	Body        string
+	CoverImage  string
 	MetaTitle   string
 	MetaDesc    string
 	Status      Status
@@ -108,11 +109,12 @@ func NewPage(slug, title, body string, now time.Time) (Page, error) {
 // PagePatch is the set of editable page fields. Nil fields are untouched;
 // Status is deliberately absent — publishing is its own transition.
 type PagePatch struct {
-	Slug      *string
-	Title     *string
-	Body      *string
-	MetaTitle *string
-	MetaDesc  *string
+	Slug       *string
+	Title      *string
+	Body       *string
+	MetaTitle  *string
+	MetaDesc   *string
+	CoverImage *string
 }
 
 // Apply validates and applies a patch.
@@ -147,6 +149,12 @@ func (p *Page) Apply(patch PagePatch, now time.Time) error {
 			return ErrExcerptTooLong
 		}
 		p.MetaDesc = strings.TrimSpace(*patch.MetaDesc)
+	}
+	if patch.CoverImage != nil {
+		if err := validateURL(*patch.CoverImage); err != nil {
+			return err
+		}
+		p.CoverImage = strings.TrimSpace(*patch.CoverImage)
 	}
 	p.UpdatedAt = now.UTC()
 	return nil

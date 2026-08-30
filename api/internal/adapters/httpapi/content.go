@@ -90,6 +90,7 @@ type pageBody struct {
 	Slug        string     `json:"slug"`
 	Title       string     `json:"title"`
 	Body        string     `json:"body"`
+	CoverImage  string     `json:"coverImage,omitempty"`
 	MetaTitle   string     `json:"metaTitle,omitempty"`
 	MetaDesc    string     `json:"metaDescription,omitempty"`
 	Status      string     `json:"status"`
@@ -104,6 +105,7 @@ func newPageBody(p cms.Page) pageBody {
 		Slug:        p.Slug,
 		Title:       p.Title,
 		Body:        p.Body,
+		CoverImage:  p.CoverImage,
 		MetaTitle:   p.MetaTitle,
 		MetaDesc:    p.MetaDesc,
 		Status:      string(p.Status),
@@ -309,14 +311,15 @@ func (h *contentHandler) getPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *contentHandler) createPage(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Slug  string `json:"slug"`
-		Title string `json:"title"`
-		Body  string `json:"body"`
+		Slug       string `json:"slug"`
+		Title      string `json:"title"`
+		Body       string `json:"body"`
+		CoverImage string `json:"coverImage"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	page, err := h.svc.CreatePage(r.Context(), ports.PageInput{Slug: req.Slug, Title: req.Title, Body: req.Body})
+	page, err := h.svc.CreatePage(r.Context(), ports.PageInput{Slug: req.Slug, Title: req.Title, Body: req.Body, CoverImage: req.CoverImage})
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -326,21 +329,23 @@ func (h *contentHandler) createPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *contentHandler) updatePage(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Slug      *string `json:"slug"`
-		Title     *string `json:"title"`
-		Body      *string `json:"body"`
-		MetaTitle *string `json:"metaTitle"`
-		MetaDesc  *string `json:"metaDescription"`
+		Slug       *string `json:"slug"`
+		Title      *string `json:"title"`
+		Body       *string `json:"body"`
+		MetaTitle  *string `json:"metaTitle"`
+		MetaDesc   *string `json:"metaDescription"`
+		CoverImage *string `json:"coverImage"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	page, err := h.svc.UpdatePage(r.Context(), chi.URLParam(r, "id"), cms.PagePatch{
-		Slug:      req.Slug,
-		Title:     req.Title,
-		Body:      req.Body,
-		MetaTitle: req.MetaTitle,
-		MetaDesc:  req.MetaDesc,
+		Slug:       req.Slug,
+		Title:      req.Title,
+		Body:       req.Body,
+		MetaTitle:  req.MetaTitle,
+		MetaDesc:   req.MetaDesc,
+		CoverImage: req.CoverImage,
 	})
 	if err != nil {
 		writeDomainError(w, err)

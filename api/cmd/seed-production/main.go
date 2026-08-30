@@ -28,6 +28,14 @@ var accounts = []account{
 	{"hayfordstanley@gmail.com", "Hayford Stanley", "TERIOS_OWNER_PASSWORD"},
 }
 
+type marketingPage struct{ slug, title, body, coverImage string }
+
+var marketingPages = []marketingPage{
+	{"home", "Terios Wellness", "Total wellness, grounded in more than two decades of nursing experience.", "/images/brand/theresa-yirerong-clinical.webp"},
+	{"about", "About Theresa Yirerong", "Registered nurse and wellness coach helping clients pursue sustainable wellbeing at every stage of life.", "/images/brand/theresa-yirerong-about.webp"},
+	{"work-with-me", "Work with me", "Individual nurse coaching and holistic coaching sessions, tailored to each client.", "/images/marketing/services-care.webp"},
+}
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("production seed failed", "error", err)
@@ -64,6 +72,24 @@ func run() error {
 	for _, a := range accounts {
 		if err := ensureAccount(ctx, db, a); err != nil {
 			return err
+		}
+	}
+	if err := ensureMarketingPages(ctx, db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ensureMarketingPages(ctx context.Context, db *mongo.Database) error {
+	now := time.Now().UTC()
+	for _, page := range marketingPages {
+		_, err := db.Collection("cms_pages").UpdateOne(ctx,
+			bson.M{"slug": page.slug},
+			bson.M{"$setOnInsert": bson.M{"slug": page.slug, "title": page.title, "body": page.body, "coverImage": page.coverImage, "status": "published", "publishedAt": now, "createdAt": now, "updatedAt": now}},
+			options.UpdateOne().SetUpsert(true),
+		)
+		if err != nil {
+			return fmt.Errorf("provision marketing page %s: %w", page.slug, err)
 		}
 	}
 	return nil
