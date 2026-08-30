@@ -91,6 +91,30 @@ func (f *FakeUserRepository) FindByID(_ context.Context, id string) (identity.Us
 	return user, nil
 }
 
+func (f *FakeUserRepository) UpdateProfile(_ context.Context, userID, name string) (identity.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	user.Name = name
+	f.byID[userID] = user
+	return user, nil
+}
+
+func (f *FakeUserRepository) UpdatePassword(_ context.Context, userID, passwordHash string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.ErrUserNotFound
+	}
+	user.PasswordHash = passwordHash
+	f.byID[userID] = user
+	return nil
+}
+
 func (f *FakeUserRepository) SetPasswordReset(_ context.Context, userID, tokenHash string, expiresAt time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

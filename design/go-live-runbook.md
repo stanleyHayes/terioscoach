@@ -85,9 +85,9 @@ serving traffic again", and only the drill answers it.
 1. New → Blueprint → point at this repo. It reads `render.yaml`.
 2. Fill in every `sync: false` variable. The blueprint declares all 35 the
    API reads, so nothing falls back to a default silently.
-3. **`ALLOWED_ORIGINS` is the one that will bite you.** It must list both
+3. **`ALLOWED_ORIGINS` is the one that will bite you.** It must list all three
    app origins exactly, comma-separated, no trailing slash:
-   `https://terioscoach.com,https://practice.terioscoach.com`.
+   `https://terioscoach.com,https://practice.terioscoach.com,https://app.terioscoach.com`.
    Leaving it empty no longer produces a healthy-looking API that refuses
    every browser request: the service now refuses to start in production
    without it, and the deploy log says so. A failed deploy here means this
@@ -99,15 +99,17 @@ serving traffic again", and only the drill answers it.
 
 ## 5. Vercel (FND-09)
 
-Two projects from the same repo. `apps/*/vercel.json` carries the build
+Three projects from the same repo. `apps/*/vercel.json` carries the build
 commands, region and security headers already.
 
-| | `terios-web` | `terios-admin` |
-|---|---|---|
-| Root directory | `apps/web` | `apps/admin` |
-| Production domain | `terioscoach.com` | `practice.terioscoach.com` |
-| `NEXT_PUBLIC_API_URL` | the Render API URL | the same |
-| `NEXT_PUBLIC_SITE_URL` | `https://terioscoach.com` | — |
+| | `terios-web` | `terios-admin` | `terios-portal` |
+|---|---|---|---|
+| Root directory | `apps/web` | `apps/admin` | `apps/portal` |
+| Production domain | `terioscoach.com` | `practice.terioscoach.com` | `app.terioscoach.com` |
+| `NEXT_PUBLIC_API_URL` | the Render API URL | the same | the same |
+| `NEXT_PUBLIC_SITE_URL` | `https://terioscoach.com` | — | — |
+| `NEXT_PUBLIC_PORTAL_URL` | `https://app.terioscoach.com` | — | `https://app.terioscoach.com` |
+| `NEXT_PUBLIC_WEBSITE_URL` | — | — | `https://terioscoach.com` |
 
 Both need **Root Directory** set, and "Include files outside the root
 directory" enabled — this is a workspace, and the install runs from the
@@ -122,7 +124,7 @@ Notes:
 - Every preview origin that needs to talk to the API must be in
   `ALLOWED_ORIGINS` too, or add a staging API. Previews pointing at the
   production API is a decision to make deliberately, not by accident.
-- The admin project sends `X-Robots-Tag: noindex` on everything.
+- The admin and portal projects send `X-Robots-Tag: noindex` on everything.
 
 ---
 
@@ -146,13 +148,14 @@ Do this at a quiet hour, with no session booked for the next two.
    records to 300 seconds and wait for the old TTL to expire — if it is
    currently 24 hours, that means doing this the day before. Skipping it
    is what turns a five-minute rollback into a next-day one.
-2. Add the records Vercel gives you: an `A`/`ALIAS` for the apex and a
-   `CNAME` for `practice`.
-3. Wait for Vercel to issue certificates for both. Do not proceed while
-   either shows as pending.
+2. Add the records Vercel gives you: an `A`/`ALIAS` for the apex and
+   `CNAME` records for `practice` and `app`.
+3. Wait for Vercel to issue certificates for all three. Do not proceed while
+   any shows as pending.
 4. Check, in this order:
    - `https://terioscoach.com` loads and is not a certificate warning.
    - `https://practice.terioscoach.com` loads and shows the login.
+   - `https://app.terioscoach.com/login` loads and shows the client login.
    - Sign in on the dashboard. If this fails with a network error,
      `ALLOWED_ORIGINS` is wrong — that is the usual first fault. (A missing
      value stops the API booting; a value with the wrong origin in it
@@ -188,6 +191,7 @@ Point an uptime monitor at:
 | Operational health | `/v1/admin/ops/health` | body `status` is `critical` or `unknown` |
 | Public site | `https://terioscoach.com` | non-200 |
 | Dashboard | `https://practice.terioscoach.com/login` | non-200 |
+| Client portal | `https://app.terioscoach.com/login` | non-200 |
 
 Two things about the ops endpoint that matter:
 

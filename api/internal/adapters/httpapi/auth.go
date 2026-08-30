@@ -56,6 +56,8 @@ func WithAuth(svc ports.AuthService, opts ...AuthOption) Option {
 			r.With(RequireAuth(svc)).Get("/me", h.me)
 			r.Group(func(r chi.Router) {
 				r.Use(RequireAuth(svc))
+				r.Patch("/me", h.updateProfile)
+				r.Post("/change-password", h.changePassword)
 				r.Post("/mfa/enroll", h.beginMFA)
 				r.Post("/mfa/confirm", h.confirmMFA)
 				r.Post("/mfa/disable", h.disableMFA)
@@ -281,6 +283,46 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]userBody{"user": newUserBody(user)})
+}
+
+func (h *authHandler) updateProfile(w http.ResponseWriter, r *http.Request) {
+	id, ok := IdentityFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	user, err := h.svc.UpdateProfile(r.Context(), id, req.Name)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]userBody{"user": newUserBody(user)})
+}
+
+func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
+	id, ok := IdentityFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.ChangePassword(r.Context(), id, req.CurrentPassword, req.NewPassword); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // decodeJSON decodes a request body, writing a 400 on failure.

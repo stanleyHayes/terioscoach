@@ -60,7 +60,7 @@ services:
       # marketing site. It is the one mistake here that cannot be undone
       # after the fact: an email already in an inbox keeps its link.
       - key: PORTAL_URL
-        value: https://terioscoach.com/portal
+        value: https://app.terioscoach.com/portal
       - key: DASHBOARD_URL
         value: https://practice.terioscoach.com
 

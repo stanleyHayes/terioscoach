@@ -152,6 +152,39 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string) err
 	return nil
 }
 
+func (s *Service) UpdateProfile(ctx context.Context, id identity.Identity, name string) (identity.User, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return identity.User{}, identity.ErrNameRequired
+	}
+	return s.users.UpdateProfile(ctx, id.UserID, name)
+}
+
+func (s *Service) ChangePassword(ctx context.Context, id identity.Identity, currentPassword, newPassword string) error {
+	if err := identity.ValidatePassword(newPassword); err != nil {
+		return err
+	}
+	user, err := s.users.FindByID(ctx, id.UserID)
+	if err != nil {
+		return err
+	}
+	ok, err := s.hasher.Verify(user.PasswordHash, currentPassword)
+	if err != nil {
+		return fmt.Errorf("verify current password: %w", err)
+	}
+	if !ok {
+		return identity.ErrCurrentPassword
+	}
+	hash, err := s.hasher.Hash(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	if err := s.users.UpdatePassword(ctx, id.UserID, hash); err != nil {
+		return err
+	}
+	return s.sessions.RevokeAllForUser(ctx, id.UserID)
+}
+
 // Register creates a client account and opens its first session.
 func (s *Service) Register(ctx context.Context, in ports.RegisterInput) (ports.AuthResult, error) {
 	if err := identity.ValidatePassword(in.Password); err != nil {

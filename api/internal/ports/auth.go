@@ -53,6 +53,8 @@ type AuthService interface {
 	// CurrentUser loads the full account behind an authenticated identity.
 	// Misses return identity.ErrUserNotFound.
 	CurrentUser(ctx context.Context, id identity.Identity) (identity.User, error)
+	UpdateProfile(ctx context.Context, id identity.Identity, name string) (identity.User, error)
+	ChangePassword(ctx context.Context, id identity.Identity, currentPassword, newPassword string) error
 	BeginMFA(ctx context.Context, id identity.Identity) (MFAEnrollment, error)
 	ConfirmMFA(ctx context.Context, id identity.Identity, code string) error
 	DisableMFA(ctx context.Context, id identity.Identity, code string) error

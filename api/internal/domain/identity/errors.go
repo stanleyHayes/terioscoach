@@ -39,6 +39,8 @@ var (
 	ErrAccountDisabled      = errors.New("account disabled")
 	ErrLastOwner            = errors.New("the owner account cannot be changed or disabled")
 	ErrInvalidPermission    = errors.New("invalid permission")
+	ErrNameRequired         = errors.New("name is required")
+	ErrCurrentPassword      = errors.New("current password is incorrect")
 )
 
 // RetryAfterError carries how long a caller must wait before retrying. The

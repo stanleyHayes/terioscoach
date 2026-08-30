@@ -17,18 +17,18 @@ One platform, three layers: **Public Website** + **Client Portal** (customer-fac
 | Payments | Paystack (cards + mobile money, international clients) |
 | Video | Raw WebRTC build — own WebSocket signaling in the Go API + self-hosted TURN (coturn) |
 | Backend deploy | Render Blueprint (`render.yaml`, IaC) |
-| Frontend deploy | Vercel — **two separate projects**: customer app and admin app |
+| Frontend deploy | Vercel — **three separate projects**: public website, client portal and admin app |
 | Frontend | Next.js (App Router), TypeScript, latest stable |
-| Quality | SonarQube quality gates enforced in CI for all three codebases |
+| Quality | SonarQube quality gates enforced in CI for the API and all three frontends |
 | Versions | Latest stable of every dependency at scaffold time; pin exact versions in lockfiles |
 
 ## 2. Deployment Topology
 
 ```
-terios-web (Vercel)        terios-admin (Vercel)         ← two separate Next.js apps
-Public site + Client portal   Practice dashboard
-        \                        /
-         \                      /
+terios-web (Vercel)   terios-portal (Vercel)   terios-admin (Vercel)
+Public website         Client portal             Practice dashboard
+        \                    |                    /
+         \                   |                   /
           terios-api (Render)  ← one Go hexagonal API, RBAC
           WebRTC signaling (WS)
            |      |       |
@@ -45,7 +45,7 @@ Public site + Client portal   Practice dashboard
 | **Program Agent** | Scope control, dependencies, client reviews, phase sign-offs |
 | **Design Agent** | Brand direction, design system, all custom UI (no native elements) |
 | **Backend Agent** | Go hexagonal API: domain, ports, adapters, integrations, WebRTC signaling |
-| **Frontend Agent — Customer** | `terios-web`: public website + client portal |
+| **Frontend Agent — Customer** | `terios-web`: public website; `terios-portal`: client account and care experience |
 | **Frontend Agent — Admin** | `terios-admin`: practice dashboard |
 | **DevOps Agent** | Render Blueprint, Vercel, Atlas, coturn, CI/CD, SonarQube, backups |
 | **QA & Security Agent** | Test strategy, E2E, hardening, SonarQube gates, launch checklist |
@@ -73,8 +73,8 @@ Public site + Client portal   Practice dashboard
 | FND-06 | Resend: domain verification, transactional template set (confirm, remind, reschedule, enquiry, feedback) | DevOps | FND-02 | **Blocked — domain registered but DNS verification not started.** The Resend key is valid and the live domains API reports `terioscoach.com` as `not_started`. Publish the DKIM/SPF records and wait for `verified`, or point `RESEND_FROM` at a verified domain; otherwise confirmations, reminders and shared-feedback emails are not production-safe. |
 | FND-07 | Cloudinary: account, signed-upload presets, folder policy (client docs vs CMS media) | DevOps | — | **Verified live** — signed upload accepted by Cloudinary and a forged signature rejected, both against the real account (`internal/integration`). Account exists, credentials work, folder policy holds. |
 | FND-08 | `render.yaml` Blueprint: api service, coturn service, env groups, health checks, auto-deploy | DevOps | FND-01 | Done — every one of the 35 config variables is declared. **PORTAL_URL corrected**: it was set to the bare origin, and the email renderer appends to it, so every client email linked to a 404 on the marketing site. Pinned by `TestEveryLinkResolvesToARealRoute`, which checks produced links against the app's real route tree. |
-| FND-09 | Vercel projects `terios-web` + `terios-admin`: env wiring, preview deployments, API base URL config | DevOps | FND-01 | Config written; project creation needs a Vercel account — `apps/web/vercel.json` and `apps/admin/vercel.json` carry build commands, region and security headers (admin sends `X-Robots-Tag: noindex` and `no-store` on everything). Env table and the two gotchas (root directory, `ALLOWED_ORIGINS`) are in `design/go-live-runbook.md` §5. |
-| FND-10 | CI (GitHub Actions): build, test, lint for all three codebases + SonarQube scan with blocking quality gate | DevOps | FND-01 | In Progress — workflows + sonar configs written; live gate needs SONAR_TOKEN |
+| FND-09 | Vercel projects `terios-web` + `terios-portal` + `terios-admin`: env wiring, preview deployments, API base URL config | DevOps | FND-01 | Config and independent CI are written; project creation needs Vercel access. Each `apps/*/vercel.json` carries deployment/security policy; portal and admin send `X-Robots-Tag: noindex` and `no-store`. The three-project env/domain table and exact `ALLOWED_ORIGINS` value are in `design/go-live-runbook.md` §5. |
+| FND-10 | CI (GitHub Actions): build, test, lint for the API and all three frontends + SonarQube scan with blocking quality gate | DevOps | FND-01 | In Progress — workflows + sonar configs written; live gate needs SONAR_TOKEN |
 
 ## 6. Phase 2 — Public Website (`terios-web`, public area)
 
@@ -129,7 +129,7 @@ Public site + Client portal   Practice dashboard
 | ADM-10 | Review moderation UI | FE-Admin | ADM-01, BE-14 | Done |
 | ADM-11 | Reporting dashboard: charts (custom-styled), sessions/income/bookings/content | FE-Admin | ADM-01, BE-15 | Done |
 
-## 8. Phase 4 — Client Experience (portal in `terios-web` + video)
+## 8. Phase 4 — Client Experience (`terios-portal` + video)
 
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
@@ -150,8 +150,8 @@ Public site + Client portal   Practice dashboard
 | ID | Task | Agent | Depends On | Status |
 |---|---|---|---|---|
 | LCH-01 | Security hardening pass: OWASP review, headers, CORS, rate limits, secrets audit, WebRTC room isolation test | QA & Security | All BE + CX | Done — `design/security-review.md`; CORS + security headers added, secrets audit clean; dependency scanning and alerting tracked as open items |
-| LCH-02 | E2E suite: book → pay → remind → video → notes → feedback → review, across both apps | QA & Security | CX-11, ADM-11 | Done (API half runs now; browser half needs a deployment) — `journey_test.go` drives the whole story over real HTTP with in-memory adapters and runs on every commit. `e2e/` holds the Playwright suite for the same story across both apps, including a two-browser WebRTC test that asserts `bytesReceived > 0`, not just a visible `<video>`. It is gated on FND-05/FND-09 and a seeded practitioner account. |
-| LCH-03 | SonarQube gates green across api/web/admin; coverage threshold met | QA & Security | LCH-02 | Done bar the live gate (needs SONAR_TOKEN) — enforced coverage ratchets in CI: API 65% floor (measured with `-coverpkg=./internal/...`, which reports 68% where the naive figure reads 48%), web 65/67/60/64, admin 73/72/68/71. Added `govulncheck` and `npm audit --audit-level=high`, closing LCH-01's dependency-scanning gap. Ratchets rise, never fall. |
+| LCH-02 | E2E suite: book → pay → remind → video → notes → feedback → review, across all three frontends | QA & Security | CX-11, ADM-11 | Done (API half runs now; browser half needs preview deployments) — `journey_test.go` drives the whole story over real HTTP with in-memory adapters and runs on every commit. `e2e/` uses distinct web, portal and admin origins, including a two-browser WebRTC test that asserts `bytesReceived > 0`, not just a visible `<video>`. It is gated on FND-05/FND-09 and a seeded practitioner account. |
+| LCH-03 | SonarQube gates green across api/web/portal/admin; coverage threshold met | QA & Security | LCH-02 | Done bar the live gate (needs SONAR_TOKEN) — enforced coverage ratchets in CI: API 65% floor, web 65/67/60/64, portal 65/67/60/64 and admin 73/72/68/71. Added `govulncheck` and `npm audit --audit-level=high`. Ratchets rise, never fall. |
 | LCH-04 | Atlas daily backups verified + restore drill | DevOps | FND-05 | Procedure written; needs an Atlas cluster — `design/go-live-runbook.md` §1, including why M0 cannot satisfy this task at all and what the drill has to prove (a booking, its payment, and a signed form still reporting `integrityOk`). |
 | LCH-05 | Content placement: supplied copy, testimonials, service descriptions, portraits, blog images and logo masters refined and loaded through CMS-ready paths | Design | ADM-07 | Done — the supplied archive was fully inventoried; 28 optimized portraits, 20 blog images and six final SVG logo variants are retained. Page copy and initial posts are idempotently seeded; testimonials remain approve-before-publish. See `design/brand-assets.md`. |
 | LCH-06 | Load/performance pass: booking concurrency, video room stress, Lighthouse | QA & Security | LCH-02 | Booking concurrency done — `concurrency_test.go` runs 32 simultaneous bookings of one slot under `-race`: exactly one 201, the rest a clean 409 `slot_unavailable`, plus repeated-tap, unrelated-slot and read-under-write cases. Video stress and Lighthouse need a deployment (FND-05/FND-09). |
@@ -259,6 +259,18 @@ The first redesign pass was rejected because it leaned too heavily on shared pri
 | SEO-01 | Strengthen link-preview presentation | Done | Generated 1200×630 branded Open Graph image is automatically attached through Next metadata conventions and statically verified in production build |
 | SEO-02 | Re-verify canonical, robots and sitemap controls | Done | Focused robots/sitemap suite 6/6; preview indexing remains opt-out and portal/recovery routes stay outside sitemap |
 
+## 22. Production completion additions (30 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| PC-01 | Separate the client portal into an independently deployable app | Done | `apps/portal`; private headers and CI; marketing auth routes redirect to `app.terioscoach.com`; three-app production builds pass |
+| PC-02 | Add account profile, password, preferences and onboarding controls | Done | API-backed profile/password changes revoke sessions; admin guided tour; admin and portal settings; route and service tests pass |
+| PC-03 | Make video consultation entry points explicit | Done | Client navigation/overview/session CTAs and admin calendar labels point to the existing authenticated WebRTC rooms |
+| PC-04 | Move blog authoring to dedicated Markdown write/preview pages | Done | `/content/posts/new` and `/content/posts/[id]/edit`; safe GFM rendering in the public article surface; editor tests pass |
+| PC-05 | Redesign and disambiguate startup loading and public empty states | Done | Shared high-contrast branded splash in all frontends; services empty state now names the unpublished-data condition and provides an enquiry action |
+| PC-06 | Add restrained public-site motion | Done | Staggered page-intro and existing section reveals use transform/opacity only and disable under reduced motion |
+| PC-07 | Verify the completion slice | Done | Admin 409 tests and coverage gate; portal 258 tests and coverage gate; web 176 tests and coverage gate; workspace lint/build; Go test/vet; live desktop and 390px browser checks with no horizontal overflow |
+
 ## 20. Production content, admin access and interaction hardening (30 Aug 2026)
 
 | ID | Task | Status | Evidence |
@@ -272,7 +284,7 @@ The first redesign pass was rejected because it leaned too heavily on shared pri
 | PROD-10 | Upgrade splash/loading and 404 states | Done | Branded full-viewport wellness-orbit splash for both apps; responsive public/admin 404 compositions with clear recovery actions and reduced-motion handling |
 | PROD-11 | Add operational KPI snapshots | Done | Live monthly overview snapshot with four KPIs and an accessible activity graph; summary strips precede calendar, clients, services, enquiries, reviews and team detail views |
 | PROD-12 | Repair responsive overlays, picker clipping, report spacing, and payment failure | Done locally; deploy pending | Explicit sidebar/backdrop/topbar/menu stacking and width guards verified at 390px; Availability cards permit picker overflow and the calendar flips above the field on wider screens; all-zero report series render a compact state instead of an empty chart; production Render logs traced the payments panic to a typed-nil service and the composition root now preserves the intended 503 with a regression test |
-| PROD-13 | Restore the admin CI coverage ratchet after the new dashboard/team/video surfaces | In progress | All 391 tests pass, but branch coverage is 65.83% against the existing 68% ratchet; do not call the repository gate green until focused tests close this delta. Sonar now runs only when its required secrets exist and uses the patched v6 action. |
+| PROD-13 | Restore the admin CI coverage ratchet after the new dashboard/team/video surfaces | Done | 409 tests pass; branch coverage is 68.02% against the unchanged 68% ratchet. Sonar runs only when its required secrets exist and uses the patched v6 action. |
 | PROD-04 | Run first dependency and production-build gate | Done | npm audit reports 0 vulnerabilities in web/admin; both production builds pass; relevant API packages pass; local `govulncheck` binary unavailable but CI already runs it |
 | PROD-05 | Live edge/TLS/email/Lighthouse verification | Blocked on deployment | Must be run against real origins; tracked in `design/security-review.md` open items |
 | PROD-06 | Strict nonce-based browser CSP | Done | See §20 |

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Globe2, Leaf, LogOut, Plus } from "lucide-react";
+import { ChevronDown, Globe2, Leaf, LogOut, Plus, Settings } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -17,11 +17,12 @@ import { cn } from "@/lib/cn";
 
 const sections = [
   { href: "/portal", label: "Overview" },
-  { href: "/portal/sessions", label: "Sessions" },
+  { href: "/portal/sessions", label: "Consultations" },
   { href: "/portal/forms", label: "Forms" },
   { href: "/portal/documents", label: "Documents" },
   { href: "/portal/payments", label: "Payments" },
   { href: "/portal/reviews", label: "Reviews" },
+  { href: "/portal/settings", label: "Settings" },
 ];
 
 function initials(name: string): string {
@@ -116,14 +117,14 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
         </ul>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
+          <a
+            href={process.env.NEXT_PUBLIC_WEBSITE_URL ?? "https://terioscoach.com"}
             aria-label="Back to website"
             className="inline-flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-medium text-eucalyptus-200 transition-colors duration-fast hover:bg-sand-0/8 hover:text-sand-0 xl:px-3"
           >
             <Globe2 size={15} aria-hidden="true" />
             <span className="hidden xl:inline">Website</span>
-          </Link>
+          </a>
           {/* Primary action (§3.30: primary sm "Book a session" equivalent for
               the portal variant). */}
           <Link href="/portal/book" className={buttonClasses({ size: "sm", className: "hidden !bg-sand-0 !text-eucalyptus-900 shadow-none hover:!bg-eucalyptus-100 sm:inline-flex" })}>
@@ -173,6 +174,7 @@ export function PortalNav({ userName, userEmail, onSignOut, signingOut = false }
                 ) : null}
               </div>
               <div aria-hidden="true" className="my-1 border-t border-border" />
+              <Link role="menuitem" href="/portal/settings" onClick={() => setMenuOpen(false)} className="flex h-9 w-full items-center gap-2 rounded-sm px-3 text-sm font-medium text-ink-muted hover:bg-surface-sunken hover:text-ink"><Settings size={16} aria-hidden="true"/>Profile & preferences</Link>
               <button
                 type="button"
                 role="menuitem"

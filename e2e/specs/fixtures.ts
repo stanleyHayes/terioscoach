@@ -10,6 +10,7 @@ import { expect, test as base, type Page } from "@playwright/test";
 
 export const env = {
   web: required("E2E_WEB_URL"),
+  portal: required("E2E_PORTAL_URL"),
   admin: required("E2E_ADMIN_URL"),
   api: required("E2E_API_URL"),
   practitionerEmail: required("E2E_PRACTITIONER_EMAIL"),
@@ -38,7 +39,7 @@ function required(name: string): string {
  * guard, so there is no override.
  */
 export function guardAgainstProduction(): void {
-  for (const url of [env.web, env.admin, env.api]) {
+  for (const url of [env.web, env.portal, env.admin, env.api]) {
     const { hostname } = new URL(url);
     if (hostname === "terioscoach.com" || hostname.endsWith(".terioscoach.com")) {
       throw new Error(
@@ -79,7 +80,7 @@ export const test = base.extend<{
     const page = await context.newPage();
     const client = newClient(testInfo.title.slice(0, 12).replace(/\W+/g, ""));
 
-    await page.goto(`${env.web}/register`);
+    await page.goto(`${env.portal}/register`);
     await page.getByRole("textbox", { name: /^name/i }).fill(client.name);
     await page.getByRole("textbox", { name: /^email/i }).fill(client.email);
     await page.getByRole("textbox", { name: /^password/i }).fill(client.password);
@@ -117,7 +118,7 @@ export { expect };
  * booking would not.
  */
 export async function bookFirstAvailableSlot(page: Page, serviceName: RegExp): Promise<void> {
-  await page.goto(`${env.web}/book`);
+  await page.goto(`${env.portal}/portal/book`);
   await page.getByRole("button", { name: serviceName }).click();
 
   const slots = page.getByRole("button", { name: /^\d{1,2}:\d{2}/ });

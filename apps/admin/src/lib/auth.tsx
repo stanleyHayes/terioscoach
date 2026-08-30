@@ -56,6 +56,7 @@ export interface AuthContextValue {
   login: (email: string, password: string, code?: string) => Promise<void>;
   /** Updates the local profile after a verified MFA enrollment. */
   setMfaEnabled: (enabled: boolean) => void;
+  setUserProfile: (user: User) => void;
   /** Ends the session. `message` is handed to the login screen to display. */
   logout: (message?: string) => Promise<void>;
 }
@@ -186,6 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const setUserProfile = useCallback((nextUser: User) => setUser(nextUser), []);
+
   // Handed to authedRequest callers: keeps the in-memory token pair (and the
   // persisted refresh token) current when a request triggers a rotation.
   const refreshCallbacks = useMemo<RefreshCallbacks>(
@@ -211,9 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshCallbacks,
       login,
       setMfaEnabled,
+      setUserProfile,
       logout,
     }),
-    [status, user, tokens, refreshCallbacks, login, logout, setMfaEnabled],
+    [status, user, tokens, refreshCallbacks, login, logout, setMfaEnabled, setUserProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

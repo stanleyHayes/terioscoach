@@ -30,7 +30,11 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function ContentPage() {
-  const [tab, setTab] = useState<TabId>("pages");
+  const [tab, setTab] = useState<TabId>(() => {
+    if (typeof window === "undefined") return "pages";
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    return TABS.some((item) => item.id === requested) ? (requested as TabId) : "pages";
+  });
 
   return (
     <div data-admin-page="content" className="flex flex-col gap-6">

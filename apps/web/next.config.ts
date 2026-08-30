@@ -59,6 +59,15 @@ function contentSecurityPolicy(): string {
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
+  async redirects() {
+    const portal = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://app.terioscoach.com";
+    return [
+      { source: "/portal", destination: `${portal}/portal`, permanent: false },
+      { source: "/portal/:path*", destination: `${portal}/portal/:path*`, permanent: false },
+      { source: "/login", destination: `${portal}/login`, permanent: false },
+      { source: "/register", destination: `${portal}/register`, permanent: false },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "Content-Security-Policy", value: contentSecurityPolicy() },

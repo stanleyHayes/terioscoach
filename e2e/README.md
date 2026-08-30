@@ -40,6 +40,7 @@ npx playwright test
 | Variable | What it is |
 |---|---|
 | `E2E_WEB_URL` | The customer site, e.g. a Vercel preview URL |
+| `E2E_PORTAL_URL` | The separately deployed client portal |
 | `E2E_ADMIN_URL` | The practice dashboard |
 | `E2E_API_URL` | The API, used for seeding and teardown |
 | `E2E_PRACTITIONER_EMAIL` / `_PASSWORD` | A seeded practitioner account |

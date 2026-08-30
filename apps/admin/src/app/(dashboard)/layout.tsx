@@ -1,10 +1,11 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { AppSplash } from "@/components/ui/AppSplash";
 import { useAuth } from "@/lib/auth";
 
 /**
@@ -53,22 +54,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   if (status !== "authenticated" || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="flex items-center gap-3 text-sm text-ink-muted">
-          <LoaderCircle
-            size={16}
-            aria-hidden="true"
-            className="animate-loading"
-          />
-          Preparing your practice…
-        </p>
-      </main>
-    );
+    return <AppSplash />;
   }
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface">
+      <OnboardingTour />
       <AdminSidebar
         userName={user.name}
         userRole={

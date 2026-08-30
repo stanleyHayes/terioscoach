@@ -42,7 +42,7 @@ describe("PortalLayout guard", () => {
     authState = { status: "loading", user: null };
     render(<PortalLayout>Secret content</PortalLayout>);
 
-    expect(screen.getByText("Preparing your portal…")).toBeTruthy();
+    expect(screen.getByText("Preparing your private care space…")).toBeTruthy();
     expect(screen.queryByText("Secret content")).toBeNull();
     expect(replaceMock).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe("PortalLayout guard", () => {
     expect(screen.getByText("Secret content")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Portal" })).toBeTruthy();
     expect(replaceMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("https://terioscoach.com");
   });
 
   it("keeps the public website header around the guest booking flow", () => {

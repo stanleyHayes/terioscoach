@@ -1,0 +1,435 @@
+@import "@fontsource-variable/outfit/index.css";
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Terios Wellness — design-system token contract (design/design-system.md §1).
+ * This file is the arbiter. It is copied verbatim to apps/admin; values must
+ * not drift. Light theme is the brand default (this app ships light-only).
+ * ------------------------------------------------------------------------- */
+:root {
+  /* color */
+  --primary: #3B6B54; --primary-hover: #4E8469; --primary-active: #2F5744; --on-primary: #FDFCFA;
+  --accent: #C07A56; --accent-hover: #A86443;
+  --surface: #FAF7F2; --surface-raised: #FDFCFA; --surface-sunken: #F3EEE5;
+  --ink: #1F2922; --ink-muted: #6E6350; --ink-faint: #AE9F82;
+  --border: #E7DFD0; --border-strong: #D3C8B2;
+  --success: #3F7A5C; --success-bg: #E4EEE8; --success-ink: #2A5A42;
+  --warning: #9A6B27; --warning-bg: #F7EDDA; --warning-ink: #7A5420;
+  --danger: #A93F3F; --danger-hover: #8F3535; --danger-bg: #F7E7E4; --danger-ink: #8A3232;
+  --info: #4A6E7E; --info-bg: #E8EFF1; --info-ink: #3A5866;
+  --focus-ring: color-mix(in srgb, var(--primary) 40%, transparent);
+  --overlay: rgba(28, 51, 40, 0.45);           /* modal/drawer scrim, eucalyptus-900 @45% */
+  /* radius */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 24px; --radius-full: 9999px;
+  /* shadow */
+  --shadow-xs: 0 1px 2px rgba(31,41,34,.05);
+  --shadow-sm: 0 1px 2px rgba(31,41,34,.06), 0 2px 8px rgba(31,41,34,.05);
+  --shadow-md: 0 2px 4px rgba(31,41,34,.06), 0 8px 24px rgba(31,41,34,.08);
+  --shadow-lg: 0 4px 8px rgba(31,41,34,.06), 0 16px 48px rgba(31,41,34,.12);
+  /* motion */
+  --duration-instant: 100ms; --duration-fast: 150ms; --duration-base: 250ms;
+  --duration-slow: 350ms; --duration-page: 400ms;
+  --ease-out: cubic-bezier(.22,1,.36,1); --ease-in: cubic-bezier(.5,0,.75,0);
+  --ease-in-out: cubic-bezier(.45,0,.25,1);
+  /* space (4px base) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+  --space-20: 80px; --space-24: 96px; --space-32: 128px;
+  /* type */
+  --font-display: "Figtree", system-ui, sans-serif;
+  --font-sans: "Outfit Variable", system-ui, sans-serif;
+  /* z-index scale */
+  --z-sticky: 20; --z-dropdown: 40; --z-overlay: 60; --z-modal: 70; --z-toast: 80; --z-tooltip: 90;
+
+  /* Component support tokens (added per §1 rule "add it here first — do not
+   * hardcode"): Button §3.1 secondary/ghost states reference the eucalyptus
+   * scale, which §1 does not tokenize. Values from design/brand.md §3.1. */
+  --eucalyptus-50: #F2F6F3;
+  --eucalyptus-100: #E4EEE8;
+  --eucalyptus-200: #C6DCCF; --eucalyptus-300: #9DC3AE; --eucalyptus-400: #6FA389;
+  --eucalyptus-500: #4E8469; --eucalyptus-600: #3B6B54; --eucalyptus-700: #2F5744;
+  --eucalyptus-800: #264335; --eucalyptus-900: #1C3328;
+  --clay-50: #FBF3EE; --clay-100: #F5E2D6; --clay-300: #DEA684;
+  --clay-500: #C07A56; --clay-600: #A86443; --clay-700: #874F34;
+  --sand-0: #FDFCFA; --sand-100: #F3EEE5; --sand-200: #E7DFD0; --sand-300: #D3C8B2;
+}
+[data-theme="dark"] { /* admin only — full values in brand.md §3.5 */
+  --primary: #6FA389; --primary-hover: #82B298; --primary-active: #4E8469; --on-primary: #12241B;
+  --accent: #DEA684; --surface: #141A16; --surface-raised: #1C241E; --surface-sunken: #101512;
+  --ink: #EDE9DF; --ink-muted: #9A9482; --ink-faint: #6B6657;
+  --border: #2A332C; --border-strong: #3A453C; --focus-ring: color-mix(in srgb, var(--primary) 55%, transparent);
+  --overlay: rgba(0,0,0,.55); --shadow-xs: none; --shadow-sm: none; --shadow-md: none; --shadow-lg: none;
+}
+
+/* Complete mechanical 1:1 mapping of every var above into Tailwind v4.
+ * No Tailwind default palette usage — components consume these tokens only. */
+@theme inline {
+  /* color */
+  --color-primary: var(--primary); --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active); --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent); --color-accent-hover: var(--accent-hover);
+  --color-surface: var(--surface); --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--ink); --color-ink-muted: var(--ink-muted); --color-ink-faint: var(--ink-faint);
+  --color-border: var(--border); --color-border-strong: var(--border-strong);
+  --color-success: var(--success); --color-success-bg: var(--success-bg); --color-success-ink: var(--success-ink);
+  --color-warning: var(--warning); --color-warning-bg: var(--warning-bg); --color-warning-ink: var(--warning-ink);
+  --color-danger: var(--danger); --color-danger-hover: var(--danger-hover);
+  --color-danger-bg: var(--danger-bg); --color-danger-ink: var(--danger-ink);
+  --color-info: var(--info); --color-info-bg: var(--info-bg); --color-info-ink: var(--info-ink);
+  --color-focus-ring: var(--focus-ring); --color-overlay: var(--overlay);
+  --color-eucalyptus-50: var(--eucalyptus-50); --color-eucalyptus-100: var(--eucalyptus-100);
+  --color-eucalyptus-200: var(--eucalyptus-200); --color-eucalyptus-300: var(--eucalyptus-300);
+  --color-eucalyptus-400: var(--eucalyptus-400); --color-eucalyptus-500: var(--eucalyptus-500);
+  --color-eucalyptus-600: var(--eucalyptus-600); --color-eucalyptus-700: var(--eucalyptus-700);
+  --color-eucalyptus-800: var(--eucalyptus-800); --color-eucalyptus-900: var(--eucalyptus-900);
+  --color-clay-50: var(--clay-50); --color-clay-100: var(--clay-100); --color-clay-300: var(--clay-300);
+  --color-clay-500: var(--clay-500); --color-clay-600: var(--clay-600); --color-clay-700: var(--clay-700);
+  --color-sand-0: var(--sand-0); --color-sand-100: var(--sand-100); --color-sand-200: var(--sand-200); --color-sand-300: var(--sand-300);
+  /* radius */
+  --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl); --radius-full: var(--radius-full);
+  /* shadow */
+  --shadow-xs: var(--shadow-xs); --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md); --shadow-lg: var(--shadow-lg);
+  /* motion — easings override the Tailwind defaults so ease-out/ease-in/
+   * ease-in-out utilities are always the brand curves */
+  --ease-out: var(--ease-out); --ease-in: var(--ease-in); --ease-in-out: var(--ease-in-out);
+  /* durations (utilities provided via @utility below) */
+  --duration-instant: var(--duration-instant); --duration-fast: var(--duration-fast);
+  --duration-base: var(--duration-base); --duration-slow: var(--duration-slow);
+  --duration-page: var(--duration-page);
+  /* space — Tailwind's dynamic 4px spacing scale already matches this ramp;
+   * mapped 1:1 for reference */
+  --space-1: var(--space-1); --space-2: var(--space-2); --space-3: var(--space-3);
+  --space-4: var(--space-4); --space-5: var(--space-5); --space-6: var(--space-6);
+  --space-8: var(--space-8); --space-10: var(--space-10); --space-12: var(--space-12);
+  --space-16: var(--space-16); --space-20: var(--space-20); --space-24: var(--space-24);
+  --space-32: var(--space-32);
+  /* type */
+  --font-display: var(--font-display); --font-sans: var(--font-sans);
+  /* z-index (utilities provided via @utility below) */
+  --z-sticky: var(--z-sticky); --z-dropdown: var(--z-dropdown); --z-overlay: var(--z-overlay);
+  --z-modal: var(--z-modal); --z-toast: var(--z-toast); --z-tooltip: var(--z-tooltip);
+}
+
+@theme {
+  /* Brand spinner: 900ms linear (§3.1 loading state), overriding the default. */
+  --animate-spin: spin 900ms linear infinite;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  /* Standard entrance: fade + translateY 8px, duration-slow ease-out (§6). */
+  --animate-fade-in: fade-in var(--duration-slow) var(--ease-out) both;
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Duration + z-index utilities, since Tailwind has no token namespaces for them. */
+@utility duration-instant { transition-duration: var(--duration-instant); }
+@utility duration-fast { transition-duration: var(--duration-fast); }
+@utility duration-base { transition-duration: var(--duration-base); }
+@utility duration-slow { transition-duration: var(--duration-slow); }
+@utility duration-page { transition-duration: var(--duration-page); }
+@utility z-sticky { z-index: var(--z-sticky); }
+@utility z-dropdown { z-index: var(--z-dropdown); }
+@utility z-overlay { z-index: var(--z-overlay); }
+@utility z-modal { z-index: var(--z-modal); }
+@utility z-toast { z-index: var(--z-toast); }
+@utility z-tooltip { z-index: var(--z-tooltip); }
+
+@layer base {
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    background-image:
+      radial-gradient(circle at 8% 6%, color-mix(in srgb, var(--eucalyptus-100) 58%, transparent) 0, transparent 28rem),
+      radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--accent) 9%, transparent) 0, transparent 24rem);
+    background-attachment: fixed;
+  }
+
+  ::selection { background: #c6dccf; color: var(--ink); }
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  a, button, input, textarea { -webkit-tap-highlight-color: transparent; }
+
+  /* Brand focus ring (§6): 2px ring + 2px offset, focus-visible only. */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Custom scrollbar (§2). Never hidden where scroll exists. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: var(--radius-full);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-faint);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* Reduced motion (§6): opacity-only, ≤150ms. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 150ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 150ms !important;
+    }
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+@keyframes botanical-drift {
+  0%, 100% { transform: rotate(-3deg) translate3d(0, 0, 0); }
+  50% { transform: rotate(2deg) translate3d(0, -8px, 0); }
+}
+@keyframes skeleton-sweep {
+  from { background-position: -220px 0; }
+  to { background-position: calc(100% + 220px) 0; }
+}
+.skeleton-shimmer {
+  background-color: var(--surface-sunken);
+  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-raised) 75%, transparent), transparent);
+  background-size: 220px 100%; background-repeat: no-repeat; animation: skeleton-sweep 1600ms linear infinite;
+}
+
+.terios-grain { position: relative; isolation: isolate; }
+.terios-grain::after {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none; content: ""; opacity: .16;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E");
+}
+.botanical-drift { animation: botanical-drift 9s var(--ease-in-out) infinite; }
+.skip-link {
+  position: fixed; top: 12px; left: 12px; z-index: var(--z-tooltip); transform: translateY(-150%);
+  border-radius: var(--radius-md); background: var(--ink); color: var(--surface-raised); padding: 10px 14px;
+  font-weight: 600; transition: transform var(--duration-fast) var(--ease-out);
+}
+.skip-link:focus { transform: translateY(0); }
+
+/* Portal surfaces follow a care-record rhythm: broad chapters, inset entries, one continuous thread. */
+[data-portal-page] { position: relative; }
+[data-portal-page]::before {
+  position: absolute; left: -1.25rem; top: 2rem; bottom: 1rem; width: 1px; content: "";
+  background: var(--eucalyptus-200); opacity: .8;
+}
+[data-portal-page] .rounded-lg { border-radius: 1.25rem; }
+[data-portal-page] :is(input, textarea) { border-radius: 1rem; min-height: 3rem; }
+[data-portal-page] [role="tablist"] {
+  width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 9999px;
+  background: var(--surface-raised); padding: .3rem;
+}
+[data-portal-page] [role="tab"] { border-radius: 9999px; }
+
+@media (max-width: 639px) {
+  [data-portal-page]::before { display: none; }
+}
+
+/* Component identity and motion — the care thread carried into interaction. */
+@keyframes terios-route-arrive {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); filter: blur(2px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+@keyframes terios-element-arrive {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.terios-route-stage { animation: terios-route-arrive var(--duration-page) var(--ease-out) both; }
+.terios-section-reveal {
+  opacity: 1; transform: translate3d(0, 0, 0);
+  transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
+}
+.terios-section-reveal[data-reveal-ready="true"][data-revealed="false"] { opacity: 0; transform: translate3d(0, 24px, 0); }
+.terios-section-reveal[data-revealed="true"] > div > * { animation: terios-element-arrive 520ms var(--ease-out) both; }
+.terios-section-reveal[data-revealed="true"] > div > :nth-child(2) { animation-delay: 55ms; }
+.terios-section-reveal[data-revealed="true"] > div > :nth-child(3) { animation-delay: 110ms; }
+.terios-section-reveal[data-revealed="true"] > div > :nth-child(4) { animation-delay: 165ms; }
+
+.terios-card::before {
+  position: absolute; top: -1px; left: 1.5rem; width: 2.75rem; height: .7rem; content: "";
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); border-top: 0;
+  border-radius: 0 0 999px 999px; pointer-events: none; opacity: .72;
+}
+.terios-card::after {
+  position: absolute; top: -4rem; right: -4rem; width: 10rem; height: 10rem; content: "";
+  border-radius: 50%; pointer-events: none; opacity: 0; transform: scale(.86);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 10%, transparent), transparent 68%);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+}
+.terios-card-interactive:hover::after { opacity: 1; transform: scale(1); }
+.terios-button::before {
+  position: absolute; inset: 1px 12% auto; height: 1px; content: ""; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 55%, transparent), transparent); opacity: .68;
+}
+.terios-button-primary::after {
+  width: .32rem; height: .32rem; margin-left: .15rem; flex: 0 0 auto; border-radius: 50%; content: "";
+  background: var(--clay-300); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay-300) 16%, transparent);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.terios-button-primary:hover::after { transform: scale(1.22); }
+.terios-button-secondary { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-raised) 70%, transparent); }
+.terios-badge { box-shadow: inset 0 1px color-mix(in srgb, white 35%, transparent); }
+.terios-feature-card { position: relative; isolation: isolate; }
+.terios-feature-card::before {
+  position: absolute; right: -1.25rem; top: -1.25rem; width: 5rem; height: 5rem; content: ""; z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent); border-radius: 48% 52% 66% 34%;
+  transform: rotate(18deg); transition: transform 520ms var(--ease-out), background-color 520ms var(--ease-out);
+}
+.terios-feature-card:hover::before { transform: rotate(34deg) scale(1.18); background: color-mix(in srgb, var(--primary) 7%, transparent); }
+.terios-service-row { position: relative; }
+.terios-service-row::before {
+  position: absolute; left: 0; top: 50%; width: .35rem; height: .35rem; border-radius: 50%; content: "";
+  background: var(--accent); opacity: 0; transform: translate3d(-8px,-50%,0) scale(.7);
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-base) var(--ease-out);
+}
+.terios-service-row:hover::before { opacity: 1; transform: translate3d(0,-50%,0) scale(1); }
+.terios-journal-entry { position: relative; overflow: hidden; }
+.terios-journal-entry::after {
+  position: absolute; right: 0; bottom: 0; width: 3.5rem; height: 3.5rem; content: ""; pointer-events: none;
+  border-top: 1px solid var(--eucalyptus-200); border-left: 1px solid var(--eucalyptus-200); border-radius: 2rem 0 0;
+  transform: translate3d(1rem,1rem,0); transition: transform var(--duration-base) var(--ease-out);
+}
+.terios-journal-entry:hover::after { transform: translate3d(0,0,0); }
+.terios-choice-card {
+  border-radius: 1.5rem 2.75rem 1.5rem 1.5rem;
+  box-shadow: 0 16px 50px rgba(31, 41, 34, .045);
+  transition: transform var(--duration-base) var(--ease-out), border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-base) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+.terios-choice-card::after {
+  position: absolute; right: 1.4rem; top: 1.25rem; width: .42rem; height: .42rem; border-radius: 50%; content: "";
+  background: var(--clay-300); box-shadow: 0 0 0 5px color-mix(in srgb, var(--clay-300) 14%, transparent);
+}
+.terios-choice-index {
+  display: flex; align-items: flex-end; justify-content: center; padding: 1.4rem .75rem; color: var(--primary);
+  background: color-mix(in srgb, var(--eucalyptus-50) 72%, var(--surface-raised)); font-size: 1.05rem; font-weight: 600;
+  border-right: 1px solid var(--border);
+}
+.terios-choice-card.is-selected .terios-choice-index { color: var(--sand-0); background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); }
+.terios-choice-action {
+  display: inline-flex; width: 2.35rem; height: 2.35rem; align-items: center; justify-content: center; border-radius: 50%;
+  color: var(--primary); background: var(--eucalyptus-50); transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+.terios-choice-card.is-selected .terios-choice-action { color: var(--eucalyptus-900); background: var(--sand-0); }
+.terios-booking-summary::before { left: auto; right: 1.5rem; }
+.terios-record-card { border-radius: 1.5rem 2.15rem 1.5rem 1.5rem; transition: transform var(--duration-base) var(--ease-out), border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-base) var(--ease-out); }
+.terios-record-card::after { position: absolute; right: 1.15rem; bottom: 1.1rem; width: .35rem; height: .35rem; border-radius: 50%; content: ""; background: var(--accent); opacity: .7; }
+.terios-record-card-complete::after { background: var(--primary); }
+.terios-quote-card { position: relative; border-radius: 2.25rem 1.35rem 2.25rem 1.35rem; box-shadow: 0 18px 60px rgba(31,41,34,.045); }
+.terios-quote-card::before { content: "“"; position: absolute; right: 1.25rem; top: -.65rem; font-family: var(--font-display); font-size: 5.5rem; line-height: 1; color: var(--eucalyptus-100); pointer-events: none; }
+.terios-legal-overview { position: relative; isolation: isolate; }
+.terios-legal-overview::after { position: absolute; right: -5rem; top: -7rem; z-index: -1; width: 18rem; height: 18rem; border: 1px solid rgba(255,255,255,.1); border-radius: 42% 58% 64% 36%; content: ""; transform: rotate(22deg); }
+.terios-legal-chapter { border-radius: 1.5rem 2.5rem 1.5rem 1.5rem; box-shadow: 0 14px 50px rgba(31,41,34,.035); transition: border-color var(--duration-fast) var(--ease-out), transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .terios-legal-chapter:hover { transform: translate3d(0,-3px,0); border-color: var(--eucalyptus-200); box-shadow: 0 22px 65px rgba(31,41,34,.075); } }
+@media (hover: hover) and (pointer: fine) {
+  .terios-choice-card:hover { transform: translate3d(0,-4px,0); border-color: var(--eucalyptus-300); box-shadow: 0 24px 70px rgba(31,41,34,.1); }
+  .terios-choice-card:hover .terios-choice-action { transform: rotate(8deg) scale(1.06); }
+  .terios-record-card:hover { transform: translate3d(0,-3px,0); border-color: var(--eucalyptus-200); box-shadow: 0 20px 60px rgba(31,41,34,.08); }
+}
+@media (max-width: 639px) {
+  .terios-choice-card { border-radius: 1.35rem 2.2rem 1.35rem 1.35rem; grid-template-columns: 3.25rem minmax(0,1fr); }
+  .terios-choice-index { grid-row: 1; padding: 1.25rem .5rem; }
+  .terios-choice-card > :last-child { grid-column: 1 / -1; }
+}
+.terios-route-stage main a:not([class*="rounded"]):not([class*="bg-"]):not(.terios-button) {
+  text-decoration: none; background-image: linear-gradient(var(--accent), var(--accent));
+  background-position: 0 100%; background-repeat: no-repeat; background-size: 0 1px;
+  transition: color var(--duration-fast) var(--ease-out), background-size var(--duration-base) var(--ease-out);
+}
+.terios-route-stage main a:not([class*="rounded"]):not([class*="bg-"]):not(.terios-button):hover { background-size: 100% 1px; }
+@media (hover: hover) and (pointer: fine) {
+  .terios-card-interactive:hover { transform: translate3d(0, -4px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .terios-route-stage,
+  .terios-section-reveal,
+  .terios-section-reveal[data-reveal-ready="true"][data-revealed="false"] {
+    opacity: 1 !important; transform: none !important; filter: none !important;
+  }
+  .terios-section-reveal[data-revealed="true"] > div > * { animation: none !important; }
+}
+
+@keyframes terios-empty-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+  50% { transform: translate3d(0, -7px, 0) rotate(2deg); }
+}
+.terios-empty-icon {
+  animation: terios-empty-float 3.2s var(--ease-out) infinite;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+@media (prefers-reduced-motion: reduce) { .terios-empty-icon { animation: none; } }
+
+/* Branded route transition and lost-path compositions. */
+@keyframes terios-splash-turn { to { transform: rotate(360deg); } }
+@keyframes terios-splash-breathe { 50% { transform: scale(.82); opacity: .55; } }
+@keyframes terios-splash-track { 0% { transform: translateX(-110%); } 55%, 100% { transform: translateX(110%); } }
+.terios-splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; justify-items: center; min-height: 100dvh; overflow: hidden; color: var(--sand-0); background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--eucalyptus-300) 22%, transparent), transparent 28rem), var(--eucalyptus-900); }
+.terios-splash::before, .terios-splash::after { position: absolute; width: min(70vw, 48rem); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.07); border-radius: 43% 57% 62% 38%; content: ""; pointer-events: none; }
+.terios-splash::before { left: -24rem; top: -28rem; transform: rotate(28deg); }
+.terios-splash::after { right: -28rem; bottom: -32rem; transform: rotate(-18deg); }
+.terios-splash-orbit { position: relative; width: 6.5rem; height: 6.5rem; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; animation: terios-splash-turn 7s linear infinite; }
+.terios-splash-orbit::after { position: absolute; top: -.25rem; left: 50%; width: .5rem; height: .5rem; border-radius: 50%; background: var(--clay-300); content: ""; }
+.terios-splash-core { position: absolute; inset: 2.65rem; border-radius: 50%; background: var(--sand-0); animation: terios-splash-breathe 1.8s ease-in-out infinite; }
+.terios-splash-leaf { position: absolute; top: 2rem; width: 1.25rem; height: 2rem; background: var(--eucalyptus-200); }
+.terios-splash-leaf-left { left: 1.7rem; border-radius: 100% 0 100% 0; transform: rotate(-28deg); }
+.terios-splash-leaf-right { right: 1.7rem; border-radius: 0 100% 0 100%; transform: rotate(28deg); }
+.terios-splash-copy { margin-top: 2rem; text-align: center; }
+.terios-splash-copy p { font-family: var(--font-display); font-size: 2.3rem; font-weight: 650; letter-spacing: -.045em; }
+.terios-splash-copy span { display: block; margin-top: .25rem; color: var(--sand-100); font-size: .7rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
+.terios-splash-progress { width: 8rem; height: 1px; margin-top: 2rem; overflow: hidden; background: rgba(255,255,255,.12); }
+.terios-splash-progress span { display: block; width: 62%; height: 100%; background: var(--clay-300); animation: terios-splash-track 1.45s ease-in-out infinite; }
+.terios-404 { position: relative; isolation: isolate; background: var(--surface); }
+.terios-404-number { position: absolute; right: -2vw; top: -4vw; z-index: -1; color: color-mix(in srgb, var(--primary) 5%, transparent); font-family: var(--font-display); font-size: clamp(14rem, 40vw, 42rem); font-weight: 700; line-height: .75; letter-spacing: -.1em; user-select: none; }
+.terios-404-garden { position: relative; min-height: 31rem; border: 1px solid var(--border); border-radius: 48% 52% 45% 55% / 42% 38% 62% 58%; background: radial-gradient(circle at 58% 36%, var(--eucalyptus-50), transparent 52%), var(--surface-raised); box-shadow: 0 36px 100px rgba(31,41,34,.09); transform: rotate(2deg); }
+.terios-404-path { position: absolute; inset: 12% 22% 10% 27%; border: 1px dashed var(--eucalyptus-300); border-width: 0 0 0 1px; border-radius: 48%; transform: rotate(29deg); }
+.terios-404-stone { position: absolute; width: 4.5rem; height: 2.4rem; border: 1px solid var(--eucalyptus-200); border-radius: 50%; background: var(--sand-100); box-shadow: inset 0 5px 14px rgba(255,255,255,.55); transform: rotate(-12deg); }
+.terios-404-stone-one { left: 24%; bottom: 18%; }
+.terios-404-stone-two { left: 45%; bottom: 42%; transform: rotate(9deg) scale(.78); }
+.terios-404-stone-three { right: 20%; top: 21%; transform: rotate(-4deg) scale(.58); }
+.terios-404-leaf { position: absolute; right: 19%; top: 17%; width: 6rem; height: 9rem; border-radius: 100% 0 100% 0; background: var(--eucalyptus-700); box-shadow: -2.4rem 3.4rem 0 -1.3rem var(--eucalyptus-300); transform: rotate(22deg); transform-origin: bottom left; }
+@media (max-width: 1023px) { .terios-404-garden { min-height: 22rem; max-width: 34rem; width: 100%; margin-inline: auto; } }
+
+.terios-markdown { color: var(--ink-muted); font-size: 1rem; line-height: 1.8; }
+.terios-markdown > * + * { margin-top: 1.25rem; }
+.terios-markdown :is(h1,h2,h3) { color: var(--ink); font-family: var(--font-display); font-weight: 650; line-height: 1.18; letter-spacing: -.025em; }
+.terios-markdown h1 { font-size: 2.25rem; } .terios-markdown h2 { font-size: 1.65rem; } .terios-markdown h3 { font-size: 1.25rem; }
+.terios-markdown :is(ul,ol) { padding-left: 1.5rem; } .terios-markdown ul { list-style: disc; } .terios-markdown ol { list-style: decimal; }
+.terios-markdown li + li { margin-top: .4rem; }
+.terios-markdown blockquote { border-left: 3px solid var(--primary); padding: .75rem 1.15rem; color: var(--ink); background: var(--surface-sunken); border-radius: 0 .9rem .9rem 0; }
+.terios-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.terios-markdown code { border-radius: .4rem; background: var(--surface-sunken); padding: .15rem .35rem; font-size: .88em; }
+.terios-markdown pre { overflow-x: auto; border-radius: 1rem; background: var(--eucalyptus-900); padding: 1rem; color: var(--sand-0); }
+.terios-markdown pre code { background: transparent; padding: 0; }
+.terios-markdown hr { border-color: var(--border); }
+.terios-markdown table { width: 100%; border-collapse: collapse; } .terios-markdown :is(th,td) { border: 1px solid var(--border); padding: .6rem .75rem; text-align: left; }
+@media (prefers-reduced-motion: reduce) { .terios-splash-orbit, .terios-splash-core, .terios-splash-progress span { animation: none; } }

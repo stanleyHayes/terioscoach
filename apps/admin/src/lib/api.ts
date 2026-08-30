@@ -170,6 +170,15 @@ export const authApi = {
   },
 };
 
+export const accountApi = {
+  updateProfile(session: Session, callbacks: RefreshCallbacks, name: string) {
+    return authedRequest<{ user: User }>("/v1/auth/me", session, callbacks, { method: "PATCH", body: { name } });
+  },
+  changePassword(session: Session, callbacks: RefreshCallbacks, currentPassword: string, newPassword: string) {
+    return authedRequest<void>("/v1/auth/change-password", session, callbacks, { method: "POST", body: { currentPassword, newPassword } });
+  },
+};
+
 export type Session = AuthTokens;
 
 export interface RefreshCallbacks {

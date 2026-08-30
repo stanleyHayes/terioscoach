@@ -42,7 +42,7 @@ test("the practitioner and client meet in the room", async ({
 
   await test.step("both sides join", async () => {
     await Promise.all([
-      client.goto(`${env.web}/portal/sessions/${bookingId}/room`),
+      client.goto(`${env.portal}/portal/sessions/${bookingId}/room`),
       adminPage.goto(`${env.admin}/sessions/${bookingId}/room`),
     ]);
 
@@ -89,7 +89,7 @@ test("the practitioner and client meet in the room", async ({
   await test.step("a third party cannot get in", async () => {
     const outsider = await client.context().browser()!.newContext();
     const page = await outsider.newPage();
-    await page.goto(`${env.web}/portal/sessions/${bookingId}/room`);
+    await page.goto(`${env.portal}/portal/sessions/${bookingId}/room`);
     // Unauthenticated: sent to sign in, never to the room.
     await expect(page).toHaveURL(/login/);
     await outsider.close();
@@ -123,7 +123,7 @@ test("TURN is configured where the deployment claims it is", async ({
   test.skip(!bookingId, "seed route unavailable — set E2E_SEED_TOKEN");
 
   await Promise.all([
-    client.goto(`${env.web}/portal/sessions/${bookingId}/room`),
+    client.goto(`${env.portal}/portal/sessions/${bookingId}/room`),
     adminPage.goto(`${env.admin}/sessions/${bookingId}/room`),
   ]);
 

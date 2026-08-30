@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, CircleAlert } from "lucide-react";
+import { Calendar, CircleAlert, Video } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { SessionRow } from "@/components/booking/SessionRow";
@@ -53,6 +53,7 @@ export default function PortalOverviewPage() {
           This is your private space for sessions, forms and documents —
           everything between you and your practitioner, in one calm place.
         </p>
+        {upcoming[0] ? <Link href={`/portal/sessions/${upcoming[0].id}/room`} className={buttonClasses({ size: "sm", className: "relative mt-6 !bg-sand-0 !text-eucalyptus-900 hover:!bg-eucalyptus-100" })}><Video size={16}/>Join next consultation</Link> : null}
       </Card>
 
       <section aria-labelledby="upcoming-sessions-heading">
@@ -61,7 +62,7 @@ export default function PortalOverviewPage() {
             id="upcoming-sessions-heading"
             className="font-display text-[1.5rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink"
           >
-            Upcoming sessions
+            Upcoming consultations
           </h2>
           <Link
             href="/portal/sessions"

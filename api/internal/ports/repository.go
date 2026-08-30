@@ -21,6 +21,8 @@ type UserRepository interface {
 	FindFirstByRole(ctx context.Context, role identity.Role) (identity.User, error)
 	// FindByID looks up by ID; misses return identity.ErrUserNotFound.
 	FindByID(ctx context.Context, id string) (identity.User, error)
+	UpdateProfile(ctx context.Context, userID, name string) (identity.User, error)
+	UpdatePassword(ctx context.Context, userID, passwordHash string) error
 	SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
 	ResetPassword(ctx context.Context, tokenHash, passwordHash string, now time.Time) (string, error)
 	SetMFAPending(ctx context.Context, userID, encryptedSecret string) error

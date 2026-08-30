@@ -21,7 +21,7 @@ test("a client books, pays, is seen, and reviews", async ({ clientPage, adminPag
   failOnConsoleErrors(page);
 
   await test.step("the client books the first slot the site offers", async () => {
-    await page.goto(`${env.web}/book`);
+    await page.goto(`${env.portal}/portal/book`);
     await page.getByRole("button", { name: /massage|session/i }).first().click();
 
     const slots = page.getByRole("button", { name: /^\d{1,2}:\d{2}/ });
@@ -33,7 +33,7 @@ test("a client books, pays, is seen, and reviews", async ({ clientPage, adminPag
   });
 
   await test.step("the booking is in their portal, not just on a success page", async () => {
-    await page.goto(`${env.web}/portal/sessions`);
+    await page.goto(`${env.portal}/portal/sessions`);
     await expect(page.getByRole("listitem").first()).toBeVisible();
   });
 
@@ -51,7 +51,7 @@ test("a client books, pays, is seen, and reviews", async ({ clientPage, adminPag
 
     // Back on our site, and the state changed because the webhook and the
     // verify call agreed — not because the redirect said so.
-    await page.waitForURL(new RegExp(env.web.replace(/^https?:\/\//, "")), { timeout: 60_000 });
+    await page.waitForURL(new RegExp(env.portal.replace(/^https?:\/\//, "")), { timeout: 60_000 });
     await expect(page.getByText(/paid/i).first()).toBeVisible({ timeout: 30_000 });
   });
 
@@ -75,7 +75,7 @@ test("a client books, pays, is seen, and reviews", async ({ clientPage, adminPag
   });
 
   await test.step("the client reads the shared feedback and not the private notes", async () => {
-    await page.goto(`${env.web}/portal/sessions`);
+    await page.goto(`${env.portal}/portal/sessions`);
     await page.getByRole("link", { name: /view|details/i }).first().click();
 
     await expect(page.getByText(/you should feel freer/i)).toBeVisible();
@@ -128,7 +128,7 @@ test("a client cannot reach another client's session", async ({ clientPage, admi
   const strangersBooking = url.match(/([0-9a-f]{24})/i)?.[1];
   test.skip(!strangersBooking, "no seeded booking to probe with");
 
-  await page.goto(`${env.web}/portal/sessions/${strangersBooking}`);
+  await page.goto(`${env.portal}/portal/sessions/${strangersBooking}`);
   // 404, not 403 — a stranger must not learn the session exists.
   await expect(page.getByText(/not found|couldn't find/i)).toBeVisible();
   await expect(page.getByText(/not allowed|forbidden|permission/i)).toHaveCount(0);

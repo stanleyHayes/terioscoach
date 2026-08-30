@@ -1,10 +1,10 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { PortalNav } from "@/components/layout/PortalNav";
 import { SiteNav } from "@/components/layout/SiteNav";
+import { AppSplash } from "@/components/ui/AppSplash";
 import { useAuth } from "@/lib/auth";
 
 /** The booking flow (WEB-09) is portal-side but open to visitors: guests
@@ -43,27 +43,13 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   }
 
   if (status === "loading") {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="flex items-center gap-3 text-sm text-ink-muted">
-          <LoaderCircle size={16} aria-hidden="true" className="animate-spin" />
-          Preparing your portal…
-        </p>
-      </main>
-    );
+    return <AppSplash />;
   }
 
   // Guest on a guest path (the booking flow): slim header, no guard.
   if (status !== "authenticated" || !user) {
     if (!guestAllowed) {
-      return (
-        <main className="flex flex-1 items-center justify-center">
-          <p className="flex items-center gap-3 text-sm text-ink-muted">
-            <LoaderCircle size={16} aria-hidden="true" className="animate-spin" />
-            Preparing your portal…
-          </p>
-        </main>
-      );
+      return <AppSplash />;
     }
     return (
       <>

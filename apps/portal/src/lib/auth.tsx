@@ -48,6 +48,7 @@ export interface AuthContextValue {
   /** Registers and signs in (201 returns tokens). Throws ApiError on failure
    * (e.g. code "email_taken", "validation_error"). */
   register: (name: string, email: string, password: string) => Promise<void>;
+  setUserProfile: (user: User) => void;
   /** Ends the session locally and invalidates the refresh token server-side. */
   logout: () => Promise<void>;
 }
@@ -149,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [tokens, clearSession]);
 
+  const setUserProfile = useCallback((nextUser: User) => setUser(nextUser), []);
+
   /* authedRequest rotated the access token after a 401 — persist the new set
    * (same user, so only the tokens + stored refresh token change). */
   const onTokensRefreshed = useCallback((nextTokens: AuthTokens) => {
@@ -169,9 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onTokensRefreshed,
       login,
       register,
+      setUserProfile,
       logout,
     }),
-    [status, user, tokens, onTokensRefreshed, login, register, logout],
+    [status, user, tokens, onTokensRefreshed, login, register, logout, setUserProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

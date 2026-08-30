@@ -15,6 +15,7 @@ import {
   Star,
   Users,
   UserRoundCog,
+  UserRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -37,7 +38,7 @@ export const NAV_GROUPS = [
     icon: Calendar,
     defaultOpen: true,
     items: [
-      { label: "Calendar", href: "/calendar", icon: Calendar },
+      { label: "Calendar & calls", href: "/calendar", icon: Calendar },
       { label: "Availability", href: "/availability", icon: CalendarClock },
       { label: "Clients", href: "/clients", icon: Users },
       { label: "Services", href: "/services", icon: Sparkles },
@@ -65,6 +66,7 @@ export const NAV_GROUPS = [
       { label: "Reports", href: "/reports", icon: BarChart3 },
       { label: "Team & access", href: "/team", icon: UserRoundCog },
       { label: "Security", href: "/security", icon: ShieldCheck },
+      { label: "Profile & preferences", href: "/settings", icon: UserRound },
     ],
   },
 ] as const;
@@ -111,6 +113,7 @@ const NAV_PERMISSION: Record<string, string> = {
   "/payments": "payments.manage",
   "/reports": "reports.view",
   "/team": "team.manage",
+  "/settings": "dashboard.view",
 };
 
 export function AdminSidebar({

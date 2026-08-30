@@ -114,6 +114,32 @@ func TestRegisterHappyPath(t *testing.T) {
 	}
 }
 
+func TestAccountProfileAndPasswordChanges(t *testing.T) {
+	svc, _, sessions := newTestService()
+	registered := registerClient(t, svc, "account@example.com", "the original password")
+
+	updated, err := svc.UpdateProfile(context.Background(), registered.User.Identity(), "  Ama Mensah  ")
+	if err != nil || updated.Name != "Ama Mensah" {
+		t.Fatalf("UpdateProfile = %+v, %v", updated, err)
+	}
+	if _, err := svc.UpdateProfile(context.Background(), registered.User.Identity(), "  "); !errors.Is(err, identity.ErrNameRequired) {
+		t.Fatalf("empty name err = %v", err)
+	}
+	if err := svc.ChangePassword(context.Background(), registered.User.Identity(), "wrong current password", "the replacement password"); !errors.Is(err, identity.ErrCurrentPassword) {
+		t.Fatalf("wrong current password err = %v", err)
+	}
+	if err := svc.ChangePassword(context.Background(), registered.User.Identity(), "the original password", "the replacement password"); err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+	if _, err := svc.Login(context.Background(), "account@example.com", "the replacement password"); err != nil {
+		t.Fatalf("login with replacement: %v", err)
+	}
+	old, _ := sessions.FindByHash(context.Background(), svc.tokens.HashRefreshToken(registered.RefreshToken))
+	if !old.Revoked {
+		t.Fatal("password change must revoke existing sessions")
+	}
+}
+
 func TestRegisterDuplicateEmail(t *testing.T) {
 	svc, _, _ := newTestService()
 	registerClient(t, svc, "dupe@example.com", "a long enough password")

@@ -314,7 +314,7 @@ export default function TeamPage() {
                   type="button"
                   aria-pressed={draft.permissions.includes(permission)}
                   onClick={() => togglePermission(permission)}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm ${draft.permissions.includes(permission) ? "border-primary bg-eucalyptus-50 text-ink" : "border-border bg-surface-raised text-ink-muted"}`}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm ${draft.permissions.includes(permission) ? "border-primary bg-eucalyptus-50 text-eucalyptus-900" : "border-border bg-surface-raised text-ink-muted"}`}
                 >
                   <span
                     className={`flex size-5 shrink-0 items-center justify-center rounded-md border ${draft.permissions.includes(permission) ? "border-primary bg-primary text-on-primary" : "border-border-strong"}`}

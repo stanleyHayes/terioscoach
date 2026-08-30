@@ -137,10 +137,10 @@ export default function SessionsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
-            Sessions
+            Video care
           </p>
           <h1 className="mt-3 font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink">
-            Your sessions
+            Your consultations
           </h1>
         </div>
         <Link href="/portal/book" className={buttonClasses({ size: "sm" })}>
@@ -227,7 +227,7 @@ export default function SessionsPage() {
                               href={`/portal/sessions/${booking.id}/room`}
                               className={buttonClasses({ size: "sm" })}
                             >
-                              Join
+                              Join video room
                             </Link>
                             <Button
                               variant="secondary"

@@ -265,6 +265,11 @@
   from { opacity: 0; transform: translate3d(0, 14px, 0); }
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
+.terios-intro-copy > *, .terios-intro-note { animation: terios-intro-arrive 720ms var(--ease-out) both; }
+.terios-intro-copy > :nth-child(2) { animation-delay: 90ms; }
+.terios-intro-copy > :nth-child(3) { animation-delay: 180ms; }
+.terios-intro-note { animation-delay: 260ms; }
+@keyframes terios-intro-arrive { from { opacity: 0; transform: translate3d(0, 28px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 .terios-route-stage { animation: terios-route-arrive var(--duration-page) var(--ease-out) both; }
 .terios-section-reveal {
   opacity: 1; transform: translate3d(0, 0, 0);
@@ -377,6 +382,7 @@
     opacity: 1 !important; transform: none !important; filter: none !important;
   }
   .terios-section-reveal[data-revealed="true"] > div > * { animation: none !important; }
+  .terios-intro-copy > *, .terios-intro-note { animation: none !important; }
 }
 
 @keyframes terios-empty-float {
@@ -393,7 +399,7 @@
 @keyframes terios-splash-turn { to { transform: rotate(360deg); } }
 @keyframes terios-splash-breathe { 50% { transform: scale(.82); opacity: .55; } }
 @keyframes terios-splash-track { 0% { transform: translateX(-110%); } 55%, 100% { transform: translateX(110%); } }
-.terios-splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; justify-items: center; min-height: 100dvh; overflow: hidden; color: var(--sand-0); background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--eucalyptus-300) 15%, transparent), transparent 28rem), var(--eucalyptus-950); }
+.terios-splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; justify-items: center; min-height: 100dvh; overflow: hidden; color: var(--sand-0); background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--eucalyptus-300) 22%, transparent), transparent 28rem), var(--eucalyptus-900); }
 .terios-splash::before, .terios-splash::after { position: absolute; width: min(70vw, 48rem); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.07); border-radius: 43% 57% 62% 38%; content: ""; pointer-events: none; }
 .terios-splash::before { left: -24rem; top: -28rem; transform: rotate(28deg); }
 .terios-splash::after { right: -28rem; bottom: -32rem; transform: rotate(-18deg); }
@@ -405,7 +411,7 @@
 .terios-splash-leaf-right { right: 1.7rem; border-radius: 0 100% 0 100%; transform: rotate(28deg); }
 .terios-splash-copy { margin-top: 2rem; text-align: center; }
 .terios-splash-copy p { font-family: var(--font-display); font-size: 2.3rem; font-weight: 650; letter-spacing: -.045em; }
-.terios-splash-copy span { display: block; margin-top: .25rem; color: var(--eucalyptus-200); font-size: .7rem; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
+.terios-splash-copy span { display: block; margin-top: .25rem; color: var(--sand-100); font-size: .7rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
 .terios-splash-progress { width: 8rem; height: 1px; margin-top: 2rem; overflow: hidden; background: rgba(255,255,255,.12); }
 .terios-splash-progress span { display: block; width: 62%; height: 100%; background: var(--clay-300); animation: terios-splash-track 1.45s ease-in-out infinite; }
 .terios-404 { position: relative; isolation: isolate; background: var(--surface); }
@@ -418,4 +424,18 @@
 .terios-404-stone-three { right: 20%; top: 21%; transform: rotate(-4deg) scale(.58); }
 .terios-404-leaf { position: absolute; right: 19%; top: 17%; width: 6rem; height: 9rem; border-radius: 100% 0 100% 0; background: var(--eucalyptus-700); box-shadow: -2.4rem 3.4rem 0 -1.3rem var(--eucalyptus-300); transform: rotate(22deg); transform-origin: bottom left; }
 @media (max-width: 1023px) { .terios-404-garden { min-height: 22rem; max-width: 34rem; width: 100%; margin-inline: auto; } }
+
+.terios-markdown { color: var(--ink-muted); font-size: 1rem; line-height: 1.8; }
+.terios-markdown > * + * { margin-top: 1.25rem; }
+.terios-markdown :is(h1,h2,h3) { color: var(--ink); font-family: var(--font-display); font-weight: 650; line-height: 1.18; letter-spacing: -.025em; }
+.terios-markdown h1 { font-size: 2.25rem; } .terios-markdown h2 { font-size: 1.65rem; } .terios-markdown h3 { font-size: 1.25rem; }
+.terios-markdown :is(ul,ol) { padding-left: 1.5rem; } .terios-markdown ul { list-style: disc; } .terios-markdown ol { list-style: decimal; }
+.terios-markdown li + li { margin-top: .4rem; }
+.terios-markdown blockquote { border-left: 3px solid var(--primary); padding: .75rem 1.15rem; color: var(--ink); background: var(--surface-sunken); border-radius: 0 .9rem .9rem 0; }
+.terios-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.terios-markdown code { border-radius: .4rem; background: var(--surface-sunken); padding: .15rem .35rem; font-size: .88em; }
+.terios-markdown pre { overflow-x: auto; border-radius: 1rem; background: var(--eucalyptus-900); padding: 1rem; color: var(--sand-0); }
+.terios-markdown pre code { background: transparent; padding: 0; }
+.terios-markdown hr { border-color: var(--border); }
+.terios-markdown table { width: 100%; border-collapse: collapse; } .terios-markdown :is(th,td) { border: 1px solid var(--border); padding: .6rem .75rem; text-align: left; }
 @media (prefers-reduced-motion: reduce) { .terios-splash-orbit, .terios-splash-core, .terios-splash-progress span { animation: none; } }

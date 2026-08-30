@@ -15,6 +15,7 @@ const links = [
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
 ];
+const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://app.terioscoach.com";
 
 const wordmarkClasses =
   "group inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em] text-ink";
@@ -138,9 +139,9 @@ export function SiteNav() {
         </ul>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Link href="/login" className={buttonClasses({ variant: "ghost", size: "sm" })}>
+          <a href={`${portalUrl}/login`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
             Sign in
-          </Link>
+          </a>
           <Link href="/work-with-me" className={buttonClasses({ variant: "primary", size: "sm" })}>
             Book now <ArrowUpRight aria-hidden="true" className="size-3.5" />
           </Link>
@@ -210,12 +211,12 @@ export function SiteNav() {
             <Link href="/work-with-me" className={buttonClasses({ fullWidth: true })}>
               Book now
             </Link>
-            <Link
-              href="/login"
+            <a
+              href={`${portalUrl}/login`}
               className={buttonClasses({ variant: "secondary", fullWidth: true, className: "border-sand-0/20 text-sand-0 hover:bg-sand-0/8" })}
             >
               Sign in
-            </Link>
+            </a>
           </div>
         </div>
       )}

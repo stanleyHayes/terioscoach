@@ -76,8 +76,9 @@ export default async function ServicesPage() {
           /* EmptyState (design-system §3.27). */
           <EmptyState
             icon={<Leaf className="size-8" />}
-            title="The menu is being refreshed"
-            description="When a service is published, it appears here. Check back soon."
+            title="No services are published yet"
+            description="The practice is preparing its bookable services. This page is working; there simply is not a live service to show right now."
+            action={<Link href="/contact" className={buttonClasses({ variant: "secondary" })}>Ask about care</Link>}
           />
         ) : (
           <ul className="divide-y divide-border border-y border-border">

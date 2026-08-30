@@ -139,8 +139,16 @@ export function AdminTopbar({
                 </div>
                 <Link
                   role="menuitem"
-                  href="/security"
+                  href="/settings"
                   className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                >
+                  <UserRound size={16} />
+                  Profile & preferences
+                </Link>
+                <Link
+                  role="menuitem"
+                  href="/security"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
                 >
                   <ShieldCheck size={16} />
                   Security and MFA

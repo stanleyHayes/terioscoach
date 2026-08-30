@@ -115,9 +115,9 @@ describe("Services page", () => {
 
     render(await ServicesPage());
 
-    expect(screen.getByText(/the menu is being refreshed/i)).toBeTruthy();
+    expect(screen.getByText(/no services are published yet/i)).toBeTruthy();
     expect(
-      screen.getByText(/when a service is published, it appears here/i),
+      screen.getByText(/there simply is not a live service to show right now/i),
     ).toBeTruthy();
   });
 });

@@ -137,6 +137,10 @@ func mapIdentityError(err error) (apiError, bool) {
 		return apiError{http.StatusBadRequest, "validation_error", "a valid email address is required"}, true
 	case errors.Is(err, identity.ErrPasswordTooShort):
 		return apiError{http.StatusBadRequest, "validation_error", "password must be at least 12 characters"}, true
+	case errors.Is(err, identity.ErrNameRequired):
+		return apiError{http.StatusBadRequest, "validation_error", "name is required"}, true
+	case errors.Is(err, identity.ErrCurrentPassword):
+		return apiError{http.StatusBadRequest, "current_password_invalid", "current password is incorrect"}, true
 	case errors.Is(err, identity.ErrInvalidRole), errors.Is(err, identity.ErrInvalidPermission):
 		return validationError(err)
 	}

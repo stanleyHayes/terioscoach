@@ -3,6 +3,7 @@
 import { CircleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ImagePicker } from "@/components/content/ImagePicker";
+import { MarkdownEditor } from "@/components/content/MarkdownEditor";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TextArea } from "@/components/ui/TextArea";
@@ -58,6 +59,7 @@ export function ArticleEditor({
   article,
   onClose,
   onSubmit,
+  presentation = "modal",
 }: {
   kind: "page" | "post";
   /** null → create; an article → edit. */
@@ -65,6 +67,7 @@ export function ArticleEditor({
   onClose: () => void;
   /** The parent performs the call and throws on failure. */
   onSubmit: (values: ArticleValues) => Promise<void>;
+  presentation?: "modal" | "page";
 }) {
   const editing = article !== null;
   const initial = initialValues(article);
@@ -134,6 +137,48 @@ export function ArticleEditor({
   const noun = kind === "page" ? "page" : "post";
   const publicPath = kind === "page" ? `/${values.slug}` : `/blog/${values.slug}`;
 
+  const form = (
+      <form id="article-form" noValidate onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {formError ? (
+          <div role="alert" className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink">
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+            {formError}
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <TextInput label="Title" required data-autofocus value={values.title} error={fieldErrors.title} placeholder={kind === "page" ? "About the practice" : "Five ways to rest properly"} onChange={(event) => handleTitle(event.target.value)} />
+          <TextInput label="Web address" required value={values.slug} error={fieldErrors.slug} hint={values.slug ? `Visitors will find this at ${publicPath}` : undefined} onChange={(event) => { setSlugTouched(true); update("slug", event.target.value); }} />
+        </div>
+
+        {kind === "post" ? <TextArea label="Excerpt" rows={2} value={values.excerpt} hint="The line that appears under the title on the blog index." onChange={(event) => update("excerpt", event.target.value)} /> : null}
+
+        <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
+
+        {kind === "post" ? <MarkdownEditor value={values.body} error={fieldErrors.body} onChange={(body) => update("body", body)} /> : <TextArea label="Body" required rows={12} value={values.body} error={fieldErrors.body} hint="Plain text. A blank line starts a new paragraph." onChange={(event) => update("body", event.target.value)} />}
+
+        {kind === "post" ? <div className="grid gap-4 sm:grid-cols-2"><TextInput label="Category" value={values.category} placeholder="Wellbeing" onChange={(event) => update("category", event.target.value)} /><TextInput label="Tags" value={values.tags} hint="Separated by commas." placeholder="rest, sleep" onChange={(event) => update("tags", event.target.value)} /></div> : null}
+
+        <fieldset className="flex flex-col gap-4 rounded-2xl border border-border p-5">
+          <legend className="px-1.5 text-[13px] font-medium text-ink-muted">Search engines</legend>
+          <TextInput label="Meta title" value={values.metaTitle} hint="Leave blank to use the title above." onChange={(event) => update("metaTitle", event.target.value)} />
+          <TextArea label="Meta description" rows={2} value={values.metaDescription} hint="Around 155 characters is what a search result shows." onChange={(event) => update("metaDescription", event.target.value)} />
+        </fieldset>
+      </form>
+  );
+
+  if (presentation === "page") {
+    return (
+      <div className="flex flex-col gap-6">
+        <header className="sticky top-0 z-[30] -mx-4 flex flex-wrap items-center justify-between gap-4 border-b border-border bg-surface/95 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <div><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-primary">Publishing desk</p><h1 className="mt-1 font-display text-2xl font-semibold text-ink">{editing ? "Edit blog post" : "New blog post"}</h1><p className="mt-1 text-xs text-ink-muted">{editing && article?.status === "published" ? "This post is live. Saving updates it immediately." : "Saving keeps this as a draft until you publish it."}</p></div>
+          <div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Back to blog</Button><Button type="submit" form="article-form" loading={submitting}>{editing ? "Save changes" : "Create draft"}</Button></div>
+        </header>
+        <div className="mx-auto w-full max-w-5xl rounded-[1.75rem] border border-border/70 bg-surface-raised/65 p-5 shadow-[0_24px_80px_rgba(0,0,0,.07)] sm:p-8">{form}</div>
+      </div>
+    );
+  }
+
   return (
     <Modal
       open
@@ -157,104 +202,7 @@ export function ArticleEditor({
         </>
       }
     >
-      <form id="article-form" noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {formError ? (
-          <div
-            role="alert"
-            className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
-          >
-            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
-            {formError}
-          </div>
-        ) : null}
-
-        <TextInput
-          label="Title"
-          required
-          data-autofocus
-          value={values.title}
-          error={fieldErrors.title}
-          placeholder={kind === "page" ? "About the practice" : "Five ways to rest properly"}
-          onChange={(event) => handleTitle(event.target.value)}
-        />
-
-        <TextInput
-          label="Web address"
-          required
-          value={values.slug}
-          error={fieldErrors.slug}
-          hint={values.slug ? `Visitors will find this at ${publicPath}` : undefined}
-          onChange={(event) => {
-            setSlugTouched(true);
-            update("slug", event.target.value);
-          }}
-        />
-
-        {kind === "post" ? (
-          <>
-            <TextArea
-              label="Excerpt"
-              rows={2}
-              value={values.excerpt}
-              hint="The line that appears under the title on the blog index."
-              onChange={(event) => update("excerpt", event.target.value)}
-            />
-          </>
-        ) : null}
-
-        <ImagePicker
-          value={values.coverImage}
-          disabled={submitting}
-          onChange={(url) => update("coverImage", url)}
-        />
-
-        <TextArea
-          label="Body"
-          required
-          rows={12}
-          value={values.body}
-          error={fieldErrors.body}
-          hint="Plain text. A blank line starts a new paragraph."
-          onChange={(event) => update("body", event.target.value)}
-        />
-
-        {kind === "post" ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextInput
-              label="Category"
-              value={values.category}
-              placeholder="Wellbeing"
-              onChange={(event) => update("category", event.target.value)}
-            />
-            <TextInput
-              label="Tags"
-              value={values.tags}
-              hint="Separated by commas."
-              placeholder="rest, sleep"
-              onChange={(event) => update("tags", event.target.value)}
-            />
-          </div>
-        ) : null}
-
-        <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
-          <legend className="px-1.5 text-[13px] font-medium text-ink-muted">
-            Search engines
-          </legend>
-          <TextInput
-            label="Meta title"
-            value={values.metaTitle}
-            hint="Leave blank to use the title above."
-            onChange={(event) => update("metaTitle", event.target.value)}
-          />
-          <TextArea
-            label="Meta description"
-            rows={2}
-            value={values.metaDescription}
-            hint="Around 155 characters is what a search result shows."
-            onChange={(event) => update("metaDescription", event.target.value)}
-          />
-        </fieldset>
-      </form>
+      {form}
     </Modal>
   );
 }

@@ -158,10 +158,10 @@ export default function CalendarPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-[22px] leading-[1.3] font-semibold tracking-[-0.005em] text-ink">
-            Calendar
+            Calendar & consultations
           </h1>
           <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            Your week at a glance — sessions, completions and no-shows.
+            Open a confirmed booking to start its secure video consultation, or manage its status and timing.
           </p>
         </div>
         {/* status filter chips (§3.20): selected = eucalyptus-100 + primary border */}

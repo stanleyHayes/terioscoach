@@ -2,6 +2,7 @@
 
 import { FileText, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import {
   ArticleEditor,
   toArticleBody,
@@ -99,9 +100,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
               : "Write something your clients would find useful."
             : `${liveCount} of ${items.length} live on the site`}
         </p>
-        <Button size="sm" onClick={() => setEditing(null)}>
-          {kind === "page" ? "New page" : "Write a post"}
-        </Button>
+        {kind === "page" ? <Button size="sm" onClick={() => setEditing(null)}>New page</Button> : <Link href="/content/posts/new" className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary">Write a post</Link>}
       </div>
 
       <ErrorBanner message={action.error} />
@@ -120,9 +119,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
               : "Posts appear on the blog newest first. Nothing goes out until you publish it."
           }
           action={
-            <Button size="sm" onClick={() => setEditing(null)}>
-              {kind === "page" ? "New page" : "Write a post"}
-            </Button>
+            kind === "page" ? <Button size="sm" onClick={() => setEditing(null)}>New page</Button> : <Link href="/content/posts/new" className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary">Write a post</Link>
           }
         />
       ) : (
@@ -164,15 +161,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
                   >
                     {live ? "Unpublish" : "Publish"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => setEditing(article)}
-                  >
-                    <Pencil size={14} aria-hidden="true" className="mr-1.5" />
-                    Edit
-                  </Button>
+                  {kind === "page" ? <Button variant="ghost" size="sm" disabled={busy} onClick={() => setEditing(article)}><Pencil size={14} aria-hidden="true" className="mr-1.5" />Edit</Button> : <Link href={`/content/posts/${article.id}/edit`} className="inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold text-ink-muted hover:bg-surface-sunken"><Pencil size={14} aria-hidden="true" className="mr-1.5" />Edit</Link>}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -189,7 +178,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
         </ul>
       )}
 
-      {editing !== undefined ? (
+      {kind === "page" && editing !== undefined ? (
         <ArticleEditor
           kind={kind}
           article={editing}

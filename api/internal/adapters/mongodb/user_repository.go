@@ -159,6 +159,37 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (identity.User
 	return r.findOne(ctx, bson.M{"_id": oid})
 }
 
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID, name string) (identity.User, error) {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	var doc userDoc
+	err = r.coll.FindOneAndUpdate(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"name": name}}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	if err != nil {
+		return identity.User{}, fmt.Errorf("update profile: %w", err)
+	}
+	return userFromDoc(doc), nil
+}
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID, passwordHash string) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.ErrUserNotFound
+	}
+	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"passwordHash": passwordHash}})
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return identity.ErrUserNotFound
+	}
+	return nil
+}
+
 func (r *UserRepository) ListStaff(ctx context.Context) ([]identity.User, error) {
 	cursor, err := r.coll.Find(ctx, bson.M{"role": bson.M{"$in": []string{string(identity.RolePractitioner), string(identity.RoleStaff)}}}, options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}}))
 	if err != nil {

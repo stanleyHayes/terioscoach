@@ -13,7 +13,7 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Terios")).toBeTruthy();
     for (const label of [
       "Overview",
-      "Calendar",
+      "Calendar & calls",
       "Availability",
       "Clients",
       "Services",
@@ -23,6 +23,7 @@ describe("AdminSidebar", () => {
       "Enquiries",
       "Reviews",
       "Reports",
+      "Profile & preferences",
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
@@ -31,7 +32,7 @@ describe("AdminSidebar", () => {
   it("links Calendar and Availability to their routes", () => {
     render(<AdminSidebar userName="Akosua Mensah" />);
 
-    expect(screen.getByRole("link", { name: "Calendar" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "Calendar & calls" }).getAttribute("href")).toBe(
       "/calendar",
     );
     expect(screen.getByRole("link", { name: "Availability" }).getAttribute("href")).toBe(
@@ -46,7 +47,7 @@ describe("AdminSidebar", () => {
       screen.getByRole("link", { name: "Overview" }).getAttribute("aria-current"),
     ).toBe("page");
     expect(
-      screen.getByRole("link", { name: "Calendar" }).hasAttribute("aria-current"),
+      screen.getByRole("link", { name: "Calendar & calls" }).hasAttribute("aria-current"),
     ).toBe(false);
   });
 

@@ -17,7 +17,7 @@ describe("PortalNav", () => {
     render(<PortalNav {...props} />);
 
     expect(screen.getByRole("link", { name: "Terios Wellness" })).toBeTruthy();
-    for (const label of ["Overview", "Sessions", "Forms", "Documents", "Payments", "Reviews"]) {
+    for (const label of ["Overview", "Consultations", "Forms", "Documents", "Payments", "Reviews", "Settings"]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
   });
@@ -28,11 +28,11 @@ describe("PortalNav", () => {
     expect(screen.getByRole("link", { name: "Overview" }).getAttribute("aria-current")).toBe(
       "page",
     );
-    expect(screen.getByRole("link", { name: "Sessions" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "Consultations" }).getAttribute("href")).toBe(
       "/portal/sessions",
     );
     expect(
-      screen.getByRole("link", { name: "Sessions" }).getAttribute("aria-current"),
+      screen.getByRole("link", { name: "Consultations" }).getAttribute("aria-current"),
     ).toBeNull();
   });
 
@@ -44,7 +44,7 @@ describe("PortalNav", () => {
 
   it("offers an explicit route back to the public website", () => {
     render(<PortalNav userName="Ama Serwaa" onSignOut={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("https://terioscoach.com");
   });
 
   it("opens the user menu, shows the account details, and signs out", () => {
