@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   ChevronDown,
   CircleHelp,
   BookOpenCheck,
@@ -19,6 +18,7 @@ import { NAV_ITEMS } from "./AdminSidebar";
 import { Button } from "@/components/ui/Button";
 import { PageHelpDialog } from "@/components/help/PageHelpDialog";
 import { adminHelpForPath } from "@/lib/help";
+import { AdminNotificationCenter } from "./AdminNotificationCenter";
 
 export function AdminTopbar({
   userName,
@@ -103,13 +103,7 @@ export function AdminTopbar({
           </Link>
         </div>
         <div className="flex items-center gap-1">
-          <Link
-            href="/enquiries"
-            aria-label="Enquiries and notifications"
-            className="rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink"
-          >
-            <Bell size={18} />
-          </Link>
+          <AdminNotificationCenter />
           <button
             type="button"
             aria-label={`Help with ${helpTopic.title}`}

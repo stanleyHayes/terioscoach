@@ -390,3 +390,11 @@ running production origins.
 | BOOK-03 | Confirm service and availability management | Done | Admin Services already provides create, edit, active/published toggle, ordering and deletion; Availability provides weekly windows, buffers and time off. Context help now explains that both an active service and future hours are required |
 | HELP-01 | Add contextual help to every authenticated page | Done and live | Admin and portal topbars resolve the current route to a goal, ordered instructions and route-specific guidance in an accessible modal, including nested blog, client, form and video-room routes; admin and portal CI passed for `203b410` |
 | HELP-02 | Add complete user guides | Done and live | `/guide` and `/portal/guide` collect every contextual topic; both account dropdowns link directly to their guide. Both production routes return HTTP 200 and their Vercel deployments succeeded |
+
+## 23. Notification centres and responsive route motion (30 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| NOTIFY-01 | Replace weak notification affordances with live action centres | Done locally | Admin Practice pulse derives actionable enquiries, pending reviews, and imminent consultations from authoritative records; portal Care updates derives assigned forms, unresolved payments, the next consultation, and eligible review prompts without pretending a durable read-history API exists |
+| NOTIFY-02 | Make badges meaningful and current | Done locally | Both bells expose accessible capped count badges, clear loading/error/caught-up states, refresh on focus and every 60 seconds, and deep-link each item to its workflow; partial admin RBAC access still shows permitted sources |
+| MOTION-01 | Improve slow-feeling portal route changes | Done locally | Shared route feedback begins at pointer activation, intent-prefetches internal destinations on hover/focus, adds tactile nav press states, and reduces route entrance motion from 400ms to 180ms with reduced-motion fallbacks |

@@ -7,6 +7,7 @@ import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { useAuth } from "@/lib/auth";
+import { RouteFeedback } from "@/components/layout/RouteFeedback";
 
 /**
  * Dashboard shell + route guard.
@@ -59,6 +60,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface">
+      <RouteFeedback />
       <OnboardingTour />
       <AdminSidebar
         userName={user.name}

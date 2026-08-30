@@ -335,7 +335,7 @@ function NavLink({
       aria-current={active ? "page" : undefined}
       title={compact ? item.label : undefined}
       className={cn(
-        "relative flex h-10 items-center rounded-xl text-sm font-medium transition-colors",
+        "relative flex h-10 items-center rounded-xl text-sm font-medium transition-[background-color,color,transform] duration-fast active:scale-[.98]",
         compact ? "justify-center px-2" : "gap-3 px-3",
         active
           ? "bg-sand-0 font-semibold text-eucalyptus-900"

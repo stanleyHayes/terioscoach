@@ -5,6 +5,7 @@ import { AdminTopbar } from "./AdminTopbar";
 const pathname = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ usePathname: pathname }));
+vi.mock("./AdminNotificationCenter", () => ({ AdminNotificationCenter: () => <button>Notifications</button> }));
 
 describe("AdminTopbar", () => {
   beforeEach(() => {

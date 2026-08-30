@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PortalTopbar } from "./PortalTopbar";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/portal/sessions" }));
+vi.mock("./PortalNotificationCenter", () => ({ PortalNotificationCenter: () => <button>Notifications</button> }));
 
 describe("PortalTopbar", () => {
   const props = { userName: "Ama Serwaa", userEmail: "ama@example.com", onSignOut: vi.fn() };

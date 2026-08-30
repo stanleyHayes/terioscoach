@@ -31,7 +31,7 @@
   --shadow-lg: 0 4px 8px rgba(31,41,34,.06), 0 16px 48px rgba(31,41,34,.12);
   /* motion */
   --duration-instant: 100ms; --duration-fast: 150ms; --duration-base: 250ms;
-  --duration-slow: 350ms; --duration-page: 400ms;
+  --duration-slow: 350ms; --duration-page: 180ms;
   --ease-out: cubic-bezier(.22,1,.36,1); --ease-in: cubic-bezier(.5,0,.75,0);
   --ease-in-out: cubic-bezier(.45,0,.25,1);
   /* space (4px base) */
@@ -258,14 +258,30 @@
 
 /* Component identity and motion — the care thread carried into interaction. */
 @keyframes terios-route-arrive {
-  from { opacity: 0; transform: translate3d(0, 10px, 0); filter: blur(2px); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+  from { opacity: .72; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 @keyframes terios-element-arrive {
   from { opacity: 0; transform: translate3d(0, 14px, 0); }
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 .terios-route-stage { animation: terios-route-arrive var(--duration-page) var(--ease-out) both; }
+.terios-popover {
+  transform-origin: calc(100% - 1.5rem) 0;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+  @starting-style { opacity: 0; transform: translate3d(0, -4px, 0) scale(.98); }
+}
+@keyframes terios-route-progress-run {
+  from { transform: translate3d(-110%, 0, 0); }
+  to { transform: translate3d(310%, 0, 0); }
+}
+.terios-route-progress {
+  position: fixed; inset: 0 0 auto; z-index: 100; height: 2px; overflow: hidden;
+  pointer-events: none; opacity: 0; transition: opacity 100ms var(--ease-out);
+}
+.terios-route-progress span { display: block; width: 35%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, transparent, var(--clay-300), var(--primary), transparent); }
+.terios-route-progress[data-active] { opacity: 1; }
+.terios-route-progress[data-active] span { animation: terios-route-progress-run 850ms linear infinite; }
 .terios-section-reveal {
   opacity: 1; transform: translate3d(0, 0, 0);
   transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
@@ -377,6 +393,8 @@
     opacity: 1 !important; transform: none !important; filter: none !important;
   }
   .terios-section-reveal[data-revealed="true"] > div > * { animation: none !important; }
+  .terios-popover { transition: opacity 120ms var(--ease-out); }
+  .terios-route-progress[data-active] span { animation: none; width: 100%; }
 }
 
 @keyframes terios-empty-float {

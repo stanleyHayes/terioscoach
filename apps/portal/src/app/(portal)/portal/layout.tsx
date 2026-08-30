@@ -7,6 +7,7 @@ import { PortalTopbar } from "@/components/layout/PortalTopbar";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { useAuth } from "@/lib/auth";
+import { RouteFeedback } from "@/components/layout/RouteFeedback";
 
 /** The booking flow (WEB-09) is portal-side but open to visitors: guests
  * choose a service and a time first, and sign in (or register) only at the
@@ -75,6 +76,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface">
+      <RouteFeedback />
       <PortalSidebar
         userName={user.name}
         userEmail={user.email}

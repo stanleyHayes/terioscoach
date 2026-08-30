@@ -168,7 +168,7 @@ export function PortalSidebar({
 
 function PortalNavLink({ item, active, compact, nested = false, onNavigate }: { item: PortalNavItem; active: boolean; compact: boolean; nested?: boolean; onNavigate?: () => void }) {
   return <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} title={compact ? item.label : undefined}
-    className={cn("relative flex h-10 items-center rounded-xl text-sm font-medium transition-colors", compact ? "justify-center px-2" : "gap-3 px-3", active ? "bg-sand-0 font-semibold text-eucalyptus-900" : "text-eucalyptus-200 hover:bg-sand-0/8 hover:text-sand-0", nested && "before:absolute before:-left-[13px] before:top-1/2 before:h-px before:w-3 before:bg-eucalyptus-700")}>
+    className={cn("relative flex h-10 items-center rounded-xl text-sm font-medium transition-[background-color,color,transform] duration-fast active:scale-[.98]", compact ? "justify-center px-2" : "gap-3 px-3", active ? "bg-sand-0 font-semibold text-eucalyptus-900" : "text-eucalyptus-200 hover:bg-sand-0/8 hover:text-sand-0", nested && "before:absolute before:-left-[13px] before:top-1/2 before:h-px before:w-3 before:bg-eucalyptus-700")}>
     <item.icon size={17} className="shrink-0"/>{!compact ? <span>{item.label}</span> : <span className="sr-only">{item.label}</span>}
   </Link>;
 }

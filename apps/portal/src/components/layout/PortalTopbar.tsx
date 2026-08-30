@@ -8,6 +8,7 @@ import { PORTAL_NAV_ITEMS } from "./PortalSidebar";
 import { cn } from "@/lib/cn";
 import { PageHelpDialog } from "@/components/help/PageHelpDialog";
 import { portalHelpForPath } from "@/lib/help";
+import { PortalNotificationCenter } from "./PortalNotificationCenter";
 
 export function PortalTopbar({ userName, userEmail, onSignOut, signingOut = false, collapsed = false, onToggleCollapse, onOpenMobileNav }: { userName: string; userEmail?: string; onSignOut: () => void; signingOut?: boolean; collapsed?: boolean; onToggleCollapse?: () => void; onOpenMobileNav?: () => void }) {
   const pathname = usePathname();
@@ -33,6 +34,7 @@ export function PortalTopbar({ userName, userEmail, onSignOut, signingOut = fals
       </div>
       <div className="flex items-center gap-1 sm:gap-2">
         <Link href="/portal/book" className="hidden h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary shadow-sm transition-colors hover:bg-primary-hover sm:inline-flex"><CalendarPlus size={16}/>Book a session</Link>
+        <PortalNotificationCenter />
         <button type="button" aria-label={`Help with ${helpTopic.title}`} onClick={() => setHelpOpen(true)} className="rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink"><CircleHelp size={18}/></button>
         <a href={process.env.NEXT_PUBLIC_WEBSITE_URL ?? "https://terioscoach.com"} target="_blank" rel="noreferrer" aria-label="Visit Terios website" className="rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink"><ExternalLink size={18}/></a>
         <div className="relative" ref={menuRef}>
