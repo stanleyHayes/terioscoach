@@ -1,0 +1,36 @@
+name: Production smoke monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-live-origins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify API readiness
+        run: |
+          body=$(curl --fail-with-body --silent --show-error --max-time 30 https://terios-api.onrender.com/readyz)
+          test "$body" = '{"status":"ready"}'
+
+      - name: Verify public website
+        run: |
+          curl --fail-with-body --silent --show-error --location --max-time 30 \
+            --output /dev/null https://terioswellness.vercel.app/
+
+      - name: Verify private apps and security headers
+        run: |
+          for url in \
+            https://terioswellness-admin.vercel.app/login \
+            https://terioscoach-portal.vercel.app/login
+          do
+            headers=$(curl --fail-with-body --silent --show-error --head --max-time 30 "$url")
+            printf '%s' "$headers" | grep -Eiq '^x-frame-options: DENY'
+            printf '%s' "$headers" | grep -Eiq '^x-content-type-options: nosniff'
+            printf '%s' "$headers" | grep -Eiq '^x-robots-tag: noindex, nofollow, noarchive'
+          done
