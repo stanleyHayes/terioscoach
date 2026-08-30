@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { cn } from "@/lib/cn";
 import { useVideoRoom } from "@/lib/use-video-room";
 
@@ -372,42 +373,8 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
       {/* Device settings. */}
       {settingsOpen ? (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row">
-          <label className="flex flex-1 flex-col gap-1 text-xs text-ink-muted">
-            Microphone
-            <select
-              aria-label="Microphone"
-              value={room.selectedMicId ?? ""}
-              onChange={(event) => room.selectMic(event.target.value)}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
-            >
-              {room.mics.length === 0 ? (
-                <option value="">Default microphone</option>
-              ) : null}
-              {room.mics.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || "Microphone"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-xs text-ink-muted">
-            Camera
-            <select
-              aria-label="Camera"
-              value={room.selectedCameraId ?? ""}
-              onChange={(event) => room.selectCamera(event.target.value)}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
-            >
-              {room.cameras.length === 0 ? (
-                <option value="">Default camera</option>
-              ) : null}
-              {room.cameras.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || "Camera"}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex-1"><BrandedSelect compact label="Microphone" value={room.selectedMicId ?? ""} placeholder="Default microphone" onChange={room.selectMic} options={room.mics.map((device)=>({value:device.deviceId,label:device.label||"Microphone"}))}/></div>
+          <div className="flex-1"><BrandedSelect compact label="Camera" value={room.selectedCameraId ?? ""} placeholder="Default camera" onChange={room.selectCamera} options={room.cameras.map((device)=>({value:device.deviceId,label:device.label||"Camera"}))}/></div>
         </div>
       ) : null}
 

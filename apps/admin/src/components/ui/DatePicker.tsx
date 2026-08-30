@@ -114,7 +114,7 @@ export function DatePicker({
             );
         }}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-3 rounded-xl border bg-surface-raised px-3.5 text-left text-sm transition-colors",
+          "flex h-11 w-full items-center justify-between gap-3 rounded-xl border bg-surface-raised px-3.5 text-left text-sm shadow-sm outline-none transition-[border-color,box-shadow,background-color] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
           error ? "border-danger" : "border-border-strong hover:border-primary",
           !value && "text-ink-faint",
         )}
@@ -135,7 +135,7 @@ export function DatePicker({
         <div
           role="dialog"
           aria-label={`${label} calendar`}
-          className="absolute top-full left-0 z-[50] mt-2 w-[min(300px,calc(100vw-3rem))] rounded-2xl border border-border bg-surface-raised p-4 shadow-lg sm:top-auto sm:bottom-full sm:mt-0 sm:mb-2"
+          className="absolute top-full left-0 z-[100] mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-surface-raised p-4 shadow-xl"
         >
           <div className="flex items-center justify-between">
             <button

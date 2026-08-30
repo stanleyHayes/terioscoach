@@ -1,12 +1,11 @@
 "use client";
 
 import { ChevronDown, GripVertical, Plus, Trash2 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { IconButton } from "@/components/ui/IconButton";
 import { Switch } from "@/components/ui/Switch";
 import { TextInput } from "@/components/ui/TextInput";
-import { cn } from "@/lib/cn";
 import { CHOICE_TYPES, FIELD_TYPES, fieldProblem, type FieldType, type FormField } from "@/lib/forms";
 
 /**
@@ -133,14 +132,6 @@ export function FieldEditor({
   );
 }
 
-/**
- * A custom listbox for the field type.
- *
- * Written out rather than reached for from a library because the app has no
- * form library and native `<select>` is forbidden. It implements the parts
- * that matter: a labelled button, `role="listbox"` with `aria-activedescendant`,
- * arrow/Home/End/Escape keys, and a click-away that closes.
- */
 function TypeListbox({
   value,
   onChange,
@@ -148,126 +139,17 @@ function TypeListbox({
   value: FieldType;
   onChange: (type: FieldType) => void;
 }) {
-  const labelId = useId();
-  const listId = useId();
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(() => FIELD_TYPES.findIndex((t) => t.value === value));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const selected = FIELD_TYPES.find((t) => t.value === value) ?? FIELD_TYPES[0]!;
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  function choose(index: number) {
-    const option = FIELD_TYPES[index];
-    if (!option) return;
-    onChange(option.value);
-    setActive(index);
-    setOpen(false);
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent) {
-    switch (event.key) {
-      case "ArrowDown":
-      case "ArrowUp": {
-        event.preventDefault();
-        if (!open) {
-          setOpen(true);
-          return;
-        }
-        const step = event.key === "ArrowDown" ? 1 : -1;
-        setActive((current) => (current + step + FIELD_TYPES.length) % FIELD_TYPES.length);
-        return;
-      }
-      case "Home":
-        if (open) {
-          event.preventDefault();
-          setActive(0);
-        }
-        return;
-      case "End":
-        if (open) {
-          event.preventDefault();
-          setActive(FIELD_TYPES.length - 1);
-        }
-        return;
-      case "Enter":
-      case " ":
-        event.preventDefault();
-        if (open) choose(active);
-        else setOpen(true);
-        return;
-      case "Escape":
-        if (open) {
-          event.preventDefault();
-          setOpen(false);
-        }
-        return;
-      default:
-    }
-  }
-
   return (
-    <div ref={containerRef} className="flex flex-col gap-1.5">
-      <span id={labelId} className="text-sm font-medium text-ink">
-        Answer type
-      </span>
-      <div className="relative">
-        <button
-          type="button"
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-labelledby={labelId}
-          aria-activedescendant={open ? `${listId}-${active}` : undefined}
-          onClick={() => setOpen((current) => !current)}
-          onKeyDown={handleKeyDown}
-          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 text-left text-sm text-ink transition-colors duration-instant ease-out hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <span>{selected.label}</span>
-          <ChevronDown
-            size={16}
-            aria-hidden="true"
-            className={cn("shrink-0 text-ink-faint transition-transform", open && "rotate-180")}
-          />
-        </button>
-
-        {open ? (
-          <ul
-            role="listbox"
-            id={listId}
-            aria-labelledby={labelId}
-            className="absolute z-dropdown mt-1 w-full overflow-hidden rounded-md border border-border bg-surface-raised py-1 shadow-lg"
-          >
-            {FIELD_TYPES.map((option, index) => (
-              <li
-                key={option.value}
-                role="option"
-                id={`${listId}-${index}`}
-                aria-selected={option.value === value}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => choose(index)}
-                className={cn(
-                  "cursor-pointer px-3 py-2",
-                  index === active ? "bg-surface-sunken" : "",
-                )}
-              >
-                <span className="block text-sm text-ink">{option.label}</span>
-                <span className="block text-[12px] text-ink-muted">{option.hint}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-    </div>
+    <BrandedSelect
+      label="Answer type"
+      value={value}
+      onChange={(next) => onChange(next as FieldType)}
+      options={FIELD_TYPES.map((option) => ({
+        value: option.value,
+        label: option.label,
+        description: option.hint,
+      }))}
+    />
   );
 }
 
