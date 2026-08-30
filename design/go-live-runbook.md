@@ -154,9 +154,9 @@ Do this at a quiet hour, with no session booked for the next two.
    | Host/name in Wix | Type | Value |
    |---|---|---|
    | `@` | `A` | `76.76.21.21` |
-   | `www` | `A` | `76.76.21.21` |
-   | `practice` | `A` | `76.76.21.21` |
-   | `app` | `A` | `76.76.21.21` |
+   | `www` | `CNAME` | `cname.vercel-dns.com` |
+   | `practice` | `CNAME` | `cname.vercel-dns.com` |
+   | `app` | `CNAME` | `cname.vercel-dns.com` |
 
    Remove the three existing Wix apex `A` records and the Wix `www` CNAME
    before adding their replacements; a hostname cannot have both a CNAME and

@@ -21,13 +21,13 @@ jobs:
       - name: Verify public website
         run: |
           curl --fail-with-body --silent --show-error --location --max-time 30 \
-            --output /dev/null https://terioswellness.vercel.app/
+            --output /dev/null https://terioscoach.com/
 
       - name: Verify private apps and security headers
         run: |
           for url in \
-            https://terioswellness-admin.vercel.app/login \
-            https://terioscoach-portal.vercel.app/login
+            https://practice.terioscoach.com/login \
+            https://app.terioscoach.com/login
           do
             headers=$(curl --fail-with-body --silent --show-error --head --max-time 30 "$url")
             printf '%s' "$headers" | grep -Eiq '^x-frame-options: DENY'
