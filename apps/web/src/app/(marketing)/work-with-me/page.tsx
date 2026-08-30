@@ -85,7 +85,7 @@ export default async function WorkWithMePage({
             src={page?.coverImage || "/images/marketing/services-care.webp"}
             alt="A calm virtual wellness consultation setting"
             fill
-            unoptimized
+            unoptimized={Boolean(page?.coverImage?.startsWith("http"))}
             sizes="(min-width: 1280px) 1200px, 94vw"
             className="object-cover"
           />

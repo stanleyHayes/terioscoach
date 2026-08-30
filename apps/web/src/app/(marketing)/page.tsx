@@ -118,7 +118,7 @@ export default async function Home() {
               alt="Theresa Yirerong, registered nurse and wellness coach"
               fill
               priority
-              unoptimized
+              unoptimized={Boolean(homePage?.coverImage?.startsWith("http"))}
               sizes="(min-width: 1024px) 480px, 90vw"
               className="object-cover"
             />
@@ -179,7 +179,7 @@ export default async function Home() {
                 href="/services"
                 className={`terios-feature-card group flex h-full min-h-72 flex-col justify-between overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 p-8 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:min-h-56" : ""}`}
               >
-                <span className="font-mono text-xs text-ink-faint">0{index + 1}</span>
+                <span className="font-mono text-xs font-medium text-ink-muted">0{index + 1}</span>
                 <div className="mt-12 max-w-[54ch]">
                   <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.title}</h3>
                   <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.body}</p>

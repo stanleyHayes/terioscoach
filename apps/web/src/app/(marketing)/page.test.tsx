@@ -34,6 +34,8 @@ describe("Home page", () => {
         name: /care that lets you exhale/i,
       }),
     ).toBeTruthy();
+    expect(screen.getByAltText(/registered nurse and wellness coach/i).getAttribute("src"))
+      .toContain("/_next/image?url=%2Fcustom-home.webp");
   });
 
   it("links hero CTAs to the right routes", async () => {

@@ -72,6 +72,17 @@ describe("ImagePicker", () => {
     expect(screen.getByRole("button", { name: /replace image/i })).toBeTruthy();
   });
 
+  it("loads bundled library thumbnails from the stable public asset origin", () => {
+    render(<ImagePicker value="" onChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText(/choose from the terios library/i));
+    const thumbnail = screen.getByRole("button", { name: /use theresa — clinical/i })
+      .querySelector("img") as HTMLImageElement;
+    expect(thumbnail.src).toBe(
+      "https://terioswellness.vercel.app/images/brand/theresa-yirerong-clinical.webp",
+    );
+  });
+
   it("clears the image without touching the upload path", () => {
     const onChange = vi.fn();
     render(<ImagePicker value="https://res.cloudinary.com/demo/cover.png" onChange={onChange} />);

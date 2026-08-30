@@ -91,7 +91,7 @@ export default async function About() {
               src={page?.coverImage || "/images/brand/theresa-yirerong-about.webp"}
               alt="Theresa Yirerong, founder of Terios Wellness"
               fill
-              unoptimized
+              unoptimized={Boolean(page?.coverImage?.startsWith("http"))}
               sizes="(min-width: 1024px) 400px, 90vw"
               className="object-cover"
             />

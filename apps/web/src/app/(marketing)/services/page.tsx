@@ -89,7 +89,7 @@ export default async function ServicesPage() {
               >
                 <span
                   aria-hidden="true"
-                  className="font-mono text-xs text-ink-faint"
+                  className="font-mono text-xs font-medium text-ink-muted"
                 >
                   {String(index + 1).padStart(2, "0")}
                 </span>

@@ -7,8 +7,11 @@ import { useAuth } from "@/lib/auth";
 import { ACCEPT_ATTRIBUTE, uploadCMSImage } from "@/lib/media";
 import { describe } from "@/lib/use-resource";
 
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://terioscoach.com"
+// Keep the bundled editorial library usable before custom-domain cutover.
+// The stable Vercel alias serves the same public assets as terioscoach.com,
+// while the relative path saved into the CMS remains domain-independent.
+const ASSET_ORIGIN = (
+  process.env.NEXT_PUBLIC_ASSET_ORIGIN ?? "https://terioswellness.vercel.app"
 ).replace(/\/$/, "");
 
 const bundledImages = [
@@ -78,7 +81,7 @@ const bundledImages = [
 ] as const;
 
 function previewURL(value: string) {
-  return value.startsWith("/") ? `${SITE_URL}${value}` : value;
+  return value.startsWith("/") ? `${ASSET_ORIGIN}${value}` : value;
 }
 
 /**

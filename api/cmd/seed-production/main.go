@@ -1,5 +1,7 @@
-// Command seed-production provisions only the named practitioner accounts.
-// It is intentionally separate from cmd/seed: no demo content is ever written.
+// Command seed-production provisions the named practitioner accounts and the
+// approved launch content. It is intentionally separate from cmd/seed: no demo
+// records are ever written. SEED_SCOPE=content lets an operator safely repair
+// CMS content without placing account passwords in a one-off job command.
 package main
 
 import (
@@ -67,7 +69,7 @@ func main() {
 		slog.Error("production seed failed", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("production practitioner seed complete", "accounts", len(accounts))
+	slog.Info("production seed complete")
 }
 
 func run() error {
@@ -80,6 +82,10 @@ func run() error {
 	}
 	if os.Getenv("CONFIRM_PRODUCTION_SEED") != confirmation {
 		return fmt.Errorf("refusing production seed: set CONFIRM_PRODUCTION_SEED=%s", confirmation)
+	}
+	scope, err := seedScope(os.Getenv("SEED_SCOPE"))
+	if err != nil {
+		return err
 	}
 	if cfg.MongoURI == "" {
 		return errors.New("MONGODB_URI is required")
@@ -95,9 +101,11 @@ func run() error {
 	if err := mongodb.EnsureIndexes(ctx, db); err != nil {
 		return fmt.Errorf("ensure indexes: %w", err)
 	}
-	for _, a := range accounts {
-		if err := ensureAccount(ctx, db, a); err != nil {
-			return err
+	if scope == "all" {
+		for _, a := range accounts {
+			if err := ensureAccount(ctx, db, a); err != nil {
+				return err
+			}
 		}
 	}
 	if err := ensureMarketingPages(ctx, db); err != nil {
@@ -110,6 +118,16 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+func seedScope(value string) (string, error) {
+	if value == "" {
+		return "all", nil
+	}
+	if value != "all" && value != "content" {
+		return "", errors.New("SEED_SCOPE must be all or content")
+	}
+	return value, nil
 }
 
 func ensureMarketingPages(ctx context.Context, db *mongo.Database) error {
