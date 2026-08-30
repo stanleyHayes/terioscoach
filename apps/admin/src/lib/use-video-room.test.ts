@@ -476,6 +476,49 @@ describe("useVideoRoom collaboration and recovery", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("releases local media when admission is denied", async () => {
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "admission-denied" }) }));
+    expect(result.current.state).toBe("failed");
+    expect(result.current.localStream).toBeNull();
+    expect(tracks.every((track) => track.stop.mock.calls.length > 0)).toBe(true);
+  });
+
+  it("answers recording requests and handles peer departure", async () => {
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "recording-request" }) }));
+    expect(result.current.recordingConsentRequested).toBe(true);
+    act(() => result.current.respondToRecordingRequest(true));
+    expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({ type: "recording-consent", payload: { approved: true } });
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "peer-left" }) }));
+    expect(result.current.state).toBe("waiting");
+    expect(result.current.remoteStream).toBeNull();
+  });
+
+  it("honors solicited recording approval and handles an ended session", async () => {
+    vi.stubGlobal("MediaRecorder", class {});
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    const remote = { getTracks: () => [], getAudioTracks: () => [], getVideoTracks: () => [] } as unknown as MediaStream;
+    act(() => FakePeerConnection.instances[0]!.ontrack?.({ streams: [remote] }));
+
+    act(() => result.current.toggleRecording());
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "recording-consent", payload: { approved: true } }) }));
+    expect(result.current.recordingConsentPending).toBe(false);
+    expect(result.current.error).toMatch(/couldn't start/i);
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "session-ended" }) }));
+    expect(result.current.state).toBe("ended");
+  });
+
   it("allows the practitioner to end the call for both participants", async () => {
     const { result } = renderHook(() => useVideoRoom("booking-1"));
     act(() => result.current.join());

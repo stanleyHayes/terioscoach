@@ -60,11 +60,20 @@ function room(overrides: Record<string, unknown> = {}) {
     selectedCameraId: null,
     selectMic: vi.fn(),
     selectCamera: vi.fn(),
+    speakers: [],
+    waitingForAdmission: false,
+    admissionRequested: false,
+    admitClient: vi.fn(),
+    denyClient: vi.fn(),
+    endForAll: vi.fn(),
     quality: null,
     recordingSupported: false,
     recording: false,
     recordingSeconds: 0,
     toggleRecording: vi.fn(),
+    recordingConsentPending: false,
+    recordingConsentRequested: false,
+    respondToRecordingRequest: vi.fn(),
     captionsSupported: false,
     captionsEnabled: false,
     toggleCaptions: vi.fn(),
@@ -118,6 +127,27 @@ describe("Client session room route", () => {
     expect(leave).toHaveBeenCalled();
     // Leaving must not strand them on a dead room page.
     expect(push).toHaveBeenCalledWith("/portal/sessions");
+  });
+
+  it("operates the in-call panels and transient controls", () => {
+    const sendReaction = vi.fn();
+    const sendChat = vi.fn();
+    const markChatRead = vi.fn();
+    useVideoRoom.mockReturnValue(room({ state: "connected", sendReaction, sendChat, markChatRead }));
+    render(<ClientSessionRoomPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "React with 👍" }));
+    expect(sendReaction).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show chat" }));
+    fireEvent.change(screen.getByLabelText("Write a message"), { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(sendChat).toHaveBeenCalledWith("Hello");
+    expect(markChatRead).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave the session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stay" }));
   });
 
   it("shows the API's reason when the room refuses entry", () => {
