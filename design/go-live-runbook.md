@@ -148,8 +148,22 @@ Do this at a quiet hour, with no session booked for the next two.
    records to 300 seconds and wait for the old TTL to expire — if it is
    currently 24 hours, that means doing this the day before. Skipping it
    is what turns a five-minute rollback into a next-day one.
-2. Add the records Vercel gives you: an `A`/`ALIAS` for the apex and
-   `CNAME` records for `practice` and `app`.
+2. Keep Wix nameservers in place and update only the web-routing records.
+   Vercel's live domain inspection on 30 August 2026 recommends:
+
+   | Host/name in Wix | Type | Value |
+   |---|---|---|
+   | `@` | `A` | `76.76.21.21` |
+   | `www` | `A` | `76.76.21.21` |
+   | `practice` | `A` | `76.76.21.21` |
+   | `app` | `A` | `76.76.21.21` |
+
+   Remove the three existing Wix apex `A` records and the Wix `www` CNAME
+   before adding their replacements; a hostname cannot have both a CNAME and
+   another record. Do **not** remove or modify the verified Resend records:
+   `resend._domainkey` TXT, `rsend` CNAME, and `send` CNAME. This targeted
+   cutover preserves email while Vercel routes each hostname to the project it
+   is already attached to.
 3. Wait for Vercel to issue certificates for all three. Do not proceed while
    any shows as pending.
 4. Check, in this order:
