@@ -63,9 +63,9 @@ describe("PortalLayout guard", () => {
     render(<PortalLayout>Secret content</PortalLayout>);
 
     expect(screen.getByText("Secret content")).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Portal" })).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: "Client portal navigation" })).toBeTruthy();
     expect(replaceMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: "Back to website" }).getAttribute("href")).toBe("https://terioscoach.com");
+    expect(screen.getByRole("link", { name: "Visit Terios website" }).getAttribute("href")).toBe("https://terioscoach.com");
   });
 
   it("keeps the public website header around the guest booking flow", () => {

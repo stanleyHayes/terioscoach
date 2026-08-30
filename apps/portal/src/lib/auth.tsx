@@ -96,8 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (restoredRef.current) return;
     restoredRef.current = true;
 
-    let cancelled = false;
-
     async function restore() {
       let refreshToken: string | null = null;
       try {
@@ -106,23 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* storage unavailable */
       }
       if (!refreshToken) {
-        if (!cancelled) setStatus("unauthenticated");
+        setStatus("unauthenticated");
         return;
       }
       try {
         const nextTokens = await authApi.refresh(refreshToken);
         const { user: nextUser } = await authApi.me(nextTokens.accessToken);
-        if (!cancelled) applySession(nextTokens, nextUser);
+        applySession(nextTokens, nextUser);
       } catch {
-        if (cancelled) return;
         clearSession();
       }
     }
 
     void restore();
-    return () => {
-      cancelled = true;
-    };
   }, [applySession, clearSession]);
 
   const login = useCallback(

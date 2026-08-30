@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, REFRESH_TOKEN_KEY, useAuth } from "./auth";
 import { API_BASE_URL } from "./api";
@@ -201,6 +202,24 @@ describe("AuthProvider", () => {
       method: "GET",
       headers: { Authorization: "Bearer a2" },
     });
+  });
+
+  it("finishes restoring a session through the StrictMode effect replay", async () => {
+    localStorage.setItem(REFRESH_TOKEN_KEY, "stored-refresh");
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { ...tokens, user: clientUser }))
+      .mockResolvedValueOnce(jsonResponse(200, { user: clientUser }));
+
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("authenticated"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("drops the session when the stored refresh token is rejected", async () => {

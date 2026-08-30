@@ -23,3 +23,5 @@ credentials.txt
 
 # Go
 api/vendor/
+.vercel
+.env*

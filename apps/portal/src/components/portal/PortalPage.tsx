@@ -24,19 +24,20 @@ export interface PortalPageProps {
 export function PortalPage({ title, intro, children }: PortalPageProps) {
   return (
     <div data-portal-page className="animate-fade-in flex flex-col gap-8">
-      <header className="relative overflow-hidden rounded-[1.75rem] bg-eucalyptus-900 px-6 py-8 text-sand-0 shadow-[0_24px_70px_rgba(28,51,40,.16)] sm:px-8 sm:py-10">
+      <header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-surface-raised/85 px-6 py-7 shadow-[0_28px_90px_rgba(31,41,34,.08)] backdrop-blur-xl sm:px-8 sm:py-9">
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
         <div
           aria-hidden="true"
-          className="absolute -right-20 -top-24 size-64 rounded-full bg-eucalyptus-300/15 blur-3xl"
+          className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl"
         />
-        <p className="relative text-[11px] font-semibold tracking-[0.12em] text-eucalyptus-300 uppercase">
+        <p className="relative text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">
           Your care record
         </p>
-        <h1 className="relative mt-3 font-display text-[2.5rem] leading-[1.02] font-semibold tracking-[-0.035em] text-sand-0">
+        <h1 className="relative mt-2 font-display text-[2rem] leading-tight font-semibold tracking-[-0.035em] text-ink sm:text-[2.5rem]">
           {title}
         </h1>
         {intro ? (
-          <p className="relative mt-4 max-w-[60ch] text-base leading-[1.65] text-eucalyptus-200">
+          <p className="relative mt-3 max-w-[60ch] text-sm leading-relaxed text-ink-muted">
             {intro}
           </p>
         ) : null}

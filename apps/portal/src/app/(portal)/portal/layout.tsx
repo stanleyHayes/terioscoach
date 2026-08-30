@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { PortalNav } from "@/components/layout/PortalNav";
+import { PortalSidebar } from "@/components/layout/PortalSidebar";
+import { PortalTopbar } from "@/components/layout/PortalTopbar";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { useAuth } from "@/lib/auth";
@@ -23,6 +24,12 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { status, user, logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("terios-portal-sidebar-collapsed") === "true"; }
+    catch { return false; }
+  });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const guestAllowed = GUEST_PATHS.includes(pathname);
 
@@ -31,6 +38,11 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
       router.replace("/login");
     }
   }, [status, guestAllowed, router]);
+
+  useEffect(() => {
+    try { localStorage.setItem("terios-portal-sidebar-collapsed", String(sidebarCollapsed)); }
+    catch {}
+  }, [sidebarCollapsed]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -62,16 +74,29 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
-      <PortalNav
+    <div className="flex h-dvh overflow-hidden bg-surface">
+      <PortalSidebar
+        userName={user.name}
+        userEmail={user.email}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
+        onRequestExpand={() => setSidebarCollapsed(false)}
+      />
+      <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
+      <PortalTopbar
         userName={user.name}
         userEmail={user.email}
         onSignOut={handleSignOut}
         signingOut={signingOut}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+        onOpenMobileNav={() => setMobileNavOpen(true)}
       />
-      <main id="main-content" className="mx-auto w-full max-w-[1040px] flex-1 px-5 pt-8 pb-20 sm:px-6 lg:pt-12">
-        {children}
+      <main id="main-content" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+        <div className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-14 sm:px-6 lg:px-8 lg:pt-9">{children}</div>
       </main>
-    </>
+      </div>
+    </div>
   );
 }

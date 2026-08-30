@@ -38,22 +38,23 @@ export default function PortalOverviewPage() {
       data-portal-page="overview"
       className="animate-fade-in flex flex-col gap-8"
     >
-      <Card className="relative overflow-hidden border-eucalyptus-800 bg-eucalyptus-900 p-8 text-sand-0 shadow-[0_24px_70px_rgba(28,51,40,.18)] sm:p-10">
+      <Card className="relative overflow-hidden border-border/70 bg-surface-raised/85 p-8 shadow-[0_28px_90px_rgba(31,41,34,.08)] backdrop-blur-xl sm:p-10">
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
         <div
           aria-hidden="true"
-          className="absolute -right-20 -top-24 size-64 rounded-full bg-eucalyptus-300/15 blur-3xl"
+          className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl"
         />
-        <p className="relative text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">
+        <p className="relative text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
           Overview
         </p>
-        <h1 className="relative mt-3 font-display text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-sand-0">
+        <h1 className="relative mt-3 font-display text-[2.5rem] leading-[1.02] font-semibold tracking-[-0.04em] text-ink sm:text-[2.75rem]">
           Welcome back, {user?.name}
         </h1>
-        <p className="relative mt-4 max-w-[60ch] text-base leading-[1.7] text-eucalyptus-200">
+        <p className="relative mt-4 max-w-[60ch] text-base leading-[1.7] text-ink-muted">
           This is your private space for sessions, forms and documents —
           everything between you and your practitioner, in one calm place.
         </p>
-        {upcoming[0] ? <Link href={`/portal/sessions/${upcoming[0].id}/room`} className={buttonClasses({ size: "sm", className: "relative mt-6 !bg-sand-0 !text-eucalyptus-900 hover:!bg-eucalyptus-100" })}><Video size={16}/>Join next consultation</Link> : null}
+        {upcoming[0] ? <Link href={`/portal/sessions/${upcoming[0].id}/room`} className={buttonClasses({ size: "sm", className: "relative mt-6" })}><Video size={16}/>Join next consultation</Link> : null}
       </Card>
 
       <section aria-labelledby="upcoming-sessions-heading">
