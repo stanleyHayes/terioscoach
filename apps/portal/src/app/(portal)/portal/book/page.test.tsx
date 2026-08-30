@@ -124,6 +124,18 @@ describe("Booking flow → checkout", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  it("explains an unpublished service catalog instead of rendering a blank first step", async () => {
+    listServices.mockResolvedValueOnce([]);
+
+    render(<BookPage />);
+
+    expect(await screen.findByRole("heading", { name: "No sessions are available to book yet" })).toBeTruthy();
+    expect(screen.getByText(/has not published its service details, duration and price/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ask about care" }).getAttribute("href")).toBe(
+      "https://terioscoach.com/contact",
+    );
+  });
+
   it("books the session and then sends the client to checkout", async () => {
     await confirmABooking();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowUpRight, Check, CircleAlert, Clock3 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, CircleAlert, Clock3, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { bookingStatusMeta } from "@/components/booking/booking-status";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError, listServices, type ServiceSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { createBooking, type Booking, type Slot } from "@/lib/bookings";
@@ -295,8 +296,25 @@ function BookingFlow() {
       </div>
 
       {step === "service" ? (
-        <ul className="flex flex-col gap-4">
-          {services.map((item, index) => (
+        services.length === 0 ? (
+          <div className="rounded-[1.5rem] border border-border/80 bg-surface-raised shadow-soft">
+            <EmptyState
+              icon={<ListChecks className="size-8" />}
+              title="No sessions are available to book yet"
+              description="The booking flow is ready, but the practice has not published its service details, duration and price. You can still ask about care while the menu is being prepared."
+              action={
+                <a
+                  href={`${process.env.NEXT_PUBLIC_WEBSITE_URL ?? "https://terioscoach.com"}/contact`}
+                  className={buttonClasses({ variant: "secondary" })}
+                >
+                  Ask about care
+                </a>
+              }
+            />
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {services.map((item, index) => (
             <li key={item.id}>
               <button
                 type="button"
@@ -342,8 +360,9 @@ function BookingFlow() {
                 </span>
               </button>
             </li>
-          ))}
-        </ul>
+            ))}
+          </ul>
+        )
       ) : null}
 
       {step === "time" && service ? (
