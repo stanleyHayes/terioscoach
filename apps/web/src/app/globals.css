@@ -352,6 +352,9 @@
 .terios-record-card-complete::after { background: var(--primary); }
 .terios-quote-card { position: relative; border-radius: 2.25rem 1.35rem 2.25rem 1.35rem; box-shadow: 0 18px 60px rgba(31,41,34,.045); }
 .terios-quote-card::before { content: "“"; position: absolute; right: 1.25rem; top: -.65rem; font-family: var(--font-display); font-size: 5.5rem; line-height: 1; color: var(--eucalyptus-100); pointer-events: none; }
+.terios-featured-testimonial { border-radius: 2rem 5rem 2rem 2rem; box-shadow: 0 30px 90px rgba(31,41,34,.16); }
+.terios-featured-testimonial::before { position: absolute; right: 8.5rem; top: -10rem; width: 24rem; height: 24rem; border: 1px solid rgba(255,255,255,.1); border-radius: 47% 53% 42% 58%; content: ""; transform: rotate(19deg); pointer-events: none; }
+.terios-featured-testimonial::after { position: absolute; right: 11rem; bottom: -8rem; width: 17rem; height: 17rem; border: 1px solid rgba(222,166,132,.28); border-radius: 58% 42% 54% 46%; content: ""; transform: rotate(-16deg); pointer-events: none; }
 .terios-legal-overview { position: relative; isolation: isolate; }
 .terios-legal-overview::after { position: absolute; right: -5rem; top: -7rem; z-index: -1; width: 18rem; height: 18rem; border: 1px solid rgba(255,255,255,.1); border-radius: 42% 58% 64% 36%; content: ""; transform: rotate(22deg); }
 .terios-legal-chapter { border-radius: 1.5rem 2.5rem 1.5rem 1.5rem; box-shadow: 0 14px 50px rgba(31,41,34,.035); transition: border-color var(--duration-fast) var(--ease-out), transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out); }
@@ -362,6 +365,7 @@
   .terios-record-card:hover { transform: translate3d(0,-3px,0); border-color: var(--eucalyptus-200); box-shadow: 0 20px 60px rgba(31,41,34,.08); }
 }
 @media (max-width: 639px) {
+  .terios-featured-testimonial { border-radius: 1.5rem 3.25rem 1.5rem 1.5rem; }
   .terios-choice-card { border-radius: 1.35rem 2.2rem 1.35rem 1.35rem; grid-template-columns: 3.25rem minmax(0,1fr); }
   .terios-choice-index { grid-row: 1; padding: 1.25rem .5rem; }
   .terios-choice-card > :last-child { grid-column: 1 / -1; }

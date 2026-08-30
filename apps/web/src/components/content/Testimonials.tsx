@@ -28,6 +28,8 @@ export function Testimonials({
     return null;
   }
 
+  const hasSingleTestimonial = testimonials.length === 1;
+
   return (
     <div className={cn("flex flex-col gap-10", className)}>
       {summary && summary.count > 0 ? (
@@ -43,27 +45,53 @@ export function Testimonials({
       ) : null}
 
       {testimonials.length > 0 ? (
-        <ul className="columns-1 gap-5 md:columns-2 lg:columns-3">
+        <ul
+          className={cn(
+            hasSingleTestimonial
+              ? "grid"
+              : "columns-1 gap-5 md:columns-2 lg:columns-3",
+          )}
+        >
           {testimonials.map((testimonial, index) => (
-            <li key={testimonial.id} className="mb-5 break-inside-avoid">
-              <figure className={`flex flex-col rounded-[1.75rem] p-8 ${index % 3 === 0 ? "bg-eucalyptus-900 text-sand-0" : index % 3 === 1 ? "bg-clay-50" : "border border-border bg-surface-raised"}`}>
-                <blockquote className="flex-1">
-                  <p className={`font-display text-xl leading-[1.5] font-medium [text-wrap:pretty] ${index % 3 === 0 ? "text-sand-0" : "text-ink"}`}>
-                    &ldquo;{testimonial.quote}&rdquo;
-                  </p>
-                </blockquote>
-                <figcaption className={`mt-8 text-sm ${index % 3 === 0 ? "text-eucalyptus-200" : "text-ink-muted"}`}>
-                  <span className={`font-medium ${index % 3 === 0 ? "text-sand-0" : "text-ink"}`}>{testimonial.authorName}</span>
-                  {testimonial.authorRole ? (
-                    <>
-                      <span aria-hidden="true" className="mx-2 text-ink-faint">
-                        ·
-                      </span>
-                      {testimonial.authorRole}
-                    </>
-                  ) : null}
-                </figcaption>
-              </figure>
+            <li
+              key={testimonial.id}
+              className={cn(!hasSingleTestimonial && "mb-5 break-inside-avoid")}
+            >
+              {hasSingleTestimonial ? (
+                <FeaturedTestimonial testimonial={testimonial} />
+              ) : (
+                <figure
+                  className={`flex flex-col rounded-[1.75rem] p-8 ${index % 3 === 0 ? "bg-eucalyptus-900 text-sand-0" : index % 3 === 1 ? "bg-clay-50" : "border border-border bg-surface-raised"}`}
+                >
+                  <blockquote className="flex-1">
+                    <p
+                      className={`font-display text-xl leading-[1.5] font-medium [text-wrap:pretty] ${index % 3 === 0 ? "text-sand-0" : "text-ink"}`}
+                    >
+                      &ldquo;{testimonial.quote}&rdquo;
+                    </p>
+                  </blockquote>
+                  <figcaption
+                    className={`mt-8 text-sm ${index % 3 === 0 ? "text-eucalyptus-200" : "text-ink-muted"}`}
+                  >
+                    <span
+                      className={`font-medium ${index % 3 === 0 ? "text-sand-0" : "text-ink"}`}
+                    >
+                      {displayAuthor(testimonial)}
+                    </span>
+                    {testimonial.authorRole ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="mx-2 text-ink-faint"
+                        >
+                          ·
+                        </span>
+                        {testimonial.authorRole}
+                      </>
+                    ) : null}
+                  </figcaption>
+                </figure>
+              )}
             </li>
           ))}
         </ul>
@@ -86,7 +114,9 @@ export function Testimonials({
                 )}
                 <figcaption className="mt-5 text-[13px] text-ink-faint">
                   {/* First name only — that is all the API publishes. */}
-                  <span className="font-medium text-ink-muted">{review.authorName}</span>
+                  <span className="font-medium text-ink-muted">
+                    {review.authorName}
+                  </span>
                   {review.serviceName ? (
                     <>
                       <span aria-hidden="true" className="mx-2">
@@ -103,6 +133,65 @@ export function Testimonials({
       ) : null}
     </div>
   );
+}
+
+function FeaturedTestimonial({ testimonial }: { testimonial: Testimonial }) {
+  const author = displayAuthor(testimonial);
+  const initial = author.charAt(0).toUpperCase();
+
+  return (
+    <figure className="terios-featured-testimonial relative isolate grid min-h-[25rem] overflow-hidden bg-eucalyptus-900 text-sand-0 md:grid-cols-[minmax(0,1fr)_15rem]">
+      <div className="relative z-10 p-7 sm:p-10 lg:p-14">
+        <div>
+          <div className="flex items-center gap-3 text-[0.7rem] font-semibold tracking-[0.2em] text-eucalyptus-200 uppercase">
+            <span className="h-px w-8 bg-clay-300" aria-hidden="true" />
+            Client reflection
+          </div>
+          <blockquote className="mt-8 max-w-[30ch]">
+            <p className="font-display text-[clamp(1.65rem,4vw,2.65rem)] leading-[1.22] font-medium tracking-[-0.02em] text-sand-0 [text-wrap:pretty]">
+              &ldquo;{testimonial.quote}&rdquo;
+            </p>
+          </blockquote>
+        </div>
+      </div>
+
+      <figcaption className="relative z-10 flex items-center gap-4 border-t border-white/15 bg-white/[0.035] p-7 sm:p-10 md:flex-col md:items-start md:justify-end md:gap-0 md:border-t-0 md:border-l md:p-8">
+        <AuthorSeal initial={initial} />
+        <div className="md:mt-5">
+          <AuthorDetails author={author} role={testimonial.authorRole} />
+        </div>
+        <p className="mt-7 hidden text-xs leading-relaxed tracking-[0.12em] text-eucalyptus-200 uppercase md:block">
+          Shared from the Terios community
+        </p>
+      </figcaption>
+    </figure>
+  );
+}
+
+function AuthorSeal({ initial }: { initial: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-14 shrink-0 items-center justify-center rounded-full border border-clay-300/60 bg-clay-300/10 font-display text-xl font-semibold text-clay-200"
+    >
+      {initial}
+    </span>
+  );
+}
+
+function AuthorDetails({ author, role }: { author: string; role?: string }) {
+  return (
+    <span className="flex flex-col gap-1">
+      <span className="font-medium text-sand-0">{author}</span>
+      {role ? (
+        <span className="text-sm text-eucalyptus-200">{role}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function displayAuthor(testimonial: Testimonial): string {
+  return testimonial.authorName.trim() || "Terios client";
 }
 
 /** Five stars with the filled count set by the rating. The rating is stated

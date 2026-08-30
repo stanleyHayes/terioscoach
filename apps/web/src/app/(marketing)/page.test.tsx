@@ -94,6 +94,19 @@ describe("Home page", () => {
     expect(within(section).getByText(/5.0/)).toBeTruthy();
   });
 
+  it("gives a single testimonial a dedicated editorial layout", async () => {
+    listTestimonials.mockResolvedValue([
+      { id: "t1", authorName: "", quote: "I felt heard and supported." },
+    ]);
+
+    await renderHome();
+
+    const section = screen.getByRole("region", { name: /what clients say/i });
+    expect(within(section).getByText(/client reflection/i)).toBeTruthy();
+    expect(within(section).getByText(/i felt heard and supported/i)).toBeTruthy();
+    expect(within(section).getAllByText(/terios client/i).length).toBeGreaterThan(0);
+  });
+
   it("shows client reviews alongside the curated quotes", async () => {
     listReviews.mockResolvedValue([
       {
