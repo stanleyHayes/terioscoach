@@ -18,6 +18,37 @@ jobs:
           body=$(curl --fail-with-body --silent --show-error --max-time 30 https://terios-api.onrender.com/readyz)
           test "$body" = '{"status":"ready"}'
 
+      - name: Verify browser origins
+        run: |
+          for origin in \
+            https://terioscoach.com \
+            https://www.terioscoach.com \
+            https://practice.terioscoach.com \
+            https://app.terioscoach.com
+          do
+            headers=$(curl --fail-with-body --silent --show-error --max-time 30 \
+              --request OPTIONS \
+              --header "Origin: $origin" \
+              --header 'Access-Control-Request-Method: POST' \
+              --header 'Access-Control-Request-Headers: content-type' \
+              --dump-header - \
+              --output /dev/null \
+              https://terios-api.onrender.com/v1/auth/login)
+            printf '%s' "$headers" | grep -Fqi "access-control-allow-origin: $origin"
+            printf '%s' "$headers" | grep -Eiq '^access-control-allow-credentials: true'
+          done
+
+          rejected_headers=$(curl --silent --show-error --max-time 30 \
+            --request OPTIONS \
+            --header 'Origin: https://untrusted.example' \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: content-type' \
+            --dump-header - \
+            --output /dev/null \
+            https://terios-api.onrender.com/v1/auth/login)
+          printf '%s' "$rejected_headers" | grep -Eiq '^HTTP/[0-9.]+ 403'
+          ! printf '%s' "$rejected_headers" | grep -Eiq '^access-control-allow-origin:'
+
       - name: Verify public website
         run: |
           curl --fail-with-body --silent --show-error --location --max-time 30 \
@@ -34,3 +65,7 @@ jobs:
             printf '%s' "$headers" | grep -Eiq '^x-content-type-options: nosniff'
             printf '%s' "$headers" | grep -Eiq '^x-robots-tag: noindex, nofollow, noarchive'
           done
+
+          admin_html=$(curl --fail-with-body --silent --show-error --location --max-time 30 \
+            https://practice.terioscoach.com/login)
+          ! printf '%s' "$admin_html" | grep -Eiq 'fonts\.(googleapis|gstatic)\.com'

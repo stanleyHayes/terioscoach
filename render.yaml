@@ -50,10 +50,12 @@ services:
         value: Africa/Accra
 
       # ---- Origins ----
-      # Both app origins, comma-separated, exact, no trailing slash. The
-      # apps cannot call the API without this and there is no wildcard.
+      # Public, admin and portal origins, comma-separated, exact, no trailing
+      # slash. This is not a secret, so keep it versioned: leaving it as a
+      # dashboard-only value caused the custom domains to drift after cutover.
+      # The stable Vercel aliases remain valid rollback/diagnostic origins.
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://terioscoach.com,https://www.terioscoach.com,https://practice.terioscoach.com,https://app.terioscoach.com,https://terioswellness.vercel.app,https://terioswellness-admin.vercel.app,https://terioscoach-portal.vercel.app
       # ⚠ Must include /portal. The email renderer treats this as the
       # portal ROOT and appends to it — "/sessions" and "/book" — so
       # dropping the suffix sends every client email to a 404 on the

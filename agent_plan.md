@@ -157,7 +157,7 @@ Public website         Client portal             Practice dashboard
 | LCH-06 | Load/performance pass: booking concurrency, video room stress, Lighthouse | QA & Security | LCH-02 | Booking concurrency done — `concurrency_test.go` runs 32 simultaneous bookings of one slot under `-race`: exactly one 201, the rest a clean 409 `slot_unavailable`, plus repeated-tap, unrelated-slot and read-under-write cases. Video stress and Lighthouse need a deployment (FND-05/FND-09). |
 | LCH-07 | Practitioner training & handover runbook | Program | All above | Done — `design/handover-runbook.md`, written for the practitioner rather than an engineer: what each screen is for, which actions cannot be undone and why, the private-vs-shared notes rule, and the three symptoms that should be reported rather than worked around. |
 | LCH-08 | Domain cutover (Google-registered domain → Vercel/Render), SSL, go-live | DevOps | LCH-01–06 | Done — Wix remains the DNS host; the apex points to Vercel and `www`, `practice`, and `app` use Vercel CNAMEs. All four hostnames are attached to the intended projects, have auto-renewing certificates, and return HTTP 200. Google Workspace, SPF, DMARC, DKIM, and Resend records were preserved. See `design/go-live-runbook.md` §7. |
-| LCH-09 | Post-launch monitoring, uptime alerts, settling-in support period | DevOps + QA | LCH-08 | Active — `.github/workflows/production-smoke.yml` checks API readiness and the real custom domains (`terioscoach.com`, `practice`, and `app`), including security headers and private-app `noindex`, every 15 minutes. The first post-cutover run (`33325595120`) passed. `GET /v1/admin/ops/health` separately reports notification backlog, retry-exhausted failures, lockout spikes and payment-verification failures. External paging/notification routing remains an operator choice. |
+| LCH-09 | Post-launch monitoring, uptime alerts, settling-in support period | DevOps + QA | LCH-08 | Active — `.github/workflows/production-smoke.yml` checks API readiness, exact CORS preflights for all four custom browser origins, hostile-origin rejection, real custom-domain availability, security headers, private-app `noindex`, and absence of remote Google Fonts every 15 minutes. The first post-cutover run (`33325595120`) passed; a new run is required after each monitor change. `GET /v1/admin/ops/health` separately reports notification backlog, retry-exhausted failures, lockout spikes and payment-verification failures. External paging/notification routing remains an operator choice. |
 
 ---
 
@@ -310,6 +310,7 @@ not assumed.
 | FIX-06 | **Every field error was announced twice.** Both forgot-password screens passed `error` to `TextInput` — which renders it as `role="alert"`, tied to the input — *and* rendered a second identical alert beside it. | The redundant paragraph removed from both; `TextInput`'s is the better one, being associated with the field via `aria-describedby`. | "announces the error exactly once" |
 | FIX-07 | Admin `vercel.json` had drifted from `next.config.ts`: `Referrer-Policy` was the customer app's `strict-origin-when-cross-origin` rather than the dashboard's `no-referrer`, and `X-Robots-Tag` had lost `noarchive`. | Manifest realigned. | Diff |
 | FIX-08 | ESLint linted the generated `coverage/` reports, reporting problems in code nobody wrote. | `coverage/**` added to both configs' ignores. | Both lints report zero problems |
+| FIX-09 | **The custom-domain launch passed readiness while login was blocked by CORS.** Render still held the previous `terioswellness.com` allowlist, so `practice.terioscoach.com` preflights were rejected even though `/readyz` was green. | The exact non-secret allowlist is now versioned in `render.yaml`, deployed to Render, and exercised by the recurring smoke monitor. The monitor also proves an untrusted origin is refused. | Live matrix: all seven approved custom/rollback origins return 204 and their exact origin; `https://evil.example` returns 403 with no allow header. |
 
 ### 20b. PROD-06 — browser CSP
 
@@ -373,8 +374,9 @@ debt left in the tree.
 | AUTH-MFA-04 | Protect MFA lifecycle | Done | AES-256-GCM seed encryption under required `MFA_ENCRYPTION_KEY`; current-code verification for enable/disable; disabling revokes refresh sessions |
 | PROD-07 | Refresh security and release gates | Done locally | Go 1.26.6; `go test -race ./...`; `go vet ./...`; `govulncheck ./...` zero reachable vulnerabilities; npm audits zero; web 350 tests + build; admin 391 tests + coverage + build; lint/typecheck/diff checks clean |
 
-Repository readiness is green. Deployment-only gates in §20d remain open and
-must not be represented as locally verified: live DNS/TLS/edge behavior, Resend
-domain delivery, Atlas restore drill, Sonar live gate, Lighthouse/video stress,
-monitor ownership, final client content, and a penetration test against the
+Repository readiness is green. DNS/TLS, Resend domain delivery, and the custom
+browser-origin allowlist are now live-verified. Deployment-only gates in §20d
+remain open and must not be represented as locally verified: Atlas restore
+drill, Sonar live gate, Lighthouse/video stress, monitor ownership, payment
+provider production transactions/refunds, and a penetration test against the
 running production origins.

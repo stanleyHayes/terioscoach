@@ -58,11 +58,11 @@ learn that a record exists but is not theirs, the answer is "not found".
 | WebSocket origin checking (a WS handshake is **not** covered by same-origin policy) | `wsapi.NewHandler` | origin patterns come from `ALLOWED_ORIGINS` |
 | Unconfigured providers answer 503 rather than appearing to work | every `With*` option | `*UnavailableWithoutDatabase` tests |
 
-**Deployment requirement:** `ALLOWED_ORIGINS` must list both app origins
-exactly. Empty means no browser origin is permitted, which would take both
-apps down while every health probe stayed green — so production now refuses
-to boot without it rather than running in that state. It is still in the
-launch checklist; it now fails loudly instead of quietly.
+**Deployment requirement:** `ALLOWED_ORIGINS` is versioned in `render.yaml`
+with every custom production origin and stable Vercel alias. Empty means no
+browser origin is permitted, so production refuses to boot without it. The
+recurring production smoke workflow also verifies that every custom origin's
+preflight is echoed exactly; readiness alone cannot prove CORS works.
 
 ## A06 — Vulnerable and Outdated Components
 
@@ -149,13 +149,12 @@ request by varying one header. That was found and fixed during this build.
    a blank dashboard. The policies are pinned by `apps/web/src/lib/csp.test.ts`
    and `apps/admin/src/proxy.test.ts`.
 
-7. ~~`ALLOWED_ORIGINS` may be missed at deploy~~ — **closed as a silent
-   failure.** It is still a step someone has to take, but the API now
-   refuses to start in production without it (`config.Load`). Previously an
-   empty value produced an API that was up, healthy on every probe, and
-   useless: CORS permitted no browser origin and the signaling socket
-   refused every handshake, so both apps failed on every call with no
-   indication why. Pinned by `TestProductionRequiresItsSecretsAndOrigins`.
+7. ~~`ALLOWED_ORIGINS` may be missed or drift after deploy~~ — **closed.**
+   The API refuses to start in production without it (`config.Load`), the
+   non-secret exact allowlist is versioned in `render.yaml`, and the recurring
+   smoke workflow exercises real preflights from every custom origin.
+   Previously a stale dashboard-only value left the API healthy while custom
+   domains could not authenticate or open signaling sockets.
 
 8. **Practitioner MFA is opt-in and encrypted at rest.** Password login remains
    unchanged for accounts with `mfaEnabled=false`. Enrollment is staged: the

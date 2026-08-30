@@ -85,13 +85,11 @@ serving traffic again", and only the drill answers it.
 1. New → Blueprint → point at this repo. It reads `render.yaml`.
 2. Fill in every `sync: false` variable. The blueprint declares all 35 the
    API reads, so nothing falls back to a default silently.
-3. **`ALLOWED_ORIGINS` is the one that will bite you.** It must list all three
-   app origins exactly, comma-separated, no trailing slash:
-   `https://terioscoach.com,https://practice.terioscoach.com,https://app.terioscoach.com`.
-   Leaving it empty no longer produces a healthy-looking API that refuses
-   every browser request: the service now refuses to start in production
-   without it, and the deploy log says so. A failed deploy here means this
-   variable, not the database.
+3. **`ALLOWED_ORIGINS` is versioned in `render.yaml`.** It lists the apex,
+   `www`, `practice`, and `app` custom domains plus the three stable Vercel
+   aliases, exactly and without trailing slashes. The recurring production
+   smoke workflow preflights every custom origin so a future domain cutover
+   cannot leave the API healthy but unusable from browsers.
 4. Confirm `/readyz` returns 200. It checks the database; `/healthz` only
    proves the process is alive.
 
