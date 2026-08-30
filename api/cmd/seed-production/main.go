@@ -23,11 +23,34 @@ import (
 
 const confirmation = "seed-terios-production"
 
+const catalogOwnerEmail = "hayfordstanley@gmail.com"
+
 type account struct{ email, name, passwordEnv string }
 
 var accounts = []account{
 	{"admin@terioscoach.com", "Terios Administrator", "TERIOS_ADMIN_PASSWORD"},
 	{"hayfordstanley@gmail.com", "Hayford Stanley", "TERIOS_OWNER_PASSWORD"},
+}
+
+type bookableService struct {
+	name, description, currency string
+	durationMinutes, sortOrder  int
+	priceMinor                  int64
+}
+
+// The supplied practice copy explicitly offers an obligation-free first
+// conversation. Paid coaching prices were not supplied, so the production
+// seed must not invent them; the full dashboard CRUD remains the source of
+// truth for Nurse Coaching and Holistic Coaching prices.
+var productionServices = []bookableService{
+	{
+		name:            "Introductory wellness conversation",
+		description:     "A private, obligation-free conversation to explore what support you are looking for and whether Terios is the right fit.",
+		durationMinutes: 30,
+		priceMinor:      0,
+		currency:        "GHS",
+		sortOrder:       0,
+	},
 }
 
 type marketingPage struct{ slug, title, body, coverImage string }
@@ -108,6 +131,14 @@ func run() error {
 			}
 		}
 	}
+	if scope == "all" || scope == "catalog" {
+		if err := ensureCatalog(ctx, db); err != nil {
+			return err
+		}
+	}
+	if scope == "catalog" {
+		return nil
+	}
 	if err := ensureMarketingPages(ctx, db); err != nil {
 		return err
 	}
@@ -124,10 +155,60 @@ func seedScope(value string) (string, error) {
 	if value == "" {
 		return "all", nil
 	}
-	if value != "all" && value != "content" {
-		return "", errors.New("SEED_SCOPE must be all or content")
+	if value != "all" && value != "content" && value != "catalog" {
+		return "", errors.New("SEED_SCOPE must be all, content, or catalog")
 	}
 	return value, nil
+}
+
+func ensureCatalog(ctx context.Context, db *mongo.Database) error {
+	var owner struct {
+		ID bson.ObjectID `bson:"_id"`
+	}
+	if err := db.Collection("users").FindOne(ctx, bson.M{
+		"email": identity.NormalizeEmail(catalogOwnerEmail),
+		"role":  string(identity.RolePractitioner),
+	}).Decode(&owner); err != nil {
+		return fmt.Errorf("find catalog owner %s: %w", catalogOwnerEmail, err)
+	}
+
+	now := time.Now().UTC()
+	for _, service := range productionServices {
+		_, err := db.Collection("services").UpdateOne(ctx,
+			bson.M{"practitionerId": owner.ID, "name": service.name},
+			bson.M{"$setOnInsert": bson.M{
+				"practitionerId": owner.ID,
+				"name":           service.name, "description": service.description,
+				"durationMin": service.durationMinutes, "priceKobo": service.priceMinor,
+				"currency": service.currency, "active": true, "sortOrder": service.sortOrder,
+				"createdAt": now, "updatedAt": now,
+			}},
+			options.UpdateOne().SetUpsert(true),
+		)
+		if err != nil {
+			return fmt.Errorf("provision service %s: %w", service.name, err)
+		}
+	}
+
+	// The supplied source describes broad 06:00-22:00 availability. Seed a
+	// conservative weekday baseline; the practitioner can narrow or extend it
+	// from Availability before accepting paid coaching bookings.
+	for weekday := 1; weekday <= 5; weekday++ {
+		_, err := db.Collection("availability_rules").UpdateOne(ctx,
+			bson.M{"practitionerId": owner.ID, "weekday": weekday},
+			bson.M{"$setOnInsert": bson.M{
+				"practitionerId": owner.ID, "weekday": weekday,
+				"windows":       []bson.M{{"startMin": 6 * 60, "endMin": 22 * 60}},
+				"bufferMinutes": 0, "createdAt": now, "updatedAt": now,
+			}},
+			options.UpdateOne().SetUpsert(true),
+		)
+		if err != nil {
+			return fmt.Errorf("provision availability weekday %d: %w", weekday, err)
+		}
+	}
+	slog.Info("production catalog ready", "owner", catalogOwnerEmail, "services", len(productionServices))
+	return nil
 }
 
 func ensureMarketingPages(ctx context.Context, db *mongo.Database) error {

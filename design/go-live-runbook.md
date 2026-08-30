@@ -232,15 +232,28 @@ normal day every one of these counters is zero.
 
 ## 10. Production practitioner accounts and MFA
 
-`cmd/seed-production` is the only production account seeder. It creates the
-two named practitioner accounts from `TERIOS_ADMIN_PASSWORD` and
-`TERIOS_OWNER_PASSWORD`; it never imports the demo fixtures. It requires all
-of the following before it will connect:
+`cmd/seed-production` is the only production seeder; it never imports demo
+clients, bookings, payments, or notes. Its scopes are deliberately separate:
+
+- `SEED_SCOPE=all` provisions accounts, the minimum launch catalogue,
+  baseline availability, and approved launch content.
+- `SEED_SCOPE=content` repairs only CMS launch content.
+- `SEED_SCOPE=catalog` repairs only the minimum bookable catalogue and
+  baseline availability, without requiring or rotating account passwords.
+
+The catalog scope creates the supplied obligation-free 30-minute introductory
+conversation under the owner account and weekday 06:00-22:00 availability only
+when those records do not already exist. It does not invent prices for Nurse
+Coaching or Holistic Coaching; those are created and priced through Dashboard
+→ Services, while hours are maintained through Dashboard → Availability.
+
+The command requires all of the following before it will connect:
 
 - `APP_ENV=production`
 - `CONFIRM_PRODUCTION_SEED=seed-terios-production`
 - `MONGODB_URI` and `MONGODB_DB`
 - both password environment variables, each satisfying the password policy
+  (only for the `all` scope)
 
 Re-running preserves existing passwords and MFA state. That makes it safe for
 provisioning checks without unexpectedly rotating a working administrator's

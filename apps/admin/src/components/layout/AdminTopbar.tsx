@@ -6,6 +6,7 @@ import {
   Bell,
   ChevronDown,
   CircleHelp,
+  BookOpenCheck,
   ExternalLink,
   Menu,
   PanelLeftClose,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { NAV_ITEMS } from "./AdminSidebar";
 import { Button } from "@/components/ui/Button";
+import { PageHelpDialog } from "@/components/help/PageHelpDialog";
+import { adminHelpForPath } from "@/lib/help";
 
 export function AdminTopbar({
   userName,
@@ -36,12 +39,14 @@ export function AdminTopbar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const current = NAV_ITEMS.filter((item) =>
     item.href === "/"
       ? pathname === "/"
       : pathname === item.href || pathname.startsWith(`${item.href}/`),
   ).sort((a, b) => b.href.length - a.href.length)[0];
+  const helpTopic = adminHelpForPath(pathname);
   useEffect(() => {
     const close = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
@@ -81,7 +86,7 @@ export function AdminTopbar({
               Practice workspace
             </p>
             <p className="truncate text-sm font-semibold text-ink">
-              {current?.label ?? "Terios"}
+              {current?.label ?? helpTopic.title}
             </p>
           </div>
         </div>
@@ -105,13 +110,14 @@ export function AdminTopbar({
           >
             <Bell size={18} />
           </Link>
-          <Link
-            href="/content"
-            aria-label="Content help"
-            className="hidden rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink sm:inline-flex"
+          <button
+            type="button"
+            aria-label={`Help with ${helpTopic.title}`}
+            onClick={() => setHelpOpen(true)}
+            className="inline-flex rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink"
           >
             <CircleHelp size={18} />
-          </Link>
+          </button>
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -137,6 +143,14 @@ export function AdminTopbar({
                   <p className="text-sm font-semibold text-ink">{userName}</p>
                   <p className="text-xs text-ink-muted">{userRole}</p>
                 </div>
+                <Link
+                  role="menuitem"
+                  href="/guide"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                >
+                  <BookOpenCheck size={16} />
+                  User guide
+                </Link>
                 <Link
                   role="menuitem"
                   href="/settings"
@@ -179,6 +193,7 @@ export function AdminTopbar({
           </div>
         </div>
       </div>
+      <PageHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} topic={helpTopic} />
     </header>
   );
 }

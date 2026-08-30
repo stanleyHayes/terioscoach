@@ -31,4 +31,17 @@ describe("PortalTopbar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
     expect(collapse).toHaveBeenCalled(); expect(mobile).toHaveBeenCalled();
   });
+
+  it("opens contextual help for the current page", () => {
+    render(<PortalTopbar {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Help with Consultations" }));
+    expect(screen.getByRole("dialog", { name: "How to use Consultations" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open full user guide" }).getAttribute("href")).toBe("/portal/guide");
+  });
+
+  it("links the user guide from the account menu", () => {
+    render(<PortalTopbar {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /Ama Serwaa/ }));
+    expect(screen.getByRole("menuitem", { name: "User guide" }).getAttribute("href")).toBe("/portal/guide");
+  });
 });

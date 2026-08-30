@@ -380,3 +380,13 @@ remain open and must not be represented as locally verified: Atlas restore
 drill, Sonar live gate, Lighthouse/video stress, monitor ownership, payment
 provider production transactions/refunds, and a penetration test against the
 running production origins.
+
+## 22. Bookable production catalogue and contextual guidance (30 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| BOOK-01 | Diagnose the production booking empty state | Done | Live `GET /v1/services` returned `{"items":[]}` while the endpoint and portal empty state were healthy; the missing prerequisite was production data, not booking UI or service CRUD |
+| BOOK-02 | Add a safe, idempotent production catalogue seed | Done locally | `SEED_SCOPE=catalog` provisions only the supplied obligation-free 30-minute introduction plus missing weekday availability under the owner account; existing service and availability edits are preserved and unprovided paid prices are not invented |
+| BOOK-03 | Confirm service and availability management | Done | Admin Services already provides create, edit, active/published toggle, ordering and deletion; Availability provides weekly windows, buffers and time off. Context help now explains that both an active service and future hours are required |
+| HELP-01 | Add contextual help to every authenticated page | Done locally | Admin and portal topbars resolve the current route to a goal, ordered instructions and route-specific guidance in an accessible modal, including nested blog, client, form and video-room routes |
+| HELP-02 | Add complete user guides | Done locally | `/guide` and `/portal/guide` collect every contextual topic; both account dropdowns link directly to their guide |

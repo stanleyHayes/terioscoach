@@ -81,4 +81,20 @@ describe("AdminTopbar", () => {
     fireEvent.click(screen.getByRole("button", { name: /naa adjeley/i }));
     expect(screen.getByText("Care coordinator")).toBeTruthy();
   });
+
+  it("opens page-specific help and links the full user guide", () => {
+    pathname.mockReturnValue("/services");
+    render(<AdminTopbar userName="Naa Adjeley" onSignOut={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Help with Services" }));
+    expect(screen.getByRole("dialog", { name: "How to use Services" })).toBeTruthy();
+    expect(screen.getByText(/active and Availability/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open full user guide" }).getAttribute("href")).toBe("/guide");
+  });
+
+  it("links the user guide from the account dropdown", () => {
+    render(<AdminTopbar userName="Naa Adjeley" onSignOut={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /naa adjeley/i }));
+    expect(screen.getByRole("menuitem", { name: "User guide" }).getAttribute("href")).toBe("/guide");
+  });
 });
