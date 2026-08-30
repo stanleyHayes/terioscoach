@@ -70,7 +70,7 @@ Public site + Client portal   Practice dashboard
 | FND-03 | Design system spec: full custom component library (buttons, inputs, date/time picker, calendar, file upload, modal, toast, signature pad) — zero native elements | Design | FND-02 | Done |
 | FND-04 | Hexagonal API skeleton: domain / ports / adapters layout, router, config, structured logging, health checks | Backend | FND-01 | Done |
 | FND-05 | MongoDB Atlas cluster, collections & index design, seed tooling | DevOps + Backend | FND-04 | In Progress — adapter/indexes/seed code done; Atlas cluster needs credentials |
-| FND-06 | Resend: domain verification, transactional template set (confirm, remind, reschedule, enquiry, feedback) | DevOps | FND-02 | **Blocked — key works, domain does not.** The Resend key is valid and the account has 8 verified domains, but `terioswellness.com` is not one of them. Resend accepts mail from an unregistered domain and silently drops it, so every confirmation, reminder and shared-feedback email would vanish with no error anywhere. Add and verify the domain, or point RESEND_FROM at a verified one. |
+| FND-06 | Resend: domain verification, transactional template set (confirm, remind, reschedule, enquiry, feedback) | DevOps | FND-02 | **Blocked — domain registered but DNS verification not started.** The Resend key is valid and the live domains API reports `terioscoach.com` as `not_started`. Publish the DKIM/SPF records and wait for `verified`, or point `RESEND_FROM` at a verified domain; otherwise confirmations, reminders and shared-feedback emails are not production-safe. |
 | FND-07 | Cloudinary: account, signed-upload presets, folder policy (client docs vs CMS media) | DevOps | — | **Verified live** — signed upload accepted by Cloudinary and a forged signature rejected, both against the real account (`internal/integration`). Account exists, credentials work, folder policy holds. |
 | FND-08 | `render.yaml` Blueprint: api service, coturn service, env groups, health checks, auto-deploy | DevOps | FND-01 | Done — every one of the 35 config variables is declared. **PORTAL_URL corrected**: it was set to the bare origin, and the email renderer appends to it, so every client email linked to a 404 on the marketing site. Pinned by `TestEveryLinkResolvesToARealRoute`, which checks produced links against the app's real route tree. |
 | FND-09 | Vercel projects `terios-web` + `terios-admin`: env wiring, preview deployments, API base URL config | DevOps | FND-01 | Config written; project creation needs a Vercel account — `apps/web/vercel.json` and `apps/admin/vercel.json` carry build commands, region and security headers (admin sends `X-Robots-Tag: noindex` and `no-store` on everything). Env table and the two gotchas (root directory, `ALLOWED_ORIGINS`) are in `design/go-live-runbook.md` §5. |
@@ -321,7 +321,7 @@ it now would trade a passing gate for a fragile one.
 | Item | Why it cannot close here |
 |---|---|
 | FND-05, FND-09, LCH-04, LCH-08 | Need an Atlas cluster, a Vercel account, and DNS access |
-| FND-06 | `terioswellness.com` is not a verified Resend domain; mail is accepted and silently dropped |
+| FND-06 | Resend reports `terioscoach.com` as registered but `not_started`; DKIM/SPF verification is required before relying on production email |
 | FND-10, LCH-03 live gate | Needs `SONAR_TOKEN` |
 | LCH-05 | The client's own copy, photographs and testimonials |
 | PROD-05, LCH-06 (Lighthouse, video stress), LCH-09 monitor | Need real origins to measure |
@@ -333,3 +333,19 @@ context's naming. Sharing them means a `packages/*` workspace and new Vercel
 root directories — a deployment change, not a refactor, and not one to make
 in the same pass as the fixes above. It is the largest piece of technical
 debt left in the tree.
+
+## 21. Production accounts, opt-in MFA, and release re-verification (30 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| AUTH-MFA-01 | Provision the two production dashboard accounts without demo data | Done | `cmd/seed-production` is confirmation-gated, environment-only, idempotent, and preserves existing passwords/MFA; both requested practitioner accounts were created in the configured remote production database |
+| AUTH-MFA-02 | Keep MFA opt-in | Done | Password login works before enrollment and while enrollment is pending; service test proves a code is required only after successful confirmation |
+| AUTH-MFA-03 | Add scannable authenticator enrollment and segmented OTP entry | Done | Standard `otpauth://` QR, manual secret fallback, six individual numeric inputs with paste/keyboard support, and focused admin tests |
+| AUTH-MFA-04 | Protect MFA lifecycle | Done | AES-256-GCM seed encryption under required `MFA_ENCRYPTION_KEY`; current-code verification for enable/disable; disabling revokes refresh sessions |
+| PROD-07 | Refresh security and release gates | Done locally | Go 1.26.6; `go test -race ./...`; `go vet ./...`; `govulncheck ./...` zero reachable vulnerabilities; npm audits zero; web 350 tests + build; admin 391 tests + coverage + build; lint/typecheck/diff checks clean |
+
+Repository readiness is green. Deployment-only gates in §20d remain open and
+must not be represented as locally verified: live DNS/TLS/edge behavior, Resend
+domain delivery, Atlas restore drill, Sonar live gate, Lighthouse/video stress,
+monitor ownership, final client content, and a penetration test against the
+running production origins.

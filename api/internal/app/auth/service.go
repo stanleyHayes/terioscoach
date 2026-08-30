@@ -33,6 +33,12 @@ type Service struct {
 	resetURL      string
 	resetAdminURL string
 	resetTTL      time.Duration
+	protector     ports.SecretProtector
+	totp          ports.TOTPProvider
+}
+
+func WithMFA(protector ports.SecretProtector, provider ports.TOTPProvider) Option {
+	return func(s *Service) { s.protector, s.totp = protector, provider }
 }
 
 // Compile-time check: Service satisfies the inbound port.
@@ -176,6 +182,10 @@ func (s *Service) Register(ctx context.Context, in ports.RegisterInput) (ports.A
 // happens for unknown emails too, so the locked answer is not an
 // account-existence oracle.
 func (s *Service) Login(ctx context.Context, email, password string) (ports.AuthResult, error) {
+	return s.LoginWithMFA(ctx, email, password, "")
+}
+
+func (s *Service) LoginWithMFA(ctx context.Context, email, password, code string) (ports.AuthResult, error) {
 	identifier := identity.NormalizeEmail(email)
 	if err := s.guardLockout(ctx, identifier); err != nil {
 		return ports.AuthResult{}, err
@@ -195,6 +205,21 @@ func (s *Service) Login(ctx context.Context, email, password string) (ports.Auth
 	if !ok {
 		return ports.AuthResult{}, s.recordFailure(ctx, identifier)
 	}
+	if user.MFAEnabled {
+		if strings.TrimSpace(code) == "" {
+			return ports.AuthResult{}, identity.ErrMFARequired
+		}
+		if s.protector == nil || s.totp == nil {
+			return ports.AuthResult{}, fmt.Errorf("MFA is unavailable")
+		}
+		secret, err := s.protector.Decrypt(user.MFASecret)
+		if err != nil {
+			return ports.AuthResult{}, err
+		}
+		if !s.totp.Validate(strings.TrimSpace(code), secret, s.now()) {
+			return ports.AuthResult{}, identity.ErrMFAInvalid
+		}
+	}
 
 	// A correct password clears the history — a person who finally
 	// remembers their password is not left locked out by earlier typos.
@@ -204,6 +229,67 @@ func (s *Service) Login(ctx context.Context, email, password string) (ports.Auth
 		}
 	}
 	return s.openSession(ctx, user)
+}
+
+func (s *Service) BeginMFA(ctx context.Context, id identity.Identity) (ports.MFAEnrollment, error) {
+	if s.protector == nil || s.totp == nil {
+		return ports.MFAEnrollment{}, fmt.Errorf("MFA is unavailable")
+	}
+	user, err := s.users.FindByID(ctx, id.UserID)
+	if err != nil {
+		return ports.MFAEnrollment{}, err
+	}
+	secret, uri, err := s.totp.Generate("Terios Practice", user.Email)
+	if err != nil {
+		return ports.MFAEnrollment{}, fmt.Errorf("generate MFA enrollment: %w", err)
+	}
+	encrypted, err := s.protector.Encrypt(secret)
+	if err != nil {
+		return ports.MFAEnrollment{}, err
+	}
+	if err := s.users.SetMFAPending(ctx, user.ID, encrypted); err != nil {
+		return ports.MFAEnrollment{}, err
+	}
+	return ports.MFAEnrollment{Secret: secret, OTPAuthURL: uri}, nil
+}
+
+func (s *Service) ConfirmMFA(ctx context.Context, id identity.Identity, code string) error {
+	user, err := s.users.FindByID(ctx, id.UserID)
+	if err != nil {
+		return err
+	}
+	if user.MFASecret == "" || s.protector == nil || s.totp == nil {
+		return identity.ErrMFANotPending
+	}
+	secret, err := s.protector.Decrypt(user.MFASecret)
+	if err != nil {
+		return err
+	}
+	if !s.totp.Validate(strings.TrimSpace(code), secret, s.now()) {
+		return identity.ErrMFAInvalid
+	}
+	return s.users.EnableMFA(ctx, user.ID)
+}
+
+func (s *Service) DisableMFA(ctx context.Context, id identity.Identity, code string) error {
+	user, err := s.users.FindByID(ctx, id.UserID)
+	if err != nil {
+		return err
+	}
+	if !user.MFAEnabled || user.MFASecret == "" {
+		return nil
+	}
+	secret, err := s.protector.Decrypt(user.MFASecret)
+	if err != nil {
+		return err
+	}
+	if !s.totp.Validate(strings.TrimSpace(code), secret, s.now()) {
+		return identity.ErrMFAInvalid
+	}
+	if err := s.users.DisableMFA(ctx, user.ID); err != nil {
+		return err
+	}
+	return s.sessions.RevokeAllForUser(ctx, user.ID)
 }
 
 // guardLockout refuses a login identifier that is currently locked out,

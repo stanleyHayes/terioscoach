@@ -38,6 +38,10 @@ type User struct {
 	CreatedAt              time.Time
 	PasswordResetTokenHash string
 	PasswordResetExpiresAt time.Time
+	// MFASecret stores an encrypted TOTP secret. MFAEnabled stays false during
+	// enrollment, so merely opening the setup screen can never lock a user out.
+	MFASecret  string
+	MFAEnabled bool
 }
 
 // Identity is the authenticated principal carried through requests.

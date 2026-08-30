@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Mail,
   Sparkles,
+  ShieldCheck,
   Star,
   Users,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export const NAV_ITEMS = [
   { label: "Enquiries", href: "/enquiries", icon: Mail },
   { label: "Reviews", href: "/reviews", icon: Star },
   { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Security", href: "/security", icon: ShieldCheck },
 ] as const;
 
 function initials(name: string): string {

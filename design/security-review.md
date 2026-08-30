@@ -156,3 +156,16 @@ request by varying one header. That was found and fixed during this build.
    useless: CORS permitted no browser origin and the signaling socket
    refused every handshake, so both apps failed on every call with no
    indication why. Pinned by `TestProductionRequiresItsSecretsAndOrigins`.
+
+8. **Practitioner MFA is opt-in and encrypted at rest.** Password login remains
+   unchanged for accounts with `mfaEnabled=false`. Enrollment is staged: the
+   server stores an AES-256-GCM encrypted TOTP seed, returns an authenticator
+   `otpauth://` URI, and does not activate MFA until a valid code confirms it.
+   Later logins require a six-digit TOTP only for enabled accounts. Disabling
+   requires a current code and revokes every refresh session. Production boot
+   fails closed without the stable `MFA_ENCRYPTION_KEY`.
+
+9. **Go standard-library advisories were closed by upgrading to Go 1.26.6.**
+   `govulncheck ./...` reports zero reachable vulnerabilities. The prior 1.26.5
+   toolchain exposed reachable `net/url`, `crypto/tls`, `net/http`, and
+   `encoding/asn1` advisories.

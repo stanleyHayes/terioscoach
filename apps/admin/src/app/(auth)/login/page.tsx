@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextInput } from "@/components/ui/TextInput";
+import { OtpInput } from "@/components/auth/OtpInput";
 import { ApiError } from "@/lib/api";
 import { SIGN_OUT_MESSAGE_KEY, useAuth } from "@/lib/auth";
 
@@ -20,6 +21,8 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [code, setCode] = useState("");
 
   // Already signed in — the dashboard is the right place to be.
   useEffect(() => {
@@ -68,11 +71,20 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
+      if (mfaRequired && code.length !== 6) { setFormError("Enter all six digits from your authenticator app."); return; }
+      if (mfaRequired) await login(email.trim(), password, code);
+      else await login(email.trim(), password);
       router.replace("/");
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === "invalid_credentials") {
+        if (error.code === "mfa_required") {
+          setMfaRequired(true);
+          setCode("");
+          setFormError(null);
+        } else if (error.code === "mfa_invalid") {
+          setFormError("That code is invalid or has expired. Enter the current six-digit code.");
+          setCode("");
+        } else if (error.code === "invalid_credentials") {
           setFormError("That email and password don't match. Try again.");
         } else {
           setFormError(error.message);
@@ -110,7 +122,7 @@ export default function LoginPage() {
               </div>
             ) : null}
 
-            <TextInput
+            {!mfaRequired ? <TextInput
               label="Email"
               type="email"
               autoComplete="email"
@@ -121,8 +133,8 @@ export default function LoginPage() {
                 setEmail(event.target.value);
                 setFieldErrors((errors) => ({ ...errors, email: undefined }));
               }}
-            />
-            <TextInput
+            /> : null}
+            {!mfaRequired ? <TextInput
               label="Password"
               type="password"
               autoComplete="current-password"
@@ -133,15 +145,16 @@ export default function LoginPage() {
                 setPassword(event.target.value);
                 setFieldErrors((errors) => ({ ...errors, password: undefined }));
               }}
-            />
-            <div className="-mt-1 flex justify-end">
+            /> : null}
+            {mfaRequired ? <><p className="text-sm leading-relaxed text-ink-muted">MFA is enabled for this account. Open your authenticator app and enter the current code.</p><OtpInput value={code} onChange={(next) => { setCode(next); setFormError(null); }} disabled={submitting} /></> : null}
+            {!mfaRequired ? <div className="-mt-1 flex justify-end">
               <Link href="/forgot-password" className="text-sm font-semibold text-primary transition-colors hover:text-primary-hover">
                 Forgot password?
               </Link>
-            </div>
+            </div> : <button type="button" className="text-left text-sm font-semibold text-primary" onClick={() => { setMfaRequired(false); setCode(""); setPassword(""); setFormError(null); }}>Use a different account</button>}
 
             <Button type="submit" fullWidth loading={submitting} className="mt-2">
-              Sign in
+              {mfaRequired ? "Verify and sign in" : "Sign in"}
             </Button>
           </form>
         </Card>

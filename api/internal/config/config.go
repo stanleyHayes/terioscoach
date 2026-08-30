@@ -23,6 +23,7 @@ type Config struct {
 
 	JWTAccessSecret  string
 	JWTRefreshSecret string
+	MFAEncryptionKey string
 	AccessTokenTTL   time.Duration
 	RefreshTokenTTL  time.Duration
 
@@ -143,14 +144,15 @@ func Load() (Config, error) {
 		MongoDBName:      getEnv("MONGODB_DB", "terios"),
 		JWTAccessSecret:  os.Getenv("JWT_ACCESS_SECRET"),
 		JWTRefreshSecret: os.Getenv("JWT_REFRESH_SECRET"),
+		MFAEncryptionKey: os.Getenv("MFA_ENCRYPTION_KEY"),
 		AccessTokenTTL:   getEnvDuration("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTokenTTL:  getEnvDuration("REFRESH_TOKEN_TTL", 30*24*time.Hour),
 		ResendAPIKey:     os.Getenv("RESEND_API_KEY"),
-		ResendFrom:       getEnv("RESEND_FROM", "Terios Wellness Spa <no-reply@terioswellness.com>"),
+		ResendFrom:       getEnv("RESEND_FROM", "Terios Wellness Spa <no-reply@terioscoach.com>"),
 
-		PracticeEmail:            getEnv("PRACTICE_EMAIL", "hello@terioswellness.com"),
-		PortalURL:                getEnv("PORTAL_URL", "https://terioswellness.com/portal"),
-		DashboardURL:             getEnv("DASHBOARD_URL", "https://admin.terioswellness.com"),
+		PracticeEmail:            getEnv("PRACTICE_EMAIL", "hello@terioscoach.com"),
+		PortalURL:                getEnv("PORTAL_URL", "https://terioscoach.com/portal"),
+		DashboardURL:             getEnv("DASHBOARD_URL", "https://practice.terioscoach.com"),
 		ReminderLead:             getEnvDuration("REMINDER_LEAD", notification.DefaultReminderLead),
 		NotificationPollInterval: getEnvDuration("NOTIFICATION_POLL_INTERVAL", time.Minute),
 		DefaultTimezone:          getEnv("DEFAULT_TIMEZONE", "Africa/Accra"),
@@ -191,6 +193,9 @@ func Load() (Config, error) {
 		}
 		if cfg.JWTAccessSecret == "" || cfg.JWTRefreshSecret == "" {
 			return Config{}, fmt.Errorf("JWT secrets are required in production")
+		}
+		if cfg.MFAEncryptionKey == "" {
+			return Config{}, fmt.Errorf("MFA_ENCRYPTION_KEY is required in production")
 		}
 		// Without this the API is up, healthy, and useless: CORS permits no
 		// browser origin and the signaling socket refuses every handshake,

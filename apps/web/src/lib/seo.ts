@@ -8,7 +8,7 @@
  */
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://terioswellness.com"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://terioscoach.com"
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "Terios Wellness Spa";

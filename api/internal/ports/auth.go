@@ -28,6 +28,11 @@ type AuthResult struct {
 	RefreshToken      string
 }
 
+type MFAEnrollment struct {
+	Secret     string
+	OTPAuthURL string
+}
+
 // AuthService is the inbound port for authentication and authorization.
 type AuthService interface {
 	// Register creates a client account and returns a first session.
@@ -35,6 +40,7 @@ type AuthService interface {
 	// Login verifies credentials. Failures are uniformly
 	// identity.ErrInvalidCredentials to prevent user enumeration.
 	Login(ctx context.Context, email, password string) (AuthResult, error)
+	LoginWithMFA(ctx context.Context, email, password, code string) (AuthResult, error)
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, password string) error
 	// Refresh rotates a session: the presented refresh token is revoked and
@@ -47,4 +53,19 @@ type AuthService interface {
 	// CurrentUser loads the full account behind an authenticated identity.
 	// Misses return identity.ErrUserNotFound.
 	CurrentUser(ctx context.Context, id identity.Identity) (identity.User, error)
+	BeginMFA(ctx context.Context, id identity.Identity) (MFAEnrollment, error)
+	ConfirmMFA(ctx context.Context, id identity.Identity, code string) error
+	DisableMFA(ctx context.Context, id identity.Identity, code string) error
+}
+
+// SecretProtector encrypts reversible account secrets before persistence.
+type SecretProtector interface {
+	Encrypt(plaintext string) (string, error)
+	Decrypt(ciphertext string) (string, error)
+}
+
+// TOTPProvider owns authenticator-compatible secret generation and validation.
+type TOTPProvider interface {
+	Generate(issuer, account string) (secret, otpAuthURL string, err error)
+	Validate(code, secret string, now time.Time) bool
 }

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	practitionerEmail    = "practitioner@terioswellness.com"
+	practitionerEmail    = "practitioner@terioscoach.com"
 	seedPassword         = "password123" // dev only, never ship to production
 	seedAvailabilityFrom = "09:00"
 	seedAvailabilityTo   = "17:00"

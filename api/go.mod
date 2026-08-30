@@ -1,6 +1,6 @@
 module github.com/xcreativs/terios/api
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/coder/websocket v1.8.15
@@ -11,7 +11,9 @@ require (
 )
 
 require (
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/klauspost/compress v1.17.6 // indirect
+	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.2.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

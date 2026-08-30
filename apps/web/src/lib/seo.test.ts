@@ -19,22 +19,22 @@ afterEach(() => {
 
 describe("SITE_URL", () => {
   it("takes the configured origin", async () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://staging.terioswellness.com";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://staging.terioscoach.com";
     const { SITE_URL } = await loadSeo();
-    expect(SITE_URL).toBe("https://staging.terioswellness.com");
+    expect(SITE_URL).toBe("https://staging.terioscoach.com");
   });
 
   it("strips a trailing slash so joined paths never double up", async () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://terioswellness.com/";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://terioscoach.com/";
     const { SITE_URL, absoluteUrl } = await loadSeo();
-    expect(SITE_URL).toBe("https://terioswellness.com");
-    expect(absoluteUrl("/blog")).toBe("https://terioswellness.com/blog");
+    expect(SITE_URL).toBe("https://terioscoach.com");
+    expect(absoluteUrl("/blog")).toBe("https://terioscoach.com/blog");
   });
 
   it("joins a path that is missing its leading slash", async () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://terioswellness.com";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://terioscoach.com";
     const { absoluteUrl } = await loadSeo();
-    expect(absoluteUrl("blog")).toBe("https://terioswellness.com/blog");
+    expect(absoluteUrl("blog")).toBe("https://terioscoach.com/blog");
   });
 });
 

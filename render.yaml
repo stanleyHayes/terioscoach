@@ -60,9 +60,9 @@ services:
       # marketing site. It is the one mistake here that cannot be undone
       # after the fact: an email already in an inbox keeps its link.
       - key: PORTAL_URL
-        value: https://terioswellness.com/portal
+        value: https://terioscoach.com/portal
       - key: DASHBOARD_URL
-        value: https://practice.terioswellness.com
+        value: https://practice.terioscoach.com
 
       # ---- Database ----
       - key: MONGODB_URI
@@ -77,6 +77,9 @@ services:
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # Stable AES-256 key for encrypted authenticator seeds.
+      - key: MFA_ENCRYPTION_KEY
         generateValue: true
       - key: ACCESS_TOKEN_TTL
         value: 15m
@@ -99,7 +102,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
-        value: Terios Wellness Spa <no-reply@terioswellness.com>
+        value: Terios Wellness Spa <no-reply@terioscoach.com>
       # Where practice-facing alerts go — new enquiries, mainly.
       - key: PRACTICE_EMAIL
         sync: false

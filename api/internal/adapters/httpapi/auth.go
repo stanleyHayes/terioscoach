@@ -54,6 +54,12 @@ func WithAuth(svc ports.AuthService, opts ...AuthOption) Option {
 				r.Post("/reset-password", h.resetPassword)
 			})
 			r.With(RequireAuth(svc)).Get("/me", h.me)
+			r.Group(func(r chi.Router) {
+				r.Use(RequireAuth(svc))
+				r.Post("/mfa/enroll", h.beginMFA)
+				r.Post("/mfa/confirm", h.confirmMFA)
+				r.Post("/mfa/disable", h.disableMFA)
+			})
 		})
 	}
 }
@@ -107,14 +113,15 @@ type authResponse struct {
 
 // userBody is the contract identity shape: {id, email, role, name}.
 type userBody struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
-	Name  string `json:"name"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	Role       string `json:"role"`
+	Name       string `json:"name"`
+	MFAEnabled bool   `json:"mfaEnabled"`
 }
 
 func newUserBody(u identity.User) userBody {
-	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name}
+	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name, MFAEnabled: u.MFAEnabled}
 }
 
 func newAuthResponse(res ports.AuthResult) authResponse {
@@ -154,16 +161,69 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		Code     string `json:"code"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	res, err := h.svc.Login(r.Context(), req.Email, req.Password)
+	res, err := h.svc.LoginWithMFA(r.Context(), req.Email, req.Password, req.Code)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, newAuthResponse(res))
+}
+
+func (h *authHandler) beginMFA(w http.ResponseWriter, r *http.Request) {
+	id, ok := IdentityFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	enrollment, err := h.svc.BeginMFA(r.Context(), id)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"secret": enrollment.Secret, "otpAuthUrl": enrollment.OTPAuthURL})
+}
+
+func (h *authHandler) confirmMFA(w http.ResponseWriter, r *http.Request) {
+	id, ok := IdentityFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.ConfirmMFA(r.Context(), id, req.Code); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *authHandler) disableMFA(w http.ResponseWriter, r *http.Request) {
+	id, ok := IdentityFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.DisableMFA(r.Context(), id, req.Code); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // refresh handles POST /v1/auth/refresh with rotation: the presented token

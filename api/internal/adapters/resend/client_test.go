@@ -46,7 +46,7 @@ func TestSendPostsTheRenderedMessage(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"msg_1"}`))
 	})
 
-	client := NewClient("re_test_key", "Terios Wellness Spa <no-reply@terioswellness.com>")
+	client := NewClient("re_test_key", "Terios Wellness Spa <no-reply@terioscoach.com>")
 	if err := client.Send(context.Background(), testMessage); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestSendPostsTheRenderedMessage(t *testing.T) {
 	if authorization != "Bearer re_test_key" {
 		t.Errorf("Authorization = %q, want the bearer secret", authorization)
 	}
-	if got.From != "Terios Wellness Spa <no-reply@terioswellness.com>" {
+	if got.From != "Terios Wellness Spa <no-reply@terioscoach.com>" {
 		t.Errorf("from = %q, want the configured sender", got.From)
 	}
 	if len(got.To) != 1 || got.To[0] != "ama@example.com" {

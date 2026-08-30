@@ -25,7 +25,7 @@ describe("Analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // isIndexable() reads the deployment origin; production by default here.
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://terioswellness.com");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://terioscoach.com");
     vi.stubEnv("VERCEL_ENV", "production");
   });
 
@@ -66,11 +66,11 @@ describe("Analytics", () => {
 
     const beforeSend = analyticsProps.current?.beforeSend;
     expect(beforeSend).toBeTypeOf("function");
-    expect(beforeSend?.({ url: "https://terioswellness.com/reset-password?token=secret" })).toEqual({
-      url: "https://terioswellness.com/reset-password",
+    expect(beforeSend?.({ url: "https://terioscoach.com/reset-password?token=secret" })).toEqual({
+      url: "https://terioscoach.com/reset-password",
     });
-    expect(beforeSend?.({ url: "https://terioswellness.com/services" })).toEqual({
-      url: "https://terioswellness.com/services",
+    expect(beforeSend?.({ url: "https://terioscoach.com/services" })).toEqual({
+      url: "https://terioscoach.com/services",
     });
   });
 

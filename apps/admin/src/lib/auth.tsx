@@ -52,7 +52,9 @@ export interface AuthContextValue {
   /** Persists rotated tokens — hand this to authedRequest as its RefreshCallbacks. */
   refreshCallbacks: RefreshCallbacks;
   /** Throws ApiError on failure (code "not_a_practitioner" for wrong role). */
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, code?: string) => Promise<void>;
+  /** Updates the local profile after a verified MFA enrollment. */
+  setMfaEnabled: (enabled: boolean) => void;
   /** Ends the session. `message` is handed to the login screen to display. */
   logout: (message?: string) => Promise<void>;
 }
@@ -142,8 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession, clearSession]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      const response = await authApi.login(email, password);
+    async (email: string, password: string, code?: string) => {
+      const response = await authApi.login(email, password, code);
       if (response.user.role !== PRACTITIONER_ROLE) {
         // Invalidate the just-issued refresh token; this account may not hold
         // a session on the practice dashboard.
@@ -173,6 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [tokens, clearSession],
   );
 
+  const setMfaEnabled = useCallback((enabled: boolean) => {
+    setUser((current) => current ? { ...current, mfaEnabled: enabled } : current);
+  }, []);
+
   // Handed to authedRequest callers: keeps the in-memory token pair (and the
   // persisted refresh token) current when a request triggers a rotation.
   const refreshCallbacks = useMemo<RefreshCallbacks>(
@@ -197,9 +203,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session: tokens,
       refreshCallbacks,
       login,
+      setMfaEnabled,
       logout,
     }),
-    [status, user, tokens, refreshCallbacks, login, logout],
+    [status, user, tokens, refreshCallbacks, login, logout, setMfaEnabled],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,7 +13,7 @@ const original = { ...process.env };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_PUBLIC_SITE_URL = "https://terioswellness.com";
+  process.env.NEXT_PUBLIC_SITE_URL = "https://terioscoach.com";
   listPosts.mockResolvedValue([]);
 });
 
@@ -26,11 +26,11 @@ describe("sitemap", () => {
     const entries = await loadSitemap();
     const urls = entries.map((entry) => entry.url);
 
-    expect(urls).toContain("https://terioswellness.com/");
-    expect(urls).toContain("https://terioswellness.com/services");
-    expect(urls).toContain("https://terioswellness.com/blog");
-    expect(urls).toContain("https://terioswellness.com/faq");
-    expect(urls).toContain("https://terioswellness.com/contact");
+    expect(urls).toContain("https://terioscoach.com/");
+    expect(urls).toContain("https://terioscoach.com/services");
+    expect(urls).toContain("https://terioscoach.com/blog");
+    expect(urls).toContain("https://terioscoach.com/faq");
+    expect(urls).toContain("https://terioscoach.com/contact");
   });
 
   it("leaves the authenticated portal out entirely", async () => {
@@ -61,6 +61,6 @@ describe("sitemap", () => {
 
     // Losing the article list should not cost the crawler the whole sitemap.
     expect(entries.length).toBeGreaterThan(0);
-    expect(entries.map((e) => e.url)).toContain("https://terioswellness.com/");
+    expect(entries.map((e) => e.url)).toContain("https://terioscoach.com/");
   });
 });

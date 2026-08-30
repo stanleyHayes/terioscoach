@@ -13,7 +13,7 @@ import { config, proxy } from "./proxy";
  */
 
 function run(path = "/clients") {
-  const response = proxy(new NextRequest(`https://practice.terioswellness.com${path}`));
+  const response = proxy(new NextRequest(`https://practice.terioscoach.com${path}`));
   return response.headers.get("Content-Security-Policy") ?? "";
 }
 
@@ -41,7 +41,7 @@ describe("practice dashboard CSP", () => {
   });
 
   it("gives Next the same policy the browser will enforce", () => {
-    const response = proxy(new NextRequest("https://practice.terioswellness.com/clients"));
+    const response = proxy(new NextRequest("https://practice.terioscoach.com/clients"));
     // The request-header overrides ride back on the response under this
     // prefix; that copy is what the renderer sees.
     const forRenderer = response.headers.get("x-middleware-request-content-security-policy");

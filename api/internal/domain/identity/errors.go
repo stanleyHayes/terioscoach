@@ -33,6 +33,9 @@ var (
 	// not an account exists, so it cannot be used to enumerate accounts.
 	ErrTooManyAttempts      = errors.New("too many login attempts")
 	ErrPasswordResetInvalid = errors.New("password reset link is invalid or expired")
+	ErrMFARequired          = errors.New("multi-factor authentication code required")
+	ErrMFAInvalid           = errors.New("multi-factor authentication code invalid")
+	ErrMFANotPending        = errors.New("multi-factor authentication enrollment not pending")
 )
 
 // RetryAfterError carries how long a caller must wait before retrying. The

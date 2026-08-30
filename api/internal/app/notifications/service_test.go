@@ -36,7 +36,7 @@ func newTestRig(t *testing.T) *testRig {
 		ReminderLead:    notification.DefaultReminderLead,
 		Retry:           notification.RetryPolicy{MaxAttempts: 3, Backoffs: []time.Duration{time.Minute}},
 		DefaultTimezone: "Africa/Accra",
-		PracticeEmail:   "practice@terioswellness.com",
+		PracticeEmail:   "practice@terioscoach.com",
 		Report:          func(err error) { rig.reported = append(rig.reported, err) },
 	})
 	rig.svc.now = func() time.Time { return clock }
@@ -437,7 +437,7 @@ func TestEnquiryGoesToThePracticeNotTheSender(t *testing.T) {
 	if len(jobs) != 1 {
 		t.Fatalf("jobs = %d, want 1", len(jobs))
 	}
-	if jobs[0].Recipient != "practice@terioswellness.com" {
+	if jobs[0].Recipient != "practice@terioscoach.com" {
 		t.Errorf("recipient = %q, want the practice inbox", jobs[0].Recipient)
 	}
 	if jobs[0].Data["senderEmail"] != "stranger@example.com" {

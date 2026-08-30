@@ -23,6 +23,9 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id string) (identity.User, error)
 	SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
 	ResetPassword(ctx context.Context, tokenHash, passwordHash string, now time.Time) (string, error)
+	SetMFAPending(ctx context.Context, userID, encryptedSecret string) error
+	EnableMFA(ctx context.Context, userID string) error
+	DisableMFA(ctx context.Context, userID string) error
 }
 
 // RefreshTokenRepository is the outbound port for refresh-session

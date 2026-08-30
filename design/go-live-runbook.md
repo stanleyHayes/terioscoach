@@ -14,7 +14,7 @@ below. What remains is somebody with the credentials doing it.
 
 Have these to hand:
 
-- The registrar login for `terioswellness.com` (Google Domains / Squarespace).
+- The registrar login for `terioscoach.com` (Google Domains / Squarespace).
 - Accounts: MongoDB Atlas, Render, Vercel, Resend, Cloudinary, Paystack,
   Cloudflare (for TURN).
 - The practitioner's real email address, for `PRACTICE_EMAIL`.
@@ -60,11 +60,11 @@ serving traffic again", and only the drill answers it.
 
 ## 2. Resend (FND-06)
 
-1. Add `terioswellness.com` as a domain and publish the DKIM/SPF records
+1. `terioscoach.com` is already registered in Resend with status `not_started`; publish its DKIM/SPF records
    the dashboard gives you at the registrar.
 2. Wait for verification. **Until it is verified, mail is accepted and
    silently not delivered** — which looks exactly like everything working.
-3. Set `RESEND_FROM` to `Terios Wellness Spa <no-reply@terioswellness.com>`.
+3. Set `RESEND_FROM` to `Terios Wellness Spa <no-reply@terioscoach.com>`.
 4. Send one test to a Gmail address and one to an Outlook address, and
    check both landed in the inbox rather than spam.
 
@@ -87,7 +87,7 @@ serving traffic again", and only the drill answers it.
    API reads, so nothing falls back to a default silently.
 3. **`ALLOWED_ORIGINS` is the one that will bite you.** It must list both
    app origins exactly, comma-separated, no trailing slash:
-   `https://terioswellness.com,https://practice.terioswellness.com`.
+   `https://terioscoach.com,https://practice.terioscoach.com`.
    Leaving it empty no longer produces a healthy-looking API that refuses
    every browser request: the service now refuses to start in production
    without it, and the deploy log says so. A failed deploy here means this
@@ -105,9 +105,9 @@ commands, region and security headers already.
 | | `terios-web` | `terios-admin` |
 |---|---|---|
 | Root directory | `apps/web` | `apps/admin` |
-| Production domain | `terioswellness.com` | `practice.terioswellness.com` |
+| Production domain | `terioscoach.com` | `practice.terioscoach.com` |
 | `NEXT_PUBLIC_API_URL` | the Render API URL | the same |
-| `NEXT_PUBLIC_SITE_URL` | `https://terioswellness.com` | — |
+| `NEXT_PUBLIC_SITE_URL` | `https://terioscoach.com` | — |
 
 Both need **Root Directory** set, and "Include files outside the root
 directory" enabled — this is a workspace, and the install runs from the
@@ -151,8 +151,8 @@ Do this at a quiet hour, with no session booked for the next two.
 3. Wait for Vercel to issue certificates for both. Do not proceed while
    either shows as pending.
 4. Check, in this order:
-   - `https://terioswellness.com` loads and is not a certificate warning.
-   - `https://practice.terioswellness.com` loads and shows the login.
+   - `https://terioscoach.com` loads and is not a certificate warning.
+   - `https://practice.terioscoach.com` loads and shows the login.
    - Sign in on the dashboard. If this fails with a network error,
      `ALLOWED_ORIGINS` is wrong — that is the usual first fault. (A missing
      value stops the API booting; a value with the wrong origin in it
@@ -186,8 +186,8 @@ Point an uptime monitor at:
 | API alive | `/healthz` | non-200, twice in a row |
 | API ready | `/readyz` | non-200, twice in a row — this one means the database |
 | Operational health | `/v1/admin/ops/health` | body `status` is `critical` or `unknown` |
-| Public site | `https://terioswellness.com` | non-200 |
-| Dashboard | `https://practice.terioswellness.com/login` | non-200 |
+| Public site | `https://terioscoach.com` | non-200 |
+| Dashboard | `https://practice.terioscoach.com/login` | non-200 |
 
 Two things about the ops endpoint that matter:
 
@@ -211,3 +211,28 @@ normal day every one of these counters is zero.
 - Keep Paystack's dashboard and the practice's Payments screen side by
   side for the first few payments. They should always agree; if they ever
   do not, stop and find out why rather than reconciling by hand.
+
+---
+
+## 10. Production practitioner accounts and MFA
+
+`cmd/seed-production` is the only production account seeder. It creates the
+two named practitioner accounts from `TERIOS_ADMIN_PASSWORD` and
+`TERIOS_OWNER_PASSWORD`; it never imports the demo fixtures. It requires all
+of the following before it will connect:
+
+- `APP_ENV=production`
+- `CONFIRM_PRODUCTION_SEED=seed-terios-production`
+- `MONGODB_URI` and `MONGODB_DB`
+- both password environment variables, each satisfying the password policy
+
+Re-running preserves existing passwords and MFA state. That makes it safe for
+provisioning checks without unexpectedly rotating a working administrator's
+credentials. Passwords belong in the operator's secret handoff, never in the
+command, repository, logs, or Render configuration after provisioning.
+
+MFA is opt-in from Dashboard → Security. Starting enrollment does not enable
+it. The practitioner scans the QR code and must enter a valid six-digit TOTP
+before `mfaEnabled` becomes true. Authenticator seeds are AES-256-GCM encrypted
+under `MFA_ENCRYPTION_KEY`; this key is required in production and must remain
+stable. Disabling MFA requires a current TOTP and revokes all refresh sessions.

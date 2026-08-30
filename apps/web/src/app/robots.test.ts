@@ -11,7 +11,7 @@ const original = { ...process.env };
 
 beforeEach(() => {
   vi.resetModules();
-  process.env.NEXT_PUBLIC_SITE_URL = "https://terioswellness.com";
+  process.env.NEXT_PUBLIC_SITE_URL = "https://terioscoach.com";
 });
 
 afterEach(() => {
@@ -41,7 +41,7 @@ describe("robots", () => {
       "/reset-password",
     ]);
     expect(rules.allow).toBe("/");
-    expect(robots.sitemap).toBe("https://terioswellness.com/sitemap.xml");
+    expect(robots.sitemap).toBe("https://terioscoach.com/sitemap.xml");
   });
 
   it("refuses everything on a preview deployment", async () => {

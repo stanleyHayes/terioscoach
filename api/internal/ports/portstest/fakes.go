@@ -119,6 +119,45 @@ func (f *FakeUserRepository) ResetPassword(_ context.Context, tokenHash, passwor
 	return "", identity.ErrPasswordResetInvalid
 }
 
+func (f *FakeUserRepository) SetMFAPending(_ context.Context, userID, encryptedSecret string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.ErrUserNotFound
+	}
+	user.MFASecret, user.MFAEnabled = encryptedSecret, false
+	f.byID[userID] = user
+	return nil
+}
+
+func (f *FakeUserRepository) EnableMFA(_ context.Context, userID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.ErrUserNotFound
+	}
+	if user.MFASecret == "" {
+		return identity.ErrMFANotPending
+	}
+	user.MFAEnabled = true
+	f.byID[userID] = user
+	return nil
+}
+
+func (f *FakeUserRepository) DisableMFA(_ context.Context, userID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.ErrUserNotFound
+	}
+	user.MFASecret, user.MFAEnabled = "", false
+	f.byID[userID] = user
+	return nil
+}
+
 // FakeRefreshTokenRepository stores refresh sessions in memory.
 type FakeRefreshTokenRepository struct {
 	mu     sync.Mutex

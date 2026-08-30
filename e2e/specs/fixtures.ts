@@ -40,7 +40,7 @@ function required(name: string): string {
 export function guardAgainstProduction(): void {
   for (const url of [env.web, env.admin, env.api]) {
     const { hostname } = new URL(url);
-    if (hostname === "terioswellness.com" || hostname.endsWith(".terioswellness.com")) {
+    if (hostname === "terioscoach.com" || hostname.endsWith(".terioscoach.com")) {
       throw new Error(
         `Refusing to run against ${hostname}. This suite writes data and takes payments; ` +
           `point it at a preview deployment.`,

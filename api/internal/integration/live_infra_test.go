@@ -70,7 +70,7 @@ func TestLiveResendKeyAndSendingDomain(t *testing.T) {
 	}
 
 	// The address the API actually sends from, e.g.
-	// "Terios Wellness Spa <no-reply@terioswellness.com>".
+	// "Terios Wellness Spa <no-reply@terioscoach.com>".
 	from := env["RESEND_FROM"]
 	sendingDomain := from
 	if i := strings.LastIndex(from, "@"); i >= 0 {

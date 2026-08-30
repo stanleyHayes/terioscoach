@@ -54,7 +54,7 @@ var _ ports.EmailRenderer = (*Renderer)(nil)
 
 // Options are the deployment-specific values the templates link to.
 type Options struct {
-	// PortalURL is the client portal root, e.g. https://terioswellness.com/portal.
+	// PortalURL is the client portal root, e.g. https://terioscoach.com/portal.
 	PortalURL string
 	// DashboardURL is the practice dashboard root.
 	DashboardURL string

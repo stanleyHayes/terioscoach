@@ -113,6 +113,12 @@ func mapIdentityError(err error) (apiError, bool) {
 	case errors.Is(err, identity.ErrInvalidCredentials):
 		// Uniform message on purpose: no user enumeration.
 		return apiError{http.StatusUnauthorized, "invalid_credentials", "invalid email or password"}, true
+	case errors.Is(err, identity.ErrMFARequired):
+		return apiError{http.StatusUnauthorized, "mfa_required", "enter the code from your authenticator app"}, true
+	case errors.Is(err, identity.ErrMFAInvalid):
+		return apiError{http.StatusUnauthorized, "mfa_invalid", "that authenticator code is invalid or expired"}, true
+	case errors.Is(err, identity.ErrMFANotPending):
+		return apiError{http.StatusConflict, "mfa_not_pending", "start MFA enrollment before confirming it"}, true
 	case errors.Is(err, identity.ErrPasswordResetInvalid):
 		return apiError{http.StatusBadRequest, "password_reset_invalid", "this password reset link is invalid or has expired"}, true
 	case errors.Is(err, identity.ErrEmailTaken):

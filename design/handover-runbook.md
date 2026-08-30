@@ -10,8 +10,8 @@ changes what you would do.
 
 | What | Address | Who signs in |
 |---|---|---|
-| Your public website and client portal | `terioswellness.com` | Anyone; clients sign in for the portal |
-| Your practice dashboard | `practice.terioswellness.com` | Only you |
+| Your public website and client portal | `terioscoach.com` | Anyone; clients sign in for the portal |
+| Your practice dashboard | `practice.terioscoach.com` | Only you |
 
 They look different on purpose. Clients never see the dashboard, and there
 is no link to it from the public site — if you want it on your phone, add a

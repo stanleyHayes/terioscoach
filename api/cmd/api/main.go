@@ -229,6 +229,15 @@ func buildAuthService(cfg config.Config, db *mongo.Database) (*auth.Service, err
 	if err != nil {
 		return nil, fmt.Errorf("build token issuer: %w", err)
 	}
+	mfaKey := cfg.MFAEncryptionKey
+	if mfaKey == "" {
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil { return nil, fmt.Errorf("generate dev MFA key: %w", err) }
+		mfaKey = base64.RawStdEncoding.EncodeToString(buf)
+		slog.Warn("MFA_ENCRYPTION_KEY not set; using ephemeral dev key, pending/enabled MFA enrollment will not survive restart")
+	}
+	protector, err := security.NewSecretBox(mfaKey)
+	if err != nil { return nil, fmt.Errorf("build MFA secret protector: %w", err) }
 
 	var resetMailer ports.Mailer = unconfiguredMailer{}
 	if cfg.ResendAPIKey != "" {
@@ -245,6 +254,7 @@ func buildAuthService(cfg config.Config, db *mongo.Database) (*auth.Service, err
 		// limiter in the HTTP adapter, which is per-process by design.
 		auth.WithLockout(mongodb.NewLoginAttemptRepository(db), cfg.LockoutPolicy()),
 		auth.WithPasswordReset(resetMailer, cfg.PortalURL, cfg.DashboardURL, time.Hour),
+		auth.WithMFA(protector, security.TOTP{}),
 	), nil
 }
 

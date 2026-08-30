@@ -14,7 +14,8 @@ func production(t *testing.T) {
 	t.Setenv("MONGODB_URI", "mongodb://localhost:27017")
 	t.Setenv("JWT_ACCESS_SECRET", "access-secret-access-secret-1234")
 	t.Setenv("JWT_REFRESH_SECRET", "refresh-secret-refresh-secret-12")
-	t.Setenv("ALLOWED_ORIGINS", "https://terioswellness.com,https://admin.terioswellness.com")
+	t.Setenv("MFA_ENCRYPTION_KEY", "MDAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm")
+	t.Setenv("ALLOWED_ORIGINS", "https://terioscoach.com,https://practice.terioscoach.com")
 }
 
 func TestProductionRequiresItsSecretsAndOrigins(t *testing.T) {
@@ -26,6 +27,7 @@ func TestProductionRequiresItsSecretsAndOrigins(t *testing.T) {
 		{"no database", "MONGODB_URI", "MONGODB_URI"},
 		{"no access secret", "JWT_ACCESS_SECRET", "JWT secrets"},
 		{"no refresh secret", "JWT_REFRESH_SECRET", "JWT secrets"},
+		{"no MFA encryption key", "MFA_ENCRYPTION_KEY", "MFA_ENCRYPTION_KEY"},
 		// The one that fails silently otherwise: the API comes up healthy
 		// and refuses every browser call from both apps.
 		{"no allowed origins", "ALLOWED_ORIGINS", "ALLOWED_ORIGINS"},
@@ -53,7 +55,7 @@ func TestProductionLoadsWithEverythingSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if got := cfg.AllowedOrigins; len(got) != 2 || got[0] != "https://terioswellness.com" {
+	if got := cfg.AllowedOrigins; len(got) != 2 || got[0] != "https://terioscoach.com" {
 		t.Errorf("AllowedOrigins = %v, want both app origins", got)
 	}
 }
@@ -97,13 +99,13 @@ func TestPaymentProviderMustBeOneOfTwo(t *testing.T) {
 // production guard exists to prevent, arriving by a different door.
 func TestAllowedOriginsIgnoresBlankEntries(t *testing.T) {
 	production(t)
-	t.Setenv("ALLOWED_ORIGINS", " https://terioswellness.com , , https://admin.terioswellness.com ")
+	t.Setenv("ALLOWED_ORIGINS", " https://terioscoach.com , , https://practice.terioscoach.com ")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	want := []string{"https://terioswellness.com", "https://admin.terioswellness.com"}
+	want := []string{"https://terioscoach.com", "https://practice.terioscoach.com"}
 	if len(cfg.AllowedOrigins) != len(want) {
 		t.Fatalf("AllowedOrigins = %v, want %v", cfg.AllowedOrigins, want)
 	}

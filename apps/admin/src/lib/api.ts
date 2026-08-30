@@ -17,6 +17,7 @@ export interface User {
   email: string;
   role: string;
   name: string;
+  mfaEnabled: boolean;
 }
 
 export interface AuthTokens {
@@ -102,10 +103,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 /** Auth endpoints per the contract. Registration is portal-only and intentionally omitted. */
 export const authApi = {
-  login(email: string, password: string): Promise<AuthResponse> {
+  login(email: string, password: string, code?: string): Promise<AuthResponse> {
     return request<AuthResponse>("/v1/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: { email, password, ...(code ? { code } : {}) },
     });
   },
 
@@ -133,6 +134,18 @@ export const authApi = {
 
   me(accessToken: string): Promise<{ user: User }> {
     return request<{ user: User }>("/v1/auth/me", { accessToken });
+  },
+
+  beginMfa(accessToken: string): Promise<{ secret: string; otpAuthUrl: string }> {
+    return request("/v1/auth/mfa/enroll", { method: "POST", accessToken });
+  },
+
+  confirmMfa(accessToken: string, code: string): Promise<void> {
+    return request("/v1/auth/mfa/confirm", { method: "POST", accessToken, body: { code } });
+  },
+
+  disableMfa(accessToken: string, code: string): Promise<void> {
+    return request("/v1/auth/mfa/disable", { method: "POST", accessToken, body: { code } });
   },
 };
 

@@ -13,8 +13,8 @@ import (
 
 func testRenderer() *Renderer {
 	return NewRenderer(Options{
-		PortalURL:    "https://terioswellness.com/portal/",
-		DashboardURL: "https://admin.terioswellness.com",
+		PortalURL:    "https://terioscoach.com/portal/",
+		DashboardURL: "https://practice.terioscoach.com",
 		Now:          func() time.Time { return time.Date(2026, 8, 11, 9, 0, 0, 0, time.UTC) },
 	})
 }
@@ -146,7 +146,7 @@ func TestJobDataOverridesDefaults(t *testing.T) {
 	if !strings.Contains(msg.HTML, "https://example.test/custom") {
 		t.Error("job-supplied manageUrl did not win over the default")
 	}
-	if strings.Contains(msg.HTML, "terioswellness.com/portal/sessions") {
+	if strings.Contains(msg.HTML, "terioscoach.com/portal/sessions") {
 		t.Error("default manageUrl rendered alongside the override")
 	}
 }
@@ -245,7 +245,7 @@ func TestEveryKindHasASubject(t *testing.T) {
 // This exists because the failure it catches is silent and permanent.
 // PORTAL_URL was deployed without its "/portal" suffix, so every
 // confirmation, reminder, reschedule and cancellation linked to
-// terioswellness.com/sessions — a 404 on the marketing site. Nothing
+// terioscoach.com/sessions — a 404 on the marketing site. Nothing
 // noticed: this file's other tests assert against whatever value the test
 // injected, so they were equally green with a broken deployment.
 //
@@ -265,17 +265,17 @@ func TestEveryLinkResolvesToARealRoute(t *testing.T) {
 		"/portal/forms":     true,
 	}
 
-	const portalRoot = "https://terioswellness.com/portal"
+	const portalRoot = "https://terioscoach.com/portal"
 	renderer := NewRenderer(Options{
 		PortalURL:    portalRoot,
-		DashboardURL: "https://practice.terioswellness.com",
+		DashboardURL: "https://practice.terioscoach.com",
 	})
 
 	for name, link := range renderer.defaults {
 		if !strings.HasPrefix(link, portalRoot) {
 			continue
 		}
-		path := strings.TrimPrefix(link, "https://terioswellness.com")
+		path := strings.TrimPrefix(link, "https://terioscoach.com")
 		if !realRoutes[path] {
 			t.Errorf("%s links to %q, which is not a route the customer app serves", name, link)
 		}
@@ -289,21 +289,21 @@ func TestPortalURLMustCarryItsPathSegment(t *testing.T) {
 	// The bare origin, which is what render.yaml shipped with. Every link
 	// it produces lands outside the portal.
 	bare := NewRenderer(Options{
-		PortalURL:    "https://terioswellness.com",
-		DashboardURL: "https://practice.terioswellness.com",
+		PortalURL:    "https://terioscoach.com",
+		DashboardURL: "https://practice.terioscoach.com",
 	})
-	if got := bare.defaults["joinUrl"]; got != "https://terioswellness.com/sessions" {
+	if got := bare.defaults["joinUrl"]; got != "https://terioscoach.com/sessions" {
 		t.Fatalf("joinUrl = %q; this test no longer describes how links are built", got)
 	}
 
 	// The correct configuration puts every link inside the portal.
 	correct := NewRenderer(Options{
-		PortalURL:    "https://terioswellness.com/portal",
-		DashboardURL: "https://practice.terioswellness.com",
+		PortalURL:    "https://terioscoach.com/portal",
+		DashboardURL: "https://practice.terioscoach.com",
 	})
 	for _, key := range []string{"joinUrl", "manageUrl", "bookUrl"} {
 		got := correct.defaults[key]
-		if !strings.HasPrefix(got, "https://terioswellness.com/portal/") {
+		if !strings.HasPrefix(got, "https://terioscoach.com/portal/") {
 			t.Errorf("%s = %q, want a /portal-scoped URL", key, got)
 		}
 	}

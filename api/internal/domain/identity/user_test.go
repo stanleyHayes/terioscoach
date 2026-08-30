@@ -46,7 +46,7 @@ func TestNewUserRejectsBadInput(t *testing.T) {
 }
 
 func TestValidateEmail(t *testing.T) {
-	valid := []string{"a@b.co", "first.last+tag@example.org", "practitioner@terioswellness.com"}
+	valid := []string{"a@b.co", "first.last+tag@example.org", "practitioner@terioscoach.com"}
 	for _, email := range valid {
 		if err := ValidateEmail(email); err != nil {
 			t.Errorf("ValidateEmail(%q) = %v, want nil", email, err)

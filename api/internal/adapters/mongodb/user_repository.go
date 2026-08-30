@@ -36,6 +36,53 @@ type userDoc struct {
 	CreatedAt              bson.DateTime `bson:"createdAt"`
 	PasswordResetTokenHash string        `bson:"passwordResetTokenHash,omitempty"`
 	PasswordResetExpiresAt bson.DateTime `bson:"passwordResetExpiresAt,omitempty"`
+	MFASecret              string        `bson:"mfaSecret,omitempty"`
+	MFAEnabled             bool          `bson:"mfaEnabled,omitempty"`
+}
+
+func (r *UserRepository) SetMFAPending(ctx context.Context, userID, encryptedSecret string) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.ErrUserNotFound
+	}
+	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"mfaSecret": encryptedSecret, "mfaEnabled": false}})
+	if err != nil {
+		return fmt.Errorf("store MFA enrollment: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return identity.ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) EnableMFA(ctx context.Context, userID string) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.ErrUserNotFound
+	}
+	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid, "mfaSecret": bson.M{"$ne": ""}}, bson.M{"$set": bson.M{"mfaEnabled": true}})
+	if err != nil {
+		return fmt.Errorf("enable MFA: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return identity.ErrMFANotPending
+	}
+	return nil
+}
+
+func (r *UserRepository) DisableMFA(ctx context.Context, userID string) error {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.ErrUserNotFound
+	}
+	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$unset": bson.M{"mfaSecret": "", "mfaEnabled": ""}})
+	if err != nil {
+		return fmt.Errorf("disable MFA: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return identity.ErrUserNotFound
+	}
+	return nil
 }
 
 func (r *UserRepository) SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
@@ -71,6 +118,8 @@ func (r *UserRepository) Create(ctx context.Context, user identity.User) (identi
 		Role:         string(user.Role),
 		Name:         user.Name,
 		CreatedAt:    bson.NewDateTimeFromTime(user.CreatedAt),
+		MFASecret:    user.MFASecret,
+		MFAEnabled:   user.MFAEnabled,
 	}
 	res, err := r.coll.InsertOne(ctx, doc)
 	if err != nil {
@@ -120,5 +169,7 @@ func (r *UserRepository) findOne(ctx context.Context, filter bson.M) (identity.U
 		Role:         identity.Role(doc.Role),
 		Name:         doc.Name,
 		CreatedAt:    doc.CreatedAt.Time(),
+		MFASecret:    doc.MFASecret,
+		MFAEnabled:   doc.MFAEnabled,
 	}, nil
 }

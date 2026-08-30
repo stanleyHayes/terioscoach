@@ -32,7 +32,7 @@ type CORSPolicy struct {
 // *` cannot be combined with credentials, and the version people reach for
 // instead — reflecting whatever Origin arrived — is the same as having no
 // policy at all. Origins are compared exactly; a suffix match would let
-// `terioswellness.com.attacker.test` through.
+// `terioscoach.com.attacker.test` through.
 func CORS(policy CORSPolicy) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(policy.AllowedOrigins))
 	for _, origin := range policy.AllowedOrigins {

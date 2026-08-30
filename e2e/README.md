@@ -47,7 +47,7 @@ npx playwright test
 
 **Never point this at production.** The suite creates clients, bookings and
 payments, and cleans up after itself; a failed run leaves rows behind. It
-refuses to start against a `terioswellness.com` origin for that reason —
+refuses to start against a `terioscoach.com` origin for that reason —
 see `guardAgainstProduction` in `fixtures.ts`.
 
 ### Payments

@@ -101,7 +101,7 @@ func newJourneyRig(t *testing.T) journeyRig {
 		notificationsapp.Options{
 			ReminderLead:  notification.DefaultReminderLead,
 			Retry:         notification.DefaultRetryPolicy(),
-			PracticeEmail: "practice@terioswellness.com",
+			PracticeEmail: "practice@terioscoach.com",
 			// A journey that silently swallowed a queueing failure would
 			// pass while sending nothing.
 			Report: func(err error) { t.Errorf("notification failure: %v", err) },
@@ -171,7 +171,7 @@ func newJourneyRig(t *testing.T) journeyRig {
 	// The practitioner is seeded: there is no self-registration for the
 	// practice side, by design.
 	practitioner, err := identity.NewUser(
-		"terios@terioswellness.com", "Terios", "hash", identity.RolePractitioner, time.Now().UTC(),
+		"terios@terioscoach.com", "Terios", "hash", identity.RolePractitioner, time.Now().UTC(),
 	)
 	if err != nil {
 		t.Fatalf("identity.NewUser: %v", err)

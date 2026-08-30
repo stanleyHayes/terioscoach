@@ -103,6 +103,25 @@ describe("LoginPage", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
+  it("asks for six separate authenticator digits only after the API requires MFA", async () => {
+    const { ApiError } = await import("@/lib/api");
+    loginMock.mockRejectedValueOnce(new ApiError(401, "mfa_required", "Code required"));
+    loginMock.mockResolvedValueOnce(undefined);
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@b.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).closest("form")!);
+
+    await waitFor(() => expect(screen.getAllByLabelText(/Authenticator code digit/)).toHaveLength(6));
+    expect(screen.queryByLabelText("Email")).toBeNull();
+    for (const [index, digit] of [..."123456"].entries()) {
+      fireEvent.change(screen.getByLabelText(`Authenticator code digit ${index + 1}`), { target: { value: digit } });
+    }
+    fireEvent.submit(screen.getByRole("button", { name: "Verify and sign in" }).closest("form")!);
+    await waitFor(() => expect(loginMock).toHaveBeenLastCalledWith("a@b.com", "secret", "123456"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
+  });
+
   it("surfaces the practitioner-role rejection from the auth layer", async () => {
     const { ApiError } = await import("@/lib/api");
     const { NOT_PRACTITIONER_MESSAGE } = await import("@/lib/auth");

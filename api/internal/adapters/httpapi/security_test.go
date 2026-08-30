@@ -13,7 +13,7 @@ func newSecuredServer(origins []string, production bool) *Server {
 	})
 }
 
-const appOrigin = "https://terioswellness.com"
+const appOrigin = "https://terioscoach.com"
 
 // TestAllowedOriginGetsCredentialedCORS: the apps are on another origin, so
 // this is what makes every browser call work.
@@ -43,8 +43,8 @@ func TestUnknownOriginGetsNoCORSHeaders(t *testing.T) {
 	for _, origin := range []string{
 		"https://attacker.test",
 		// A suffix match would let this through — it must not.
-		"https://terioswellness.com.attacker.test",
-		"http://terioswellness.com",
+		"https://terioscoach.com.attacker.test",
+		"http://terioscoach.com",
 		"null",
 	} {
 		rec := doJSON(t, srv, http.MethodGet, "/healthz", nil, map[string]string{"Origin": origin})
