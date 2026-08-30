@@ -270,7 +270,7 @@ The first redesign pass was rejected because it leaned too heavily on shared pri
 | PC-05 | Redesign and disambiguate startup loading and public empty states | Done | Shared high-contrast branded splash in all frontends; services empty state now names the unpublished-data condition and provides an enquiry action |
 | PC-06 | Add restrained public-site motion | Done | Staggered page-intro and existing section reveals use transform/opacity only and disable under reduced motion |
 | PC-07 | Verify the completion slice | Done | Admin 409 tests and coverage gate; portal 258 tests and coverage gate; web 176 tests and coverage gate; workspace lint/build; Go test/vet; live desktop and 390px browser checks with no horizontal overflow |
-| PC-08 | Align the client portal shell with the admin workspace | Done locally; deploy pending | Fixed independently scrolling dark sidebar; grouped collapsible navigation with connector lines; compact topbar and account menu; viewport-bound mobile drawer; light high-contrast content surfaces; desktop and 390px browser checks show no horizontal overflow; 260 portal tests and production build pass |
+| PC-08 | Align the client portal shell with the admin workspace | Done | Fixed independently scrolling dark sidebar; grouped collapsible navigation with connector lines; compact topbar and account menu; viewport-bound mobile drawer; light high-contrast content surfaces; desktop and 390px browser checks show no horizontal overflow; 260 portal tests and production build pass; production Vercel alias returns HTTP 200 with the intended security headers |
 
 ## 20. Production content, admin access and interaction hardening (30 Aug 2026)
 
