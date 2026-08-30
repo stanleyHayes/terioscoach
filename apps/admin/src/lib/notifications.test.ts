@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAdminNotifications } from "./notifications";
+import { buildAdminNotifications, resolveAdminNotificationSources } from "./notifications";
 import type { Booking } from "./schedule";
 
 const booking = (id: string, startAt: string, status: Booking["status"] = "confirmed"): Booking => ({
@@ -23,5 +23,39 @@ describe("buildAdminNotifications", () => {
 
   it("is empty when nothing needs attention", () => {
     expect(buildAdminNotifications({ unreadEnquiries: 0, pendingReviews: 0, bookings: [] })).toEqual([]);
+  });
+
+  it("keeps permitted notification sources when RBAC rejects another", () => {
+    const result = resolveAdminNotificationSources([
+      { status: "rejected", reason: new Error("forbidden") },
+      { status: "fulfilled", value: [{ id: "review" }] },
+      { status: "fulfilled", value: [] },
+    ]);
+    expect(result).toEqual({ unreadEnquiries: 0, pendingReviews: 1, bookings: [] });
+  });
+
+  it("normalizes a fully available set of notification sources", () => {
+    const upcoming = booking("next", "2026-08-30T12:00:00Z");
+    expect(resolveAdminNotificationSources([
+      { status: "fulfilled", value: 3 },
+      { status: "fulfilled", value: [] },
+      { status: "fulfilled", value: [upcoming] },
+    ])).toEqual({ unreadEnquiries: 3, pendingReviews: 0, bookings: [upcoming] });
+  });
+
+  it("defaults inaccessible review and schedule sources independently", () => {
+    const forbidden = { status: "rejected", reason: new Error("forbidden") } as const;
+    expect(resolveAdminNotificationSources([
+      { status: "fulfilled", value: 1 }, forbidden, forbidden,
+    ])).toEqual({ unreadEnquiries: 1, pendingReviews: 0, bookings: [] });
+  });
+
+  it("surfaces an outage when every source fails", () => {
+    const failure = new Error("offline");
+    expect(() => resolveAdminNotificationSources([
+      { status: "rejected", reason: failure },
+      { status: "rejected", reason: failure },
+      { status: "rejected", reason: failure },
+    ])).toThrow("offline");
   });
 });

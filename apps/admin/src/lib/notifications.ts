@@ -10,6 +10,26 @@ export interface AdminNotificationItem {
   tone: NotificationTone;
 }
 
+export function resolveAdminNotificationSources(
+  results: readonly [
+    PromiseSettledResult<number>,
+    PromiseSettledResult<unknown[]>,
+    PromiseSettledResult<Booking[]>,
+  ],
+) {
+  if (results.every((result) => result.status === "rejected")) {
+    const failure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    throw failure?.reason ?? new Error("Notification sources are unavailable");
+  }
+  return {
+    unreadEnquiries: results[0].status === "fulfilled" ? results[0].value : 0,
+    pendingReviews: results[1].status === "fulfilled" ? results[1].value.length : 0,
+    bookings: results[2].status === "fulfilled" ? results[2].value : [],
+  };
+}
+
 export function buildAdminNotifications({
   unreadEnquiries,
   pendingReviews,

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, CalendarClock, Inbox, RefreshCw, Sparkles } from "lucide-react";
 import { enquiriesApi, reviewsApi } from "@/lib/inbox";
-import { buildAdminNotifications, type NotificationTone } from "@/lib/notifications";
+import { buildAdminNotifications, resolveAdminNotificationSources, type NotificationTone } from "@/lib/notifications";
 import { scheduleApi } from "@/lib/schedule";
 import { useResource } from "@/lib/use-resource";
 import { cn } from "@/lib/cn";
@@ -30,18 +30,10 @@ export function AdminNotificationCenter() {
         status: "confirmed",
       }),
     ]);
-    if (results.every((result) => result.status === "rejected")) {
-      const failure = results.find(
-        (result): result is PromiseRejectedResult => result.status === "rejected",
-      );
-      throw failure?.reason ?? new Error("Notification sources are unavailable");
-    }
-    const unreadEnquiries = results[0].status === "fulfilled" ? results[0].value : 0;
-    const reviews = results[1].status === "fulfilled" ? results[1].value : [];
-    const bookings = results[2].status === "fulfilled" ? results[2].value : [];
+    const { unreadEnquiries, pendingReviews, bookings } = resolveAdminNotificationSources(results);
     return buildAdminNotifications({
       unreadEnquiries,
-      pendingReviews: reviews.length,
+      pendingReviews,
       bookings,
       now,
     });
