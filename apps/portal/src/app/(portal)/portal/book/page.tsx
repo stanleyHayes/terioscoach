@@ -30,7 +30,7 @@ import { cn } from "@/lib/cn";
  * step 2 pick a time (SlotPicker, visitor timezone) → step 3 review & confirm.
  * Confirming requires an account: guests are sent to /login?next=… with the
  * chosen service + slot in the URL and land back here signed in, state intact.
- * Confirming creates the booking and then hands off to Paystack's hosted
+ * Confirming creates the booking and then hands off to Stripe's hosted
  * checkout. The two are deliberately separate: the booking is confirmed the
  * moment it is created, so a failed or abandoned checkout costs the client
  * their money, never their slot. They can pay from the portal afterwards.
@@ -160,7 +160,7 @@ function BookingFlow() {
       setBooking(created);
       setStep("done");
 
-      // Hand off to Paystack. The booking already exists and is confirmed,
+      // Hand off to Stripe. The booking already exists and is confirmed,
       // so nothing here may undo it: if checkout cannot be opened, the
       // client keeps the slot and pays from the portal instead. Failing the
       // whole booking because a payment provider was briefly unreachable
@@ -456,7 +456,7 @@ function BookingFlow() {
               <ArrowLeft size={16} aria-hidden="true" />
               Back
             </Button>
-            {/* Books the session, then hands off to Paystack checkout. The
+            {/* Books the session, then hands off to Stripe checkout. The
                 slot is held from the moment the booking is created, so an
                 abandoned or failed checkout never costs it. */}
             <Button loading={submitting} onClick={handleConfirm}>

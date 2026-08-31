@@ -105,13 +105,13 @@ describe("paymentsApi", () => {
 
   it("initializes a checkout from a booking id alone", async () => {
     authedRequestMock.mockResolvedValue({
-      authorizationUrl: "https://checkout.paystack.com/abc",
+      authorizationUrl: "https://checkout.stripe.com/c/pay/cs_test_abc",
       reference: "terios_bk-1_1",
     });
 
     const url = await paymentsApi.initialize(session, callbacks, "bk-1");
 
-    expect(url).toBe("https://checkout.paystack.com/abc");
+    expect(url).toBe("https://checkout.stripe.com/c/pay/cs_test_abc");
     const [path, , , options] = lastCall();
     expect(path).toBe("/v1/payments/initialize");
     // Only the booking id crosses the wire. Amount and currency are the

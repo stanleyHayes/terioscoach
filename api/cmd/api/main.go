@@ -22,7 +22,6 @@ import (
 	"github.com/xcreativs/terios/api/internal/adapters/httpapi"
 	"github.com/xcreativs/terios/api/internal/adapters/memory"
 	"github.com/xcreativs/terios/api/internal/adapters/mongodb"
-	"github.com/xcreativs/terios/api/internal/adapters/paystack"
 	"github.com/xcreativs/terios/api/internal/adapters/resend"
 	"github.com/xcreativs/terios/api/internal/adapters/security"
 	"github.com/xcreativs/terios/api/internal/adapters/stripe"
@@ -285,8 +284,7 @@ func buildSchedulingService(db *mongo.Database) *schedulingapp.Service {
 }
 
 // buildPaymentService wires the payments slice to its MongoDB and gateway
-// adapters. PAYMENT_PROVIDER selects the gateway (paystack by default);
-// without the selected provider's secret key the gateway is nil — payment
+// adapter. Without Stripe's secret key or endpoint signing secret, the gateway is nil — payment
 // and webhook routes then answer 503 instead of crashing, like the other
 // unconfigured-service stubs.
 // Return the port interface, not *payments.Service. When payment credentials
@@ -295,24 +293,14 @@ func buildSchedulingService(db *mongo.Database) *schedulingapp.Service {
 // whose receiver panics. Keeping the nil conversion here preserves the
 // intended 503 unavailable route.
 func buildPaymentService(cfg config.Config, db *mongo.Database) ports.PaymentService {
-	var gateway ports.PaymentGateway
-	switch cfg.PaymentProvider {
-	case "stripe":
-		// The webhook is the only payment-confirmation path, so a missing
-		// signing secret means payments could never succeed — treat it as
-		// unconfigured, like a missing API key.
-		if cfg.StripeSecretKey == "" || cfg.StripeWebhookSecret == "" {
-			slog.Warn("PAYMENT_PROVIDER=stripe but STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET not set; payment and webhook routes return 503")
-			return nil
-		}
-		gateway = stripe.NewClient(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.PortalURL+"/payments", cfg.PortalURL+"/payments")
-	default: // "paystack" — validated by config.Load
-		if cfg.PaystackSecretKey == "" {
-			slog.Warn("PAYSTACK_SECRET_KEY not set; payment and webhook routes return 503")
-			return nil
-		}
-		gateway = paystack.NewClient(cfg.PaystackSecretKey)
+	// The webhook is the only payment-confirmation path, so a missing
+	// signing secret means payments could never succeed — treat it as
+	// unconfigured, like a missing API key.
+	if cfg.StripeSecretKey == "" || cfg.StripeWebhookSecret == "" {
+		slog.Warn("STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET not set; payment and webhook routes return 503")
+		return nil
 	}
+	gateway := stripe.NewClient(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.PortalURL+"/payments", cfg.PortalURL+"/payments")
 	return paymentsapp.NewService(
 		mongodb.NewPaymentRepository(db),
 		mongodb.NewBookingRepository(db),

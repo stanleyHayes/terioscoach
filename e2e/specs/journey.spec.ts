@@ -37,16 +37,16 @@ test("a client books, pays, is seen, and reviews", async ({ clientPage, adminPag
     await expect(page.getByRole("listitem").first()).toBeVisible();
   });
 
-  await test.step("the client pays through Paystack test checkout", async () => {
+  await test.step("the client pays through Stripe test checkout", async () => {
     await page.getByRole("button", { name: /pay/i }).first().click();
 
-    // Paystack's own hosted page. Selectors here belong to them, so this
+    // Stripe's own hosted page. Selectors here belong to them, so this
     // step is deliberately shallow: it proves we hand off and come back,
     // not that their form works.
-    await page.waitForURL(/paystack\.com/, { timeout: 30_000 });
-    await page.getByPlaceholder(/card number/i).fill("4084084084084081");
+    await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
+    await page.getByPlaceholder(/card number/i).fill("4242424242424242");
     await page.getByPlaceholder(/mm\s*\/\s*yy|expiry/i).fill("12/30");
-    await page.getByPlaceholder(/cvv/i).fill("408");
+    await page.getByPlaceholder(/cvc|cvv/i).fill("123");
     await page.getByRole("button", { name: /pay/i }).click();
 
     // Back on our site, and the state changed because the webhook and the

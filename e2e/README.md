@@ -17,7 +17,7 @@ reviewable but not runnable, and CI does not run them.
 | Runs without infrastructure | yes | no |
 | Slices compose in sequence | yes | yes |
 | Mongo's unique indexes hold under a real race | no | yes |
-| Paystack's real checkout and webhook | no | yes |
+| Stripe's real checkout and webhook | no | yes |
 | WebRTC actually connects two browsers | no | yes |
 | The apps' own routing, auth persistence and forms | no | yes |
 
@@ -53,8 +53,8 @@ see `guardAgainstProduction` in `fixtures.ts`.
 
 ### Payments
 
-Paystack test mode only. `PAYSTACK_SECRET_KEY` on the target deployment
-must be a `sk_test_` key; the card journey uses Paystack's published test
+Stripe test mode only. `STRIPE_SECRET_KEY` on the target deployment
+must be a `sk_test_` key; the card journey uses Stripe's published test
 card. A run against a live key would take real money.
 
 ### Video

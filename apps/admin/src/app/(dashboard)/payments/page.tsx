@@ -244,7 +244,7 @@ export default function PaymentsPage() {
               Refund {formatMoney(confirming.amountKobo, confirming.currency)}?
             </h2>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              This sends the money back through Paystack. It cannot be undone
+              This sends the money back through Stripe. It cannot be undone
               from here.
             </p>
             <div className="mt-6 flex justify-end gap-3">

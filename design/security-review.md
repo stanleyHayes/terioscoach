@@ -26,7 +26,7 @@ learn that a record exists but is not theirs, the answer is "not found".
 - Refresh tokens: stored as SHA-256 hashes only — a database leak yields no usable session.
 - Access tokens: JWT, 15-minute TTL; refresh rotates on every use.
 - Consent records: SHA-256 digest binds answers + typed name + timestamp; `VerifyIntegrity` re-checks it (`TestIntegrityHashDetectsTampering`).
-- Paystack webhooks: HMAC-SHA512, constant-time compare, hashed **before** JSON parsing. Stripe webhooks: HMAC-SHA256 over `t.payload` under the webhook signing secret, constant-time compare, 5-minute timestamp tolerance against replays.
+- Stripe webhooks: HMAC-SHA512, constant-time compare, hashed **before** JSON parsing. Stripe webhooks: HMAC-SHA256 over `t.payload` under the webhook signing secret, constant-time compare, 5-minute timestamp tolerance against replays.
 - Secrets live only in env stores. Scan for hardcoded secrets: clean; no `.env` tracked in git.
 - HSTS in production only — sending it from a local http:// dev server would poison the browser for localhost (`TestHSTSOnlyInProduction`).
 
@@ -66,7 +66,7 @@ preflight is echoed exactly; readiness alone cannot prove CORS works.
 
 ## A06 — Vulnerable and Outdated Components
 
-- Go: `chi`, `mongo-driver/v2`, `golang-jwt/v5`, `coder/websocket`, `golang.org/x/crypto`. No SDKs for Paystack, Stripe, Resend or Cloudinary — those are plain `net/http`, so the dependency surface stays small.
+- Go: `chi`, `mongo-driver/v2`, `golang-jwt/v5`, `coder/websocket`, `golang.org/x/crypto`. Stripe, Resend, and Cloudinary use plain `net/http`, keeping the dependency surface small.
 - Web/admin: Next.js 16, React 19, Tailwind 4, lucide-react. No charting, date or form libraries.
 - `govulncheck` runs on every API build; `npm audit --audit-level=high` on both apps. Added in LCH-03 — this was an open item and is now closed.
 
@@ -90,7 +90,7 @@ request by varying one header. That was found and fixed during this build.
 ## A08 — Software and Data Integrity Failures
 
 - Consent records carry an integrity digest; a record altered after signing reports `integrityOk: false`.
-- Payment webhooks are verified server-side against the gateway (Paystack `GET /transaction/verify/{ref}`, Stripe `GET /v1/checkout/sessions/{id}`) before any state changes — a forged webhook body is not enough.
+- Payment webhooks are verified server-side against the gateway (Stripe `GET /transaction/verify/{ref}`, Stripe `GET /v1/checkout/sessions/{id}`) before any state changes — a forged webhook body is not enough.
 - Email templates are embedded and asserted byte-identical to the design source, so a drifted copy fails CI.
 
 ## A09 — Security Logging and Monitoring Failures
@@ -103,7 +103,7 @@ request by varying one header. That was found and fixed during this build.
 
 ## A10 — Server-Side Request Forgery
 
-- The API makes outbound calls to a fixed set of hosts (Paystack, Stripe, Resend, Cloudinary), all from configuration, none from user input. Only the configured payment provider's host is ever called.
+- The API makes outbound calls to a fixed set of hosts (Stripe, Resend, Cloudinary), all from configuration, none from user input.
 - No user-supplied URL is ever fetched server-side. `coverImage` is stored and rendered by the browser, never retrieved by the API.
 
 ## Open items

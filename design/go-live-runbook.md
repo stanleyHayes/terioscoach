@@ -15,7 +15,7 @@ below. What remains is somebody with the credentials doing it.
 Have these to hand:
 
 - The registrar login for `terioscoach.com` (Google Domains / Squarespace).
-- Accounts: MongoDB Atlas, Render, Vercel, Resend, Cloudinary, Paystack,
+- Accounts: MongoDB Atlas, Render, Vercel, Resend, Cloudinary, Stripe,
   Cloudflare (for TURN).
 - The practitioner's real email address, for `PRACTICE_EMAIL`.
 
@@ -176,10 +176,10 @@ Do this at a quiet hour, with no session booked for the next two.
      Content Security Policy violations. Both apps send a CSP (PROD-06);
      the dashboard's is nonce-based, so a caching layer that serves one
      visitor's HTML to another would show up here as refused scripts.
-   - Book a session end to end with a real card in Paystack **test** mode.
+   - Book a session end to end with a real card in Stripe **test** mode.
    - Confirm the confirmation email arrives.
-5. Switch Paystack to live keys **last**, after the test booking has
-   worked. Then take one real payment of the smallest amount Paystack
+5. Switch Stripe to live keys **last**, after the test booking has
+   worked. Then take one real payment of the smallest amount Stripe
    allows, confirm it appears in the dashboard, and refund it.
 6. Raise the TTL back to something ordinary (3600).
 
@@ -224,7 +224,7 @@ normal day every one of these counters is zero.
 - Watch the first real reminder go out 24 hours before the first real
   session. That is the one automated thing nobody has yet seen work
   against production data.
-- Keep Paystack's dashboard and the practice's Payments screen side by
+- Keep Stripe's dashboard and the practice's Payments screen side by
   side for the first few payments. They should always agree; if they ever
   do not, stop and find out why rather than reconciling by hand.
 

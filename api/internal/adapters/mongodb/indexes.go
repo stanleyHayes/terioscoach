@@ -74,16 +74,16 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 
 		// Payments. One payment record per booking; client history leads with
-		// clientId; the Paystack reference is unique for webhook idempotency
+		// clientId; the provider reference is unique for webhook idempotency
 		// (partial — pending records may not have a reference yet).
 		"payments": {
 			{Keys: bson.D{{Key: "bookingId", Value: 1}}, Options: options.Index().SetUnique(true)},
 			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
 			{
-				Keys: bson.D{{Key: "paystackReference", Value: 1}},
+				Keys: bson.D{{Key: "providerReference", Value: 1}},
 				Options: options.Index().
 					SetUnique(true).
-					SetPartialFilterExpression(bson.D{{Key: "paystackReference", Value: bson.D{{Key: "$type", Value: "string"}}}}),
+					SetPartialFilterExpression(bson.D{{Key: "providerReference", Value: bson.D{{Key: "$type", Value: "string"}}}}),
 			},
 			// The other half of the webhook join. A re-initialized payment
 			// keeps the references it used before, because the checkout

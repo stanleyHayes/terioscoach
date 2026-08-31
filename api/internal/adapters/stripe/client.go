@@ -1,5 +1,5 @@
 // Package stripe is the outbound adapter for the Stripe REST API — a plain
-// net/http client, no SDK, like the Paystack adapter. It implements
+// net/http client with no SDK. It implements
 // ports.PaymentGateway over Stripe Checkout Sessions: card details only
 // ever exist on Stripe's hosted checkout; this adapter deals in session
 // references and minor-unit amounts only.

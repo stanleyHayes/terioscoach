@@ -33,7 +33,7 @@ function payment(overrides: Partial<Payment> = {}): Payment {
     amountKobo: 25000,
     currency: "GHS",
     status: "success",
-    paystackReference: "ref-1",
+    providerReference: "ref-1",
     channel: "mobile_money",
     paidAt: "2026-08-03T10:00:00Z",
     createdAt: "2026-08-03T09:00:00Z",
@@ -140,13 +140,13 @@ describe("PaymentsPage", () => {
 
   it("surfaces a failed refund", async () => {
     const { ApiError } = await import("@/lib/api");
-    refund.mockRejectedValueOnce(new ApiError(502, "payment_gateway_error", "Paystack refused."));
+    refund.mockRejectedValueOnce(new ApiError(502, "payment_gateway_error", "Stripe refused."));
     render(<PaymentsPage />);
 
     fireEvent.click(await screen.findByRole("button", { name: /^refund$/i }));
     fireEvent.click(screen.getByRole("button", { name: /refund it/i }));
 
-    expect((await screen.findByRole("alert")).textContent).toContain("Paystack refused.");
+    expect((await screen.findByRole("alert")).textContent).toContain("Stripe refused.");
   });
 });
 

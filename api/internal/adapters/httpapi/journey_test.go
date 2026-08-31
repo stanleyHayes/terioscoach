@@ -46,7 +46,7 @@ world.
 
 It runs with no infrastructure: in-memory repositories, a fake gateway, a
 fake mailer. What it cannot prove is what the fakes stand in for — Mongo's
-unique indexes, Paystack's real webhook, a browser's WebRTC stack. The
+unique indexes, Stripe's real webhook, a browser's WebRTC stack. The
 browser half of LCH-02 lives in e2e/ and needs a deployed stack.
 */
 
@@ -312,13 +312,13 @@ func TestTheWholeJourney(t *testing.T) {
 		t.Fatalf("initialize returned %+v, want a checkout URL and reference", initialized)
 	}
 
-	// Paystack calls the webhook. The body alone proves nothing — the
+	// Stripe calls the webhook. The body alone proves nothing — the
 	// service re-verifies against the gateway before changing any state —
 	// so a forged body with a valid signature still could not invent a
 	// payment the gateway does not know about.
-	payload := []byte(fmt.Sprintf(`{"event":"charge.success","data":{"reference":%q}}`, initialized.Reference))
-	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/paystack", bytes.NewReader(payload))
-	req.Header.Set("x-paystack-signature", rig.gateway.SignWebhook(payload))
+	payload := []byte(fmt.Sprintf(`{"type":"checkout.session.completed","data":{"object":{"id":%q}}}`, initialized.Reference))
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", rig.gateway.SignWebhook(payload))
 	whRec := httptest.NewRecorder()
 	rig.srv.Router.ServeHTTP(whRec, req)
 	if whRec.Code != http.StatusOK {

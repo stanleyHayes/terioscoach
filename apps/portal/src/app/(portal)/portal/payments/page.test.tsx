@@ -46,7 +46,7 @@ describe("Portal PaymentsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listMine.mockResolvedValue([payment()]);
-    initialize.mockResolvedValue("https://checkout.paystack.test/abc");
+    initialize.mockResolvedValue("https://checkout.stripe.com/c/pay/cs_test_abc");
   });
 
   it("shows the payment history with amounts and status", async () => {
@@ -80,8 +80,8 @@ describe("Portal PaymentsPage", () => {
     await waitFor(() => {
       expect(initialize).toHaveBeenCalledWith(expect.anything(), expect.anything(), "booking-1");
     });
-    // Card details never touch this app: the browser leaves for Paystack.
-    expect(assign).toHaveBeenCalledWith("https://checkout.paystack.test/abc");
+    // Card details never touch this app: the browser leaves for Stripe.
+    expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_abc");
   });
 
   it("lets a failed payment be tried again", async () => {

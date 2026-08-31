@@ -1,5 +1,5 @@
 // Package integration holds tests that run against the real external
-// services — Atlas, Cloudflare, Cloudinary, Resend, Paystack — using the
+// services — Atlas, Cloudflare, Cloudinary, Resend, Stripe — using the
 // credentials in api/.env.
 //
 // Everything else in this repository is tested against fakes, and that is

@@ -128,14 +128,6 @@ services:
         value: 10m
 
       # ---- Payments ----
-      # PAYMENT_PROVIDER picks the gateway: paystack (default) or stripe.
-      # Only the selected provider's keys are used.
-      - key: PAYMENT_PROVIDER
-        value: paystack
-      - key: PAYSTACK_SECRET_KEY
-        sync: false
-      - key: PAYSTACK_PUBLIC_KEY
-        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

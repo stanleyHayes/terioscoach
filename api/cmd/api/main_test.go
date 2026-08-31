@@ -7,7 +7,7 @@ import (
 )
 
 func TestBuildPaymentServiceWithoutCredentialsIsNilInterface(t *testing.T) {
-	var svc any = buildPaymentService(config.Config{PaymentProvider: "paystack"}, nil)
+	var svc any = buildPaymentService(config.Config{}, nil)
 	if svc != nil {
 		t.Fatalf("missing gateway credentials returned a typed nil service: %#v", svc)
 	}

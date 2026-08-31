@@ -49,7 +49,7 @@ function contentSecurityPolicy(): string {
     // on the page, or post a client's intake form somewhere else entirely.
     "base-uri 'self'",
     "form-action 'self'",
-    // Paystack and Stripe checkout are a top-level navigation, not a frame.
+    // Stripe Checkout is a top-level navigation, not a frame.
     "frame-src 'none'",
     "frame-ancestors 'none'",
     "upgrade-insecure-requests",

@@ -18,7 +18,7 @@ import (
 // fixedNow keeps reference generation and timestamps deterministic.
 var fixedNow = time.Date(2026, 3, 2, 9, 0, 0, 0, time.UTC)
 
-const webhookSecret = "sk_test_fake_secret"
+const webhookSecret = "whsec_test_fake_secret"
 
 type testRig struct {
 	svc      *Service
@@ -88,14 +88,14 @@ func initialize(t *testing.T, rig testRig, id identity.Identity, bookingID strin
 	return init
 }
 
-// chargeSuccessPayload builds a signed-ready charge.success event body.
+// chargeSuccessPayload builds a signed-ready checkout completion event body.
 func chargeSuccessPayload(reference string) []byte {
-	return []byte(fmt.Sprintf(`{"event":"charge.success","data":{"reference":%q}}`, reference))
+	return stripeSessionPayload("checkout.session.completed", reference)
 }
 
 func deliver(t *testing.T, rig testRig, payload []byte) error {
 	t.Helper()
-	return rig.svc.HandlePaystackWebhook(context.Background(), payload, rig.gateway.SignWebhook(payload))
+	return rig.svc.HandleStripeWebhook(context.Background(), payload, rig.gateway.SignWebhook(payload))
 }
 
 func TestInitializeDerivesEverythingServerSide(t *testing.T) {
@@ -109,8 +109,8 @@ func TestInitializeDerivesEverythingServerSide(t *testing.T) {
 	if init.Payment.ID == "" || init.Payment.Status != payment.StatusPending {
 		t.Errorf("payment = %+v, want id assigned, status pending", init.Payment)
 	}
-	if init.Payment.PaystackReference == "" || init.Payment.PaystackReference != init.Payment.PaystackReference {
-		t.Errorf("reference = %q, want server-generated and stored", init.Payment.PaystackReference)
+	if init.Payment.ProviderReference == "" {
+		t.Errorf("reference = %q, want server-generated and stored", init.Payment.ProviderReference)
 	}
 	if init.Payment.AmountKobo != 25000 || init.Payment.Currency != "GHS" {
 		t.Errorf("payment = %+v, want amount/currency snapshotted from the service", init.Payment)
@@ -123,8 +123,8 @@ func TestInitializeDerivesEverythingServerSide(t *testing.T) {
 	if call.Email != "client@example.com" || call.AmountKobo != 25000 || call.Currency != "GHS" {
 		t.Errorf("gateway call = %+v, want email from account, amount/currency from service", call)
 	}
-	if call.Reference != init.Payment.PaystackReference {
-		t.Errorf("gateway reference %q != stored %q", call.Reference, init.Payment.PaystackReference)
+	if call.Reference != init.Payment.ProviderReference {
+		t.Errorf("gateway reference %q != stored %q", call.Reference, init.Payment.ProviderReference)
 	}
 }
 
@@ -164,7 +164,7 @@ func TestInitializeAlreadyPaid(t *testing.T) {
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
 
-	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 	if _, err := rig.svc.InitializePayment(context.Background(), id, b.ID); !errors.Is(err, payment.ErrAlreadyPaid) {
@@ -181,7 +181,7 @@ func TestReinitializeReusesPendingRecord(t *testing.T) {
 	if second.Payment.ID != first.Payment.ID {
 		t.Errorf("re-initialize created a new record %q, want reuse of %q", second.Payment.ID, first.Payment.ID)
 	}
-	if second.Payment.PaystackReference == first.Payment.PaystackReference {
+	if second.Payment.ProviderReference == first.Payment.ProviderReference {
 		t.Error("re-initialize should mint a fresh reference")
 	}
 	if second.Payment.Status != payment.StatusPending {
@@ -201,7 +201,7 @@ func TestWebhookOnAbandonedCheckoutStillRecordsThePayment(t *testing.T) {
 	current := initialize(t, rig, id, b.ID)
 
 	// The client went back to the first tab and paid there.
-	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 
@@ -214,12 +214,12 @@ func TestWebhookOnAbandonedCheckoutStillRecordsThePayment(t *testing.T) {
 	}
 	// The charged reference becomes the live one: it is the transaction the
 	// gateway holds, and a refund has to quote it.
-	if p.PaystackReference != abandoned.Payment.PaystackReference {
+	if p.ProviderReference != abandoned.Payment.ProviderReference {
 		t.Errorf("reference = %q, want the charged one %q",
-			p.PaystackReference, abandoned.Payment.PaystackReference)
+			p.ProviderReference, abandoned.Payment.ProviderReference)
 	}
-	if !p.KnownReference(current.Payment.PaystackReference) {
-		t.Errorf("displaced reference %q was forgotten", current.Payment.PaystackReference)
+	if !p.KnownReference(current.Payment.ProviderReference) {
+		t.Errorf("displaced reference %q was forgotten", current.Payment.ProviderReference)
 	}
 
 	updated, err := rig.bookings.FindByID(context.Background(), b.ID)
@@ -238,7 +238,7 @@ func TestRefundQuotesTheChargedReference(t *testing.T) {
 	id, b := seedBooked(t, rig)
 	abandoned := initialize(t, rig, id, b.ID)
 	initialize(t, rig, id, b.ID)
-	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(abandoned.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 
@@ -249,8 +249,8 @@ func TestRefundQuotesTheChargedReference(t *testing.T) {
 	if _, err := rig.svc.RefundPayment(context.Background(), "prac-1", p.ID); err != nil {
 		t.Fatalf("RefundPayment: %v", err)
 	}
-	if got := rig.gateway.RefundCalls; len(got) != 1 || got[0] != abandoned.Payment.PaystackReference {
-		t.Errorf("refund calls = %v, want [%q]", got, abandoned.Payment.PaystackReference)
+	if got := rig.gateway.RefundCalls; len(got) != 1 || got[0] != abandoned.Payment.ProviderReference {
+		t.Errorf("refund calls = %v, want [%q]", got, abandoned.Payment.ProviderReference)
 	}
 }
 
@@ -258,28 +258,28 @@ func TestWebhookRejectsBadSignatures(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	payload := chargeSuccessPayload(init.Payment.PaystackReference)
+	payload := chargeSuccessPayload(init.Payment.ProviderReference)
 
 	cases := []struct {
 		name      string
 		payload   []byte
 		signature string
 	}{
-		{"tampered body", []byte(`{"event":"charge.success","data":{"reference":"forged"}}`), rig.gateway.SignWebhook(payload)},
+		{"tampered body", stripeSessionPayload("checkout.session.completed", "forged"), rig.gateway.SignWebhook(payload)},
 		{"wrong key", payload, signWithKey("sk_test_wrong", payload)},
 		{"missing signature", payload, ""},
 		{"garbage signature", payload, "not-hex-at-all"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := rig.svc.HandlePaystackWebhook(context.Background(), tc.payload, tc.signature)
+			err := rig.svc.HandleStripeWebhook(context.Background(), tc.payload, tc.signature)
 			if !errors.Is(err, payment.ErrInvalidWebhookSignature) {
 				t.Errorf("err = %v, want ErrInvalidWebhookSignature", err)
 			}
 		})
 	}
 	// None of the forged deliveries touched the payment.
-	p, err := rig.payments.FindByReference(context.Background(), init.Payment.PaystackReference)
+	p, err := rig.payments.FindByReference(context.Background(), init.Payment.ProviderReference)
 	if err != nil {
 		t.Fatalf("find payment: %v", err)
 	}
@@ -297,11 +297,11 @@ func TestWebhookChargeSuccessMarksPaid(t *testing.T) {
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
 
-	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 
-	p, err := rig.payments.FindByReference(context.Background(), init.Payment.PaystackReference)
+	p, err := rig.payments.FindByReference(context.Background(), init.Payment.ProviderReference)
 	if err != nil {
 		t.Fatalf("find payment: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestWebhookIsIdempotent(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	payload := chargeSuccessPayload(init.Payment.PaystackReference)
+	payload := chargeSuccessPayload(init.Payment.ProviderReference)
 
 	for i := 0; i < 3; i++ {
 		if err := deliver(t, rig, payload); err != nil {
@@ -353,16 +353,16 @@ func TestWebhookIgnoresUnknownReferencesAndOtherEvents(t *testing.T) {
 	if err := deliver(t, rig, chargeSuccessPayload("terios_unknown_1")); err != nil {
 		t.Errorf("unknown reference should be acknowledged, got %v", err)
 	}
-	other := []byte(`{"event":"charge.failed","data":{"reference":"` + init.Payment.PaystackReference + `"}}`)
+	other := stripeSessionPayload("checkout.session.expired", init.Payment.ProviderReference)
 	if err := deliver(t, rig, other); err != nil {
-		t.Errorf("non-charge.success event should be acknowledged, got %v", err)
+		t.Errorf("non-completed event should be acknowledged, got %v", err)
 	}
 	unparseable := []byte(`not json`)
 	if err := deliver(t, rig, unparseable); err != nil {
 		t.Errorf("authentic unparseable body should be acknowledged, got %v", err)
 	}
 
-	p, err := rig.payments.FindByReference(context.Background(), init.Payment.PaystackReference)
+	p, err := rig.payments.FindByReference(context.Background(), init.Payment.ProviderReference)
 	if err != nil {
 		t.Fatalf("find payment: %v", err)
 	}
@@ -375,7 +375,7 @@ func TestWebhookVerifyMismatchDoesNotMarkPaid(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	ref := init.Payment.PaystackReference
+	ref := init.Payment.ProviderReference
 
 	// Gateway verify disagrees with the stored amount — possible tampering.
 	rig.gateway.VerifyResults[ref] = ports.VerifiedTransaction{
@@ -409,12 +409,12 @@ func TestWebhookTransientVerifyFailureSurfaces(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	rig.gateway.VerifyErr = &ports.GatewayError{StatusCode: 0, Message: "paystack is unreachable"}
+	rig.gateway.VerifyErr = &ports.GatewayError{StatusCode: 0, Message: "stripe is unreachable"}
 
-	err := deliver(t, rig, chargeSuccessPayload(init.Payment.PaystackReference))
+	err := deliver(t, rig, chargeSuccessPayload(init.Payment.ProviderReference))
 	var gatewayErr *ports.GatewayError
 	if !errors.As(err, &gatewayErr) {
-		t.Errorf("err = %v, want GatewayError so the transport can 502 and Paystack retries", err)
+		t.Errorf("err = %v, want GatewayError so the transport can 502 and Stripe retries", err)
 	}
 }
 
@@ -428,7 +428,7 @@ func TestRefundGuards(t *testing.T) {
 		t.Errorf("refund pending err = %v, want ErrInvalidTransition", err)
 	}
 
-	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 
@@ -444,7 +444,7 @@ func TestRefundGuards(t *testing.T) {
 	if refunded.Status != payment.StatusRefunded || refunded.RefundedAt == nil {
 		t.Errorf("payment = %+v, want refunded with timestamp", refunded)
 	}
-	if len(rig.gateway.RefundCalls) != 1 || rig.gateway.RefundCalls[0] != init.Payment.PaystackReference {
+	if len(rig.gateway.RefundCalls) != 1 || rig.gateway.RefundCalls[0] != init.Payment.ProviderReference {
 		t.Errorf("refund calls = %v, want one call with the stored reference", rig.gateway.RefundCalls)
 	}
 
@@ -466,7 +466,7 @@ func TestRefundGatewayFailureLeavesPaymentUntouched(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.PaystackReference)); err != nil {
+	if err := deliver(t, rig, chargeSuccessPayload(init.Payment.ProviderReference)); err != nil {
 		t.Fatalf("webhook: %v", err)
 	}
 
@@ -549,7 +549,7 @@ func TestStripeWebhookSessionCompletedMarksPaid(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	ref := init.Payment.PaystackReference
+	ref := init.Payment.ProviderReference
 
 	if err := deliverStripe(t, rig, stripeSessionPayload("checkout.session.completed", ref)); err != nil {
 		t.Fatalf("webhook: %v", err)
@@ -576,7 +576,7 @@ func TestStripeWebhookRejectsBadSignatures(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	payload := stripeSessionPayload("checkout.session.completed", init.Payment.PaystackReference)
+	payload := stripeSessionPayload("checkout.session.completed", init.Payment.ProviderReference)
 
 	cases := []struct {
 		name      string
@@ -601,7 +601,7 @@ func TestStripeWebhookIgnoresOtherEventsAndUnknownReferences(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	ref := init.Payment.PaystackReference
+	ref := init.Payment.ProviderReference
 
 	if err := deliverStripe(t, rig, stripeSessionPayload("checkout.session.completed", "cs_unknown_1")); err != nil {
 		t.Errorf("unknown reference should be acknowledged, got %v", err)
@@ -629,7 +629,7 @@ func TestStripeWebhookIsIdempotent(t *testing.T) {
 	rig := newTestRig()
 	id, b := seedBooked(t, rig)
 	init := initialize(t, rig, id, b.ID)
-	payload := stripeSessionPayload("checkout.session.completed", init.Payment.PaystackReference)
+	payload := stripeSessionPayload("checkout.session.completed", init.Payment.ProviderReference)
 
 	for i := 0; i < 3; i++ {
 		if err := deliverStripe(t, rig, payload); err != nil {

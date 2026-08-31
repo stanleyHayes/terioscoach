@@ -11,7 +11,7 @@ var (
 	// ErrAlreadyPaid means the booking's payment already succeeded — a
 	// second initialize is refused.
 	ErrAlreadyPaid = errors.New("booking is already paid")
-	// ErrInvalidWebhookSignature means the x-paystack-signature header did
+	// ErrInvalidWebhookSignature means the Stripe-Signature header did
 	// not match the HMAC-SHA512 of the raw body under the secret key.
 	ErrInvalidWebhookSignature = errors.New("invalid webhook signature")
 	// ErrInvalidTransition means a lifecycle change was attempted from a
@@ -22,6 +22,6 @@ var (
 	// ErrInvalidCurrency means a non ISO 4217 alphabetic code was supplied.
 	ErrInvalidCurrency = errors.New("currency must be a 3-letter code")
 	// ErrReferenceRequired means a payment was built without its
-	// server-generated Paystack reference.
-	ErrReferenceRequired = errors.New("paystack reference is required")
+	// server-generated provider reference.
+	ErrReferenceRequired = errors.New("payment reference is required")
 )

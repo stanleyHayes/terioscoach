@@ -19,7 +19,7 @@ export interface Payment {
   amountKobo: number;
   currency: string;
   status: PaymentStatus;
-  paystackReference: string;
+  providerReference: string;
   channel?: string;
   paidAt?: string;
   createdAt: string;

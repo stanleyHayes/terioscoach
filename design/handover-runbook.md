@@ -67,15 +67,15 @@ need one moved, move it in the calendar and the client is emailed.
 - **Pending** — the client started a payment and has not finished it.
   These usually resolve themselves within a few minutes; a pending payment
   from yesterday means they abandoned the checkout.
-- **Successful** — the money is with Paystack and will be settled to your
-  account on Paystack's own schedule. This platform never holds your money.
+- **Successful** — the money is with Stripe and will be settled to your
+  account on Stripe's own schedule. This platform never holds your money.
 - **Refunded** — you refunded it from this screen.
 
 **Refunds are not reversible.** The button asks you to confirm because
 that is the last chance to change your mind. A refund does not cancel the
 session; if you meant to do both, cancel it in the calendar too.
 
-If a client says they paid and the dashboard disagrees, check Paystack's
+If a client says they paid and the dashboard disagrees, check Stripe's
 own dashboard before refunding anything. The two should always agree — if
 they ever do not, that is worth reporting rather than working around.
 
@@ -238,7 +238,7 @@ session is not income and is not counted as such.
 
 **Report anything you cannot explain.** In particular: a signed form
 reporting that it does not match its signature, a client seeing something
-you did not share, or the dashboard and Paystack disagreeing about money.
+you did not share, or the dashboard and Stripe disagreeing about money.
 Those three are not "quirks" and should never be worked around.
 
 ---

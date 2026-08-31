@@ -49,12 +49,7 @@ type Config struct {
 	// DocumentURLTTL is how long a signed download link lives.
 	DocumentURLTTL time.Duration
 
-	// PaymentProvider selects the payment gateway: "paystack" (default) or
-	// "stripe". The unselected provider's keys are ignored.
-	PaymentProvider   string
-	PaystackSecretKey string
-	PaystackPublicKey string
-	StripeSecretKey   string
+	StripeSecretKey string
 	// StripeWebhookSecret is the signing secret (whsec_...) of the Stripe
 	// webhook endpoint — separate from the API key. Without it every
 	// Stripe webhook delivery is rejected.
@@ -160,9 +155,6 @@ func Load() (Config, error) {
 		CloudinaryAPIKey:         os.Getenv("CLOUDINARY_API_KEY"),
 		CloudinaryAPISecret:      os.Getenv("CLOUDINARY_API_SECRET"),
 		DocumentURLTTL:           getEnvDuration("DOCUMENT_URL_TTL", time.Hour),
-		PaymentProvider:          getEnv("PAYMENT_PROVIDER", "paystack"),
-		PaystackSecretKey:        os.Getenv("PAYSTACK_SECRET_KEY"),
-		PaystackPublicKey:        os.Getenv("PAYSTACK_PUBLIC_KEY"),
 		StripeSecretKey:          os.Getenv("STRIPE_SECRET_KEY"),
 		StripeWebhookSecret:      os.Getenv("STRIPE_WEBHOOK_SECRET"),
 		TURNKeyID:                os.Getenv("TURN_KEY_ID"),
@@ -182,11 +174,6 @@ func Load() (Config, error) {
 		AllowedOrigins: getEnvList("ALLOWED_ORIGINS", nil),
 	}
 
-	cfg.PaymentProvider = strings.ToLower(cfg.PaymentProvider)
-	if cfg.PaymentProvider != "paystack" && cfg.PaymentProvider != "stripe" {
-		return Config{}, fmt.Errorf("PAYMENT_PROVIDER must be \"paystack\" or \"stripe\", got %q", cfg.PaymentProvider)
-	}
-
 	if cfg.Env == "production" {
 		if cfg.MongoURI == "" {
 			return Config{}, fmt.Errorf("MONGODB_URI is required in production")
@@ -196,6 +183,9 @@ func Load() (Config, error) {
 		}
 		if cfg.MFAEncryptionKey == "" {
 			return Config{}, fmt.Errorf("MFA_ENCRYPTION_KEY is required in production")
+		}
+		if cfg.StripeSecretKey == "" || cfg.StripeWebhookSecret == "" {
+			return Config{}, fmt.Errorf("STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are required in production")
 		}
 		// Without this the API is up, healthy, and useless: CORS permits no
 		// browser origin and the signaling socket refuses every handshake,

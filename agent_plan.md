@@ -14,7 +14,7 @@ One platform, three layers: **Public Website** + **Client Portal** (customer-fac
 | Database | MongoDB (Atlas), daily backups, encryption at rest |
 | Email | Resend (confirmations, reminders, enquiries, feedback delivery) |
 | Media & documents | Cloudinary (signed uploads, client documents, CMS images) |
-| Payments | Paystack (cards + mobile money, international clients) |
+| Payments | Stripe (cards + mobile money, international clients) |
 | Video | Raw WebRTC build — own WebSocket signaling in the Go API + self-hosted TURN (coturn) |
 | Backend deploy | Render Blueprint (`render.yaml`, IaC) |
 | Frontend deploy | Vercel — **three separate projects**: public website, client portal and admin app |
@@ -53,7 +53,7 @@ Public website         Client portal             Practice dashboard
 ## 4. Global Rules
 
 - **No native UI elements, ever.** No default browser `<select>`, `<input type="date">`, `<input type="file">`, `<dialog>`, native buttons/scrollbars, etc. Every interactive element is a custom-built, brand-styled component from the design system. Design Agent owns the component spec; both Frontend Agents implement against it.
-- **Hexagonal discipline:** domain logic has zero framework/driver imports. MongoDB, Paystack, Resend, Cloudinary, WebSocket all live behind ports in adapters.
+- **Hexagonal discipline:** domain logic has zero framework/driver imports. MongoDB, Stripe, Resend, Cloudinary, WebSocket all live behind ports in adapters.
 - **Client data isolation is non-negotiable:** every client-scoped query enforces ownership at the repository adapter; cross-client access is impossible by construction, not by convention.
 - **Secrets** only in Render/Vercel env stores — never in the repo.
 - **Status legend:** `Not Started` · `In Progress` · `Blocked` · `Done`.
@@ -102,7 +102,7 @@ Public website         Client portal             Practice dashboard
 | BE-03 | Services & pricing CRUD (dashboard-controlled, instantly public) | Backend | BE-01 | Done |
 | BE-04 | Availability engine: working hours, session lengths, buffers, timezone-safe slot generation | Backend | BE-01 | Done |
 | BE-05 | Booking engine: slot hold, conflict prevention, reschedule/cancel rules, booking lifecycle | Backend | BE-03, BE-04 | Done |
-| BE-06 | Paystack adapter: charge at booking, webhooks, refunds, payment records per client | Backend | BE-05 | Done |
+| BE-06 | Stripe adapter: charge at booking, webhooks, refunds, payment records per client | Backend | BE-05 | Done |
 | BE-07 | Client records: profile, history, documents, forms, payments — strict ownership scoping | Backend | BE-01 | Done |
 | BE-08 | Session notes: private notes vs shared feedback split | Backend | BE-07 | Done |
 | BE-09 | Notification service (Resend): booking confirmations, automated session reminders (scheduler), reschedule notices | Backend | BE-05, FND-06 | Done |
@@ -142,7 +142,7 @@ Public website         Client portal             Practice dashboard
 | CX-07 | Portal forms & signatures: complete, sign (custom signature pad), submit | FE-Customer | CX-03, BE-10 | Done |
 | CX-08 | Portal session history + shared feedback & resources | FE-Customer | CX-03, BE-08 | Done |
 | CX-09 | Portal documents library | FE-Customer | CX-03, BE-11 | Done |
-| CX-10 | Portal payment history + pay for new bookings | FE-Customer | CX-03, BE-06 | Done — **and now actually wired.** `book/page.tsx` ended at a confirmation screen with a `TODO(payments)`; nothing created the first payment record, so the Pay-now button on the Payments page could never appear and no booking could ever be paid for. Confirming now hands off to Paystack checkout. Booking and payment stay separate: a failed hand-off keeps the slot and offers payment from the portal. |
+| CX-10 | Portal payment history + pay for new bookings | FE-Customer | CX-03, BE-06 | Done — **and now actually wired.** `book/page.tsx` ended at a confirmation screen with a `TODO(payments)`; nothing created the first payment record, so the Pay-now button on the Payments page could never appear and no booking could ever be paid for. Confirming now hands off to Stripe checkout. Booking and payment stay separate: a failed hand-off keeps the slot and offers payment from the portal. |
 | CX-11 | Portal review submission | FE-Customer | CX-03, BE-14 | Done |
 
 ## 9. Phase 5 — Launch
@@ -165,15 +165,15 @@ Public website         Client portal             Practice dashboard
 
 - `FND-03` (design system) blocks **all** frontend work — it is the critical path start.
 - `BE-01` (auth/RBAC) blocks every protected backend feature and both apps' shells.
-- Booking chain: `BE-04 → BE-05 → BE-06 (Paystack) → BE-09 (reminders)`.
+- Booking chain: `BE-04 → BE-05 → BE-06 (Stripe) → BE-09 (reminders)`.
 - Video chain: `BE-05 → CX-01 (signaling)`, plus `CX-02 (coturn)`; `CX-05`/`CX-06` need both.
 - Public site pages needing live data (`WEB-04/05/06/07`) depend on their CMS/service APIs, so backend CMS work runs early in Phase 2, not late.
 - Phase 2 (public site) can ship and go live while Phases 3–4 are still in progress, per the proposal.
 
 ## 11. Open Items to Confirm
 
-1. **Version pins** — "latest stable" recorded at scaffold time (FND-01); Go / Next.js / mongo-driver / Paystack & Cloudinary SDKs verified that day.
-2. **Currencies** — default settlement currency(s) in Paystack (GHS base? USD for internationals?).
+1. **Version pins** — "latest stable" recorded at scaffold time (FND-01); Go / Next.js / mongo-driver / Stripe & Cloudinary SDKs verified that day.
+2. **Currencies** — default settlement currency(s) in Stripe (GHS base? USD for internationals?).
 3. **Analytics** — privacy-friendly choice for the "website visits / content engagement" reporting (e.g. Plausible vs first-party collection into MongoDB).
 4. **Session video length / recording** — recording exists as **client-local** capture after explicit consent from the other participant (MediaRecorder → `.webm` download on the recorder's own machine, with a ● Rec indicator relayed to the other party). Server-side recording/storage remains a scope change (needs a media server and retention/compliance design).
 5. **Reminders** — email-only via Resend per current scope; SMS/WhatsApp reminders would be a scope addition.
@@ -398,3 +398,12 @@ running production origins.
 | NOTIFY-01 | Replace weak notification affordances with live action centres | Done and live | Admin Practice pulse derives actionable enquiries, pending reviews, and imminent consultations from authoritative records; portal Care updates derives assigned forms, unresolved payments, the next consultation, and eligible review prompts without pretending a durable read-history API exists. Admin and portal Vercel deployments succeeded |
 | NOTIFY-02 | Make badges meaningful and current | Done and live | Both bells expose accessible capped count badges, clear loading/error/caught-up states, refresh on focus and every 60 seconds, and deep-link each item to its workflow; partial admin RBAC access still shows permitted sources. Portal CI passed on `4200ce1`; admin CI passed on `27b86ef` |
 | MOTION-01 | Improve slow-feeling portal route changes | Done and live | Shared route feedback begins at pointer activation, intent-prefetches internal destinations on hover/focus, adds tactile nav press states, and reduces route entrance motion from 400ms to 180ms with reduced-motion fallbacks; both production application deployments completed successfully |
+
+## 24. Stripe-only payment migration (31 Aug 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| PAY-STRIPE-01 | Remove the retired payment provider from runtime and configuration | Done locally | Removed its adapter, keys, provider switch, webhook handler/route, tests, UI copy, E2E assumptions, and deployment/runbook references; repository-wide search returns no retired-provider references |
+| PAY-STRIPE-02 | Make payment contracts provider-neutral and Stripe-backed | Done locally | `providerReference` replaces the provider-branded API/domain/Mongo field; Stripe Checkout is wired directly, `/v1/webhooks/stripe` is the sole signed webhook endpoint, and production now refuses to boot without both Stripe secrets |
+| PAY-STRIPE-03 | Verify the migration | Done locally | Full `go test ./... -count=1`, all-workspace frontend tests (admin 432, portal 277, web 177), lint, three production builds, and `git diff --check` pass; a read-only Stripe account probe confirms the configured API key is accepted |
+| PAY-STRIPE-04 | Activate production Stripe payments | Deploy pending | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` were written to the `terios-api` Render service through the authenticated API and individually read back as non-empty. Render does not activate API-written environment changes until a deploy; commit/push the Stripe-only migration, let Render deploy it, confirm an unsigned webhook returns 401, then complete a smallest-amount live payment/refund drill |

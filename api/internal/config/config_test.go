@@ -16,6 +16,8 @@ func production(t *testing.T) {
 	t.Setenv("JWT_REFRESH_SECRET", "refresh-secret-refresh-secret-12")
 	t.Setenv("MFA_ENCRYPTION_KEY", "MDAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm")
 	t.Setenv("ALLOWED_ORIGINS", "https://terioscoach.com,https://practice.terioscoach.com")
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_config")
+	t.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_test_config")
 }
 
 func TestProductionRequiresItsSecretsAndOrigins(t *testing.T) {
@@ -28,6 +30,8 @@ func TestProductionRequiresItsSecretsAndOrigins(t *testing.T) {
 		{"no access secret", "JWT_ACCESS_SECRET", "JWT secrets"},
 		{"no refresh secret", "JWT_REFRESH_SECRET", "JWT secrets"},
 		{"no MFA encryption key", "MFA_ENCRYPTION_KEY", "MFA_ENCRYPTION_KEY"},
+		{"no Stripe secret key", "STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"},
+		{"no Stripe webhook secret", "STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"},
 		// The one that fails silently otherwise: the API comes up healthy
 		// and refuses every browser call from both apps.
 		{"no allowed origins", "ALLOWED_ORIGINS", "ALLOWED_ORIGINS"},
@@ -75,23 +79,6 @@ func TestDevelopmentBootsWithNothingConfigured(t *testing.T) {
 	}
 	if cfg.Port != 8080 || cfg.AccessTokenTTL != 15*time.Minute {
 		t.Errorf("defaults = port %d / ttl %s, want 8080 / 15m", cfg.Port, cfg.AccessTokenTTL)
-	}
-}
-
-func TestPaymentProviderMustBeOneOfTwo(t *testing.T) {
-	t.Setenv("APP_ENV", "development")
-	t.Setenv("PAYMENT_PROVIDER", "PayStack") // case is not the caller's problem
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if cfg.PaymentProvider != "paystack" {
-		t.Errorf("PaymentProvider = %q, want normalized to paystack", cfg.PaymentProvider)
-	}
-
-	t.Setenv("PAYMENT_PROVIDER", "flutterwave")
-	if _, err := Load(); err == nil {
-		t.Error("Load accepted an unsupported payment provider")
 	}
 }
 

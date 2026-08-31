@@ -1,5 +1,5 @@
 // Package httpapi is the inbound HTTP adapter. It depends on ports only;
-// it never talks to MongoDB, Paystack, Resend, or Cloudinary directly.
+// it never talks to MongoDB, Stripe, Resend, or Cloudinary directly.
 package httpapi
 
 import (

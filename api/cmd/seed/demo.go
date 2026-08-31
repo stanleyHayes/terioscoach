@@ -364,7 +364,7 @@ func payment(bookingID, clientID bson.ObjectID, amount int64, currency, status s
 		// Keyed on the booking, not a fresh ObjectID: ObjectIDs minted in
 		// the same second share their first 12 hex characters, so a
 		// truncated one is not unique and the reference index rejects it.
-		"paystackReference": "demo-" + bookingID.Hex(),
+		"providerReference": "demo-" + bookingID.Hex(),
 		"createdAt":         now.Add(-10 * 24 * time.Hour),
 		"updatedAt":         now,
 	}

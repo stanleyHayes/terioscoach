@@ -11,11 +11,10 @@ import (
 	"github.com/xcreativs/terios/api/internal/ports"
 )
 
-// maxWebhookBytes caps webhook bodies (1 MB — far beyond any legitimate
-// Paystack event).
+// maxWebhookBytes caps webhook bodies (1 MB — far beyond any legitimate event).
 const maxWebhookBytes = 1 << 20
 
-// WithPayments mounts the /v1/payments and /v1/webhooks/{paystack,stripe}
+// WithPayments mounts the /v1/payments and /v1/webhooks/stripe
 // routes backed by the payment port. Initialize and "mine" are
 // client-only; the list and refund are practitioner-only; the webhooks
 // are public and signature-verified inside the app layer. A nil service
@@ -42,7 +41,6 @@ func WithPayments(svc ports.PaymentService, auth ports.AuthService) Option {
 				return
 			}
 			h := &paymentHandler{svc: svc}
-			r.Post("/paystack", h.paystackWebhook)
 			r.Post("/stripe", h.stripeWebhook)
 		})
 	}
@@ -66,7 +64,7 @@ type paymentBody struct {
 	AmountKobo        int64      `json:"amountKobo"`
 	Currency          string     `json:"currency"`
 	Status            string     `json:"status"`
-	PaystackReference string     `json:"paystackReference"`
+	ProviderReference string     `json:"providerReference"`
 	Channel           string     `json:"channel,omitempty"`
 	PaidAt            *time.Time `json:"paidAt,omitempty"`
 	CreatedAt         time.Time  `json:"createdAt"`
@@ -80,7 +78,7 @@ func newPaymentBody(p payment.Payment) paymentBody {
 		AmountKobo:        p.AmountKobo,
 		Currency:          p.Currency,
 		Status:            string(p.Status),
-		PaystackReference: p.PaystackReference,
+		ProviderReference: p.ProviderReference,
 		Channel:           p.Channel,
 		PaidAt:            p.PaidAt,
 		CreatedAt:         p.CreatedAt.UTC(),
@@ -119,7 +117,7 @@ func (h *paymentHandler) initialize(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{
 		"authorizationUrl": init.AuthorizationURL,
-		"reference":        init.Payment.PaystackReference,
+		"reference":        init.Payment.ProviderReference,
 	})
 }
 
@@ -183,22 +181,6 @@ func (h *paymentHandler) refund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]paymentBody{"payment": newPaymentBody(p)})
-}
-
-// paystackWebhook handles POST /v1/webhooks/paystack — public, with the
-// raw body read before anything else so the HMAC can be verified over the
-// exact bytes Paystack signed.
-func (h *paymentHandler) paystackWebhook(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBytes))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "webhook body is unreadable")
-		return
-	}
-	if err := h.svc.HandlePaystackWebhook(r.Context(), body, r.Header.Get("x-paystack-signature")); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{})
 }
 
 // stripeWebhook handles POST /v1/webhooks/stripe — public, with the raw

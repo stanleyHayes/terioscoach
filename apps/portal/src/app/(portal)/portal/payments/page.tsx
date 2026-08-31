@@ -16,7 +16,7 @@ import { usePortalAction, usePortalData } from "@/lib/use-portal-data";
 /**
  * Payment history, and paying for a session that is still owed (CX-10).
  *
- * Paying leaves this app entirely: the API returns Paystack's hosted
+ * Paying leaves this app entirely: the API returns Stripe's hosted
  * checkout URL and the browser goes there. Card and mobile-money details
  * never pass through the portal or the API, which is the whole reason the
  * flow is shaped this way.

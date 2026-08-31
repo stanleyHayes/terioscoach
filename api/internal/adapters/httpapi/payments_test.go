@@ -31,7 +31,7 @@ type paymentTestRig struct {
 	practitionerToken string
 }
 
-const paymentTestWebhookSecret = "sk_test_webhook"
+const paymentTestWebhookSecret = "whsec_test_webhook"
 
 func newPaymentTestRig(t *testing.T) paymentTestRig {
 	t.Helper()
@@ -126,7 +126,7 @@ type paymentTestBody struct {
 	AmountKobo        int64      `json:"amountKobo"`
 	Currency          string     `json:"currency"`
 	Status            string     `json:"status"`
-	PaystackReference string     `json:"paystackReference"`
+	ProviderReference string     `json:"providerReference"`
 	Channel           string     `json:"channel"`
 	PaidAt            *time.Time `json:"paidAt"`
 }
@@ -146,9 +146,9 @@ func initializeViaHTTP(t *testing.T, rig paymentTestRig, token string) map[strin
 // deliverWebhook posts a raw, signed webhook body.
 func deliverWebhook(t *testing.T, rig paymentTestRig, payload []byte, signature string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/paystack", bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", bytes.NewReader(payload))
 	if signature != "" {
-		req.Header.Set("x-paystack-signature", signature)
+		req.Header.Set("Stripe-Signature", signature)
 	}
 	rec := httptest.NewRecorder()
 	rig.srv.Router.ServeHTTP(rec, req)
@@ -211,7 +211,7 @@ func TestPaymentInitializeValidationAndConflict(t *testing.T) {
 	res := initializeViaHTTP(t, rig, rig.clientToken)
 
 	// Pay it, then a second initialize answers 409 already_paid.
-	payload := []byte(fmt.Sprintf(`{"event":"charge.success","data":{"reference":%q}}`, res["reference"]))
+	payload := []byte(fmt.Sprintf(`{"type":"checkout.session.completed","data":{"object":{"id":%q}}}`, res["reference"]))
 	wh := deliverWebhook(t, rig, payload, rig.gateway.SignWebhook(payload))
 	if wh.Code != http.StatusOK {
 		t.Fatalf("webhook status = %d, body %s", wh.Code, wh.Body.String())
@@ -231,7 +231,7 @@ func TestPaymentInitializeValidationAndConflict(t *testing.T) {
 func TestPaymentWebhookEndToEnd(t *testing.T) {
 	rig := newPaymentTestRig(t)
 	res := initializeViaHTTP(t, rig, rig.clientToken)
-	payload := []byte(fmt.Sprintf(`{"event":"charge.success","data":{"reference":%q}}`, res["reference"]))
+	payload := []byte(fmt.Sprintf(`{"type":"checkout.session.completed","data":{"object":{"id":%q}}}`, res["reference"]))
 
 	// Bad signature → 401 invalid_signature, payment untouched.
 	bad := deliverWebhook(t, rig, payload, "deadbeef")
@@ -311,7 +311,7 @@ func TestPaymentRefundEndToEnd(t *testing.T) {
 		t.Errorf("refund pending status = %d, want 409", rec.Code)
 	}
 
-	payload := []byte(fmt.Sprintf(`{"event":"charge.success","data":{"reference":%q}}`, res["reference"]))
+	payload := []byte(fmt.Sprintf(`{"type":"checkout.session.completed","data":{"object":{"id":%q}}}`, res["reference"]))
 	if rec := deliverWebhook(t, rig, payload, rig.gateway.SignWebhook(payload)); rec.Code != http.StatusOK {
 		t.Fatalf("webhook status = %d", rec.Code)
 	}
@@ -337,7 +337,7 @@ func TestPaymentRefundEndToEnd(t *testing.T) {
 
 func TestPaymentGatewayErrorMapsTo502(t *testing.T) {
 	rig := newPaymentTestRig(t)
-	rig.gateway.InitializeErr = &ports.GatewayError{StatusCode: 500, Message: "paystack is down"}
+	rig.gateway.InitializeErr = &ports.GatewayError{StatusCode: 500, Message: "stripe is down"}
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/payments/initialize",
 		map[string]string{"bookingId": rig.booking.ID}, bearer(rig.clientToken))
 	if rec.Code != http.StatusBadGateway {
@@ -361,7 +361,6 @@ func TestPaymentsUnavailableWithoutService(t *testing.T) {
 		{http.MethodGet, "/v1/payments/mine"},
 		{http.MethodGet, "/v1/payments"},
 		{http.MethodPost, "/v1/payments/payment-1/refund"},
-		{http.MethodPost, "/v1/webhooks/paystack"},
 		{http.MethodPost, "/v1/webhooks/stripe"},
 	}
 	for _, tc := range cases {

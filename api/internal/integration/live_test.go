@@ -11,7 +11,6 @@ import (
 
 	"github.com/xcreativs/terios/api/internal/adapters/cloudflare"
 	"github.com/xcreativs/terios/api/internal/adapters/cloudinary"
-	"github.com/xcreativs/terios/api/internal/adapters/paystack"
 	"github.com/xcreativs/terios/api/internal/domain/document"
 	"github.com/xcreativs/terios/api/internal/ports"
 )
@@ -23,7 +22,7 @@ var env map[string]string
 //
 // The env-var gate is the important half. Without it these run as part of
 // a plain `go test ./...`, which would mean every developer and every CI
-// job silently making live calls to Cloudflare, Cloudinary and Paystack —
+// job silently making live calls to Cloudflare and Cloudinary —
 // and, once MONGODB_URI is filled in, writing to a real database.
 func requireIntegration(t *testing.T) map[string]string {
 	t.Helper()
@@ -230,83 +229,3 @@ func TestLiveCloudinaryRejectsAForgedSignature(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------
-// Paystack (BE-06)
-//
-// Test keys only. The guard below is not decoration: a live key here would
-// initialize a real transaction.
-// ---------------------------------------------------------------------
-
-func TestLivePaystackInitializeAndVerify(t *testing.T) {
-	env := requireIntegration(t)
-	secret := env["PAYSTACK_SECRET_KEY"]
-	if placeholder(secret) {
-		t.Skip("PAYSTACK_SECRET_KEY not set")
-	}
-	if !strings.HasPrefix(secret, "sk_test_") {
-		t.Fatalf("refusing to run against a non-test Paystack key (prefix %q)", secret[:min(8, len(secret))])
-	}
-
-	client := paystack.NewClient(secret)
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	reference := fmt.Sprintf("terios-integration-%d", time.Now().UnixNano())
-	initialized, err := client.Initialize(ctx, ports.InitializeParams{
-		Reference:  reference,
-		AmountKobo: 25000,
-		Currency:   "GHS",
-		// Paystack validates the address and rejects reserved TLDs, so
-		// this cannot be a .invalid or .test address the way the rest of
-		// this project's fixtures are. That is worth knowing beyond this
-		// test: a client whose email Paystack dislikes cannot check out,
-		// and the failure surfaces at initialize, not at registration.
-		Email: "integration@example.com",
-	})
-	if err != nil {
-		t.Fatalf("initialize: %v", err)
-	}
-	if initialized.AuthorizationURL == "" {
-		t.Fatal("no checkout URL — the client would have nowhere to pay")
-	}
-	if initialized.Reference != reference {
-		t.Errorf("reference = %q, want the one we sent (%q)", initialized.Reference, reference)
-	}
-	t.Logf("initialized %s", initialized.Reference)
-
-	// An initialized-but-unpaid transaction must verify as NOT successful.
-	// Treating "exists" as "paid" is how a booking gets marked paid for
-	// free.
-	verified, err := client.Verify(ctx, reference)
-	if err != nil {
-		t.Fatalf("verify: %v", err)
-	}
-	if verified.Status == "success" {
-		t.Errorf("an unpaid transaction verified as success — payments could be faked by abandoning checkout")
-	}
-	t.Logf("unpaid transaction verifies as %q (correct)", verified.Status)
-}
-
-func TestLivePaystackRejectsAnUnknownReference(t *testing.T) {
-	env := requireIntegration(t)
-	secret := env["PAYSTACK_SECRET_KEY"]
-	if placeholder(secret) || !strings.HasPrefix(secret, "sk_test_") {
-		t.Skip("no test-mode Paystack key")
-	}
-
-	client := paystack.NewClient(secret)
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	// A forged webhook naming a reference that never existed must not
-	// resolve to a payment.
-	if _, err := client.Verify(ctx, "terios-never-existed-000000"); err == nil {
-		t.Error("an unknown reference verified successfully")
-	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

@@ -14,11 +14,11 @@ import (
 
 // PaymentRepository persists payments in the payments collection. The
 // document shape is guarded by the fixed index design: bookingId unique
-// (one payment per booking), paystackReference unique when present (the
+// (one payment per booking), providerReference unique when present (the
 // webhook join key), previousReferences for the same join after a
 // re-initialization, and clientId+createdAt for the client history. The
 // collection deliberately carries no card or mobile-money data — checkout
-// is hosted by Paystack.
+// is hosted by Stripe.
 type PaymentRepository struct {
 	coll *mongo.Collection
 }
@@ -38,7 +38,7 @@ type paymentDoc struct {
 	AmountKobo        int64         `bson:"amountKobo"`
 	Currency          string        `bson:"currency"`
 	Status            string        `bson:"status"`
-	PaystackReference string        `bson:"paystackReference"`
+	ProviderReference string        `bson:"providerReference"`
 	// References this payment was initialized under before. Omitted when
 	// empty so the index below stays off the documents that have none.
 	PreviousReferences []string       `bson:"previousReferences,omitempty"`
@@ -97,7 +97,7 @@ func (r *PaymentRepository) FindByBookingID(ctx context.Context, bookingID strin
 // payment.ErrPaymentNotFound.
 func (r *PaymentRepository) FindByReference(ctx context.Context, reference string) (payment.Payment, error) {
 	return r.findOne(ctx, bson.M{"$or": []bson.M{
-		{"paystackReference": reference},
+		{"providerReference": reference},
 		{"previousReferences": reference},
 	}})
 }
@@ -221,7 +221,7 @@ func newPaymentDoc(p payment.Payment) (paymentDoc, error) {
 		AmountKobo:         p.AmountKobo,
 		Currency:           p.Currency,
 		Status:             string(p.Status),
-		PaystackReference:  p.PaystackReference,
+		ProviderReference:  p.ProviderReference,
 		PreviousReferences: p.PreviousReferences,
 		Channel:            p.Channel,
 		CreatedAt:          bson.NewDateTimeFromTime(p.CreatedAt),
@@ -253,7 +253,7 @@ func paymentFromDoc(doc paymentDoc) payment.Payment {
 		AmountKobo:         doc.AmountKobo,
 		Currency:           doc.Currency,
 		Status:             payment.Status(doc.Status),
-		PaystackReference:  doc.PaystackReference,
+		ProviderReference:  doc.ProviderReference,
 		PreviousReferences: doc.PreviousReferences,
 		Channel:            doc.Channel,
 		CreatedAt:          doc.CreatedAt.Time(),

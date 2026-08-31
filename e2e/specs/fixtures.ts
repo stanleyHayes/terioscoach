@@ -35,7 +35,7 @@ function required(name: string): string {
  *
  * This suite creates clients, bookings and payments. Pointing it at the
  * live site would put test data in front of real clients and, with a live
- * Paystack key, move real money. A guard that can be turned off is not a
+ * Stripe key, move real money. A guard that can be turned off is not a
  * guard, so there is no override.
  */
 export function guardAgainstProduction(): void {

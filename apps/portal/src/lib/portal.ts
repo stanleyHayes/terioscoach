@@ -179,7 +179,7 @@ export const paymentsApi = {
     return items;
   },
 
-  /** Returns Paystack's hosted checkout URL. Card and mobile-money details
+  /** Returns Stripe's hosted checkout URL. Card and mobile-money details
    * never touch this app or the API. */
   async initialize(
     session: Session,

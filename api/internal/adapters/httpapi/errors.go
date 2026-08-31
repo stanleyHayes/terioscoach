@@ -94,7 +94,7 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	}
 
 	// A gateway failure is the one cross-slice case: any outbound provider
-	// (Paystack, Resend) reports through the same typed error.
+	// (Stripe, Resend) reports through the same typed error.
 	var gatewayErr *ports.GatewayError
 	if errors.As(err, &gatewayErr) {
 		writeError(w, http.StatusBadGateway, "payment_gateway_error", "the payment gateway could not complete the request")

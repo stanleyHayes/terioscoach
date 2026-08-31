@@ -1,6 +1,6 @@
 // Package payment is the domain core for online payments: the payment
 // entity, its status lifecycle, and the money rules. Card and mobile-money
-// details never exist here — checkout is hosted by Paystack; this core only
+// details never exist here — checkout is hosted by Stripe; this core only
 // tracks references, amounts, and states. It imports nothing outside the
 // standard library — no frameworks, no drivers.
 package payment
@@ -42,7 +42,7 @@ type Payment struct {
 	AmountKobo        int64
 	Currency          string
 	Status            Status
-	PaystackReference string
+	ProviderReference string
 	// PreviousReferences are references this payment was initialized under
 	// before, oldest first. Re-initialization does not cancel the checkout
 	// it replaces: the gateway page for the old reference is still open in
@@ -69,7 +69,7 @@ func (p Payment) KnownReference(reference string) bool {
 	if reference == "" {
 		return false
 	}
-	if p.PaystackReference == reference {
+	if p.ProviderReference == reference {
 		return true
 	}
 	for _, previous := range p.PreviousReferences {
@@ -82,7 +82,7 @@ func (p Payment) KnownReference(reference string) bool {
 
 // New builds a pending payment for a booking. amountKobo and currency are
 // snapshotted from the booked service by the caller (app layer); reference
-// is server-generated and later sent to Paystack so webhook deliveries join
+// is server-generated and later sent to Stripe so webhook deliveries join
 // back to this record.
 func New(bookingID, clientID string, amountKobo int64, currency, reference string, now time.Time) (Payment, error) {
 	if amountKobo < 0 {
@@ -101,7 +101,7 @@ func New(bookingID, clientID string, amountKobo int64, currency, reference strin
 		AmountKobo:        amountKobo,
 		Currency:          currency,
 		Status:            StatusPending,
-		PaystackReference: reference,
+		ProviderReference: reference,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}, nil
@@ -151,11 +151,11 @@ func (p *Payment) Reinitialize(reference string, now time.Time) error {
 		return ErrReferenceRequired
 	}
 	now = now.UTC()
-	if p.PaystackReference != "" && p.PaystackReference != reference {
-		p.PreviousReferences = appendReference(p.PreviousReferences, p.PaystackReference)
+	if p.ProviderReference != "" && p.ProviderReference != reference {
+		p.PreviousReferences = appendReference(p.PreviousReferences, p.ProviderReference)
 	}
 	p.Status = StatusPending
-	p.PaystackReference = reference
+	p.ProviderReference = reference
 	p.Channel = ""
 	p.PaidAt = nil
 	p.UpdatedAt = now
@@ -171,10 +171,10 @@ func (p *Payment) Reinitialize(reference string, now time.Time) error {
 // newer unpaid one — is the transaction the gateway holds, and a later
 // refund has to quote it.
 func (p *Payment) AdoptReference(reference string) {
-	if reference == "" || p.PaystackReference == reference || !p.KnownReference(reference) {
+	if reference == "" || p.ProviderReference == reference || !p.KnownReference(reference) {
 		return
 	}
-	displaced := p.PaystackReference
+	displaced := p.ProviderReference
 	kept := p.PreviousReferences[:0:0]
 	for _, previous := range p.PreviousReferences {
 		if previous != reference {
@@ -182,7 +182,7 @@ func (p *Payment) AdoptReference(reference string) {
 		}
 	}
 	p.PreviousReferences = kept
-	p.PaystackReference = reference
+	p.ProviderReference = reference
 	if displaced != "" {
 		p.PreviousReferences = appendReference(p.PreviousReferences, displaced)
 	}

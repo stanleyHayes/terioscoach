@@ -7,7 +7,7 @@ import BookPage from "./page";
  * The booking flow's hand-off to checkout (WEB-09 / CX-10).
  *
  * This file exists because its absence was the bug. The flow ended at a
- * confirmation screen with a `TODO(payments)` where the Paystack hand-off
+ * confirmation screen with a `TODO(payments)` where the Stripe hand-off
  * should have been, and nothing anywhere noticed: the API's own tests cover
  * `/v1/payments/initialize` thoroughly, and this page — the only thing that
  * would ever call it after a booking — had no tests at all.
@@ -113,7 +113,7 @@ describe("Booking flow → checkout", () => {
     vi.clearAllMocks();
     listServices.mockResolvedValue([service]);
     createBooking.mockResolvedValue(booking);
-    initialize.mockResolvedValue("https://checkout.paystack.com/abc123");
+    initialize.mockResolvedValue("https://checkout.stripe.com/c/pay/cs_test_abc");
 
     assign = vi.fn<(url: string) => void>();
     Object.defineProperty(window, "location", {
@@ -150,7 +150,7 @@ describe("Booking flow → checkout", () => {
     // The booking's own id, not the slot or the service: initializing
     // against the wrong id would charge for someone else's session.
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith("https://checkout.paystack.com/abc123"),
+      expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_abc"),
     );
   });
 

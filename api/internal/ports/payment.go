@@ -66,13 +66,6 @@ type PaymentService interface {
 	// a successful payment returns payment.ErrAlreadyPaid; re-initializing
 	// a pending/failed payment reuses the record with a fresh reference.
 	InitializePayment(ctx context.Context, id identity.Identity, bookingID string) (Initialization, error)
-	// HandlePaystackWebhook processes one raw webhook delivery. The
-	// signature is verified against the raw body first
-	// (payment.ErrInvalidWebhookSignature). Only verified charge.success
-	// events mutate state, idempotently on the payment reference — repeat
-	// deliveries, unknown references, and other events are acknowledged
-	// without changes.
-	HandlePaystackWebhook(ctx context.Context, payload []byte, signature string) error
 	// HandleStripeWebhook processes one raw Stripe delivery. The signature
 	// is verified against the raw body first
 	// (payment.ErrInvalidWebhookSignature). Only verified
@@ -119,8 +112,7 @@ type PaymentRepository interface {
 	ListByBookingIDs(ctx context.Context, bookingIDs []string, filter PaymentFilter) ([]payment.Payment, error)
 }
 
-// PaymentGateway is the outbound port for the payment provider (Paystack
-// or Stripe, selected by configuration). Card and mobile-money details
+// PaymentGateway is the outbound port for Stripe. Card and mobile-money details
 // only ever exist on the provider's hosted checkout — this port deals in
 // references and amounts only.
 type PaymentGateway interface {

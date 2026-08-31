@@ -668,7 +668,7 @@ func (f *FakeBookingRepository) BusyIntervals(_ context.Context, practitionerID 
 
 // FakePaymentRepository stores payments in memory and enforces the same
 // uniqueness the MongoDB indexes enforce: one payment per booking, and a
-// unique Paystack reference.
+// unique Stripe reference.
 type FakePaymentRepository struct {
 	mu   sync.Mutex
 	byID map[string]payment.Payment
@@ -798,7 +798,7 @@ var _ ports.PaymentGateway = (*FakePaymentGateway)(nil)
 func NewFakePaymentGateway(secretKey string) *FakePaymentGateway {
 	return &FakePaymentGateway{
 		SecretKey:     secretKey,
-		AuthorizeURL:  "https://checkout.paystack.com/fake",
+		AuthorizeURL:  "https://checkout.stripe.com/c/pay/cs_test_abc",
 		VerifyResults: make(map[string]ports.VerifiedTransaction),
 	}
 }
@@ -855,7 +855,7 @@ func (f *FakePaymentGateway) VerifyWebhookSignature(payload []byte, signature st
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-// SignWebhook computes the x-paystack-signature header for a payload under
+// SignWebhook computes a deterministic test signature for a payload under
 // the fake's key — the valid-signature side of webhook tests.
 func (f *FakePaymentGateway) SignWebhook(payload []byte) string {
 	mac := hmac.New(sha512.New, []byte(f.SecretKey))

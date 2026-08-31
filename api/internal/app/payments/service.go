@@ -123,35 +123,6 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 	return ports.Initialization{Payment: p, AuthorizationURL: init.AuthorizationURL}, nil
 }
 
-// webhookEvent is the minimal shape read from a Paystack delivery — after
-// the signature has already authenticated the raw body.
-type webhookEvent struct {
-	Event string `json:"event"`
-	Data  struct {
-		Reference string `json:"reference"`
-	} `json:"data"`
-}
-
-// HandlePaystackWebhook processes one raw delivery. The signature is
-// verified against the raw bytes before anything is parsed. Only
-// charge.success mutates state, and only after a server-side Verify
-// confirms the charge and its amount/currency. Every other case —
-// duplicate deliveries, unknown references, other event types — is
-// acknowledged with no changes, so Paystack retries are always safe.
-func (s *Service) HandlePaystackWebhook(ctx context.Context, payload []byte, signature string) error {
-	if !s.gateway.VerifyWebhookSignature(payload, signature) {
-		return payment.ErrInvalidWebhookSignature
-	}
-	var evt webhookEvent
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		return nil // authentic but unparseable — nothing to act on
-	}
-	if evt.Event != "charge.success" || evt.Data.Reference == "" {
-		return nil
-	}
-	return s.confirmCharge(ctx, evt.Data.Reference)
-}
-
 // stripeWebhookEvent is the minimal shape read from a Stripe delivery —
 // after the signature has already authenticated the raw body. The object
 // ID is the Checkout Session ID this deployment uses as the gateway
@@ -165,8 +136,7 @@ type stripeWebhookEvent struct {
 	} `json:"data"`
 }
 
-// HandleStripeWebhook processes one raw Stripe delivery under the same
-// rules as the Paystack handler: verify first, act only on
+// HandleStripeWebhook processes one raw Stripe delivery: verify first, act only on
 // checkout.session.completed, confirm server-side before marking paid,
 // and acknowledge everything else without changes so Stripe retries are
 // always safe.
@@ -286,7 +256,7 @@ func (s *Service) RefundPayment(ctx context.Context, practitionerID, paymentID s
 	if p.Status != payment.StatusSuccess {
 		return payment.Payment{}, payment.ErrInvalidTransition
 	}
-	if err := s.gateway.Refund(ctx, p.PaystackReference); err != nil {
+	if err := s.gateway.Refund(ctx, p.ProviderReference); err != nil {
 		return payment.Payment{}, err
 	}
 	if err := p.MarkRefunded(s.now()); err != nil {
@@ -302,10 +272,10 @@ func (s *Service) RefundPayment(ctx context.Context, practitionerID, paymentID s
 	return p, nil
 }
 
-// newReference generates the server-side join key sent to Paystack:
+// newReference generates the server-side join key sent to Stripe:
 // recognizable, unique per attempt (timestamp plus random suffix, so even
 // back-to-back re-initializations never collide), and valid under
-// Paystack's reference alphabet (letters, digits, dash, underscore).
+// Stripe's reference alphabet (letters, digits, dash, underscore).
 func (s *Service) newReference(bookingID string) string {
 	var buf [4]byte
 	if _, err := rand.Read(buf[:]); err != nil {

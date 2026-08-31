@@ -22,8 +22,8 @@ func TestNewBuildsPendingPayment(t *testing.T) {
 	if p.Status != StatusPending {
 		t.Errorf("status = %q, want pending", p.Status)
 	}
-	if p.PaystackReference != "terios_booking-1_1" {
-		t.Errorf("reference = %q, want the supplied reference", p.PaystackReference)
+	if p.ProviderReference != "terios_booking-1_1" {
+		t.Errorf("reference = %q, want the supplied reference", p.ProviderReference)
 	}
 	if !p.CreatedAt.Equal(testNow) || !p.UpdatedAt.Equal(testNow) {
 		t.Errorf("timestamps = %v/%v, want now", p.CreatedAt, p.UpdatedAt)
@@ -87,7 +87,7 @@ func TestMarkFailedAndReinitialize(t *testing.T) {
 	if err := p.Reinitialize("terios_booking-1_2", testNow.Add(2*time.Hour)); err != nil {
 		t.Fatalf("Reinitialize: %v", err)
 	}
-	if p.Status != StatusPending || p.PaystackReference != "terios_booking-1_2" {
+	if p.Status != StatusPending || p.ProviderReference != "terios_booking-1_2" {
 		t.Errorf("after reinit: %+v, want pending with new reference", p)
 	}
 	if err := p.Reinitialize("", testNow); !errors.Is(err, ErrReferenceRequired) {
