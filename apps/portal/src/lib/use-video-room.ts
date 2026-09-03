@@ -688,6 +688,10 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         }
 
         case "peer-left":
+          // Ending for everyone arrives just before the sender's disconnect
+          // announces peer-left. Keep the terminal state from being replaced
+          // by the normal "waiting for a peer" state.
+          if (intentionalLeaveRef.current) break;
           remoteRef.current = null;
           setRemoteStream(null);
           setPeerState(initialPeerState);

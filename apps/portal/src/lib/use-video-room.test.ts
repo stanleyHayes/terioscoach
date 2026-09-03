@@ -474,6 +474,17 @@ describe("useVideoRoom collaboration and recovery", () => {
     expect(result.current.state).toBe("ended");
   });
 
+  it("keeps the client ended when the end event is followed by peer-left", async () => {
+    const { result } = renderHook(() => useVideoRoom("booking-1"));
+    act(() => result.current.join());
+    await waitFor(() => expect(sockets).toHaveLength(1));
+
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "session-ended" }) }));
+    act(() => sockets[0]!.onmessage?.({ data: JSON.stringify({ type: "peer-left" }) }));
+
+    expect(result.current.state).toBe("ended");
+  });
+
   it("exposes the e2e debug surface after joining", async () => {
     const { result } = renderHook(() => useVideoRoom("booking-1"));
     act(() => result.current.join());

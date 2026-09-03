@@ -17,6 +17,7 @@ export default function SessionRoomPage() {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const clientId = search.get("client");
+  const clientName = search.get("clientName") || "your client";
 
   return (
     <div data-admin-page="session-room" className="flex flex-col gap-6">
@@ -43,7 +44,7 @@ export default function SessionRoomPage() {
         Session room
       </h1>
 
-      <VideoRoom bookingId={params.id} peerLabel="your client" />
+      <VideoRoom bookingId={params.id} peerLabel={clientName} />
     </div>
   );
 }

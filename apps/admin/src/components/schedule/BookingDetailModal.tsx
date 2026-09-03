@@ -158,7 +158,7 @@ export function BookingDetailModal({
                 path the practitioner actually uses; the room enforces its
                 own opening hours, so it is always offered. */}
             <Link
-              href={`/sessions/${current.id}/room?client=${current.clientId}`}
+              href={`/sessions/${current.id}/room?client=${current.clientId}&clientName=${encodeURIComponent(clientName ?? current.clientId)}`}
               className={buttonClasses({ size: "sm" })}
             >
               Start session
