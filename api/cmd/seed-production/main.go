@@ -178,7 +178,7 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 	// Settled payment history is deliberately left in its original currency;
 	// unfinished payments refresh their snapshot when checkout is retried.
 	if _, err := db.Collection("services").UpdateMany(ctx,
-		bson.M{"practitionerId": owner.ID, "currency": bson.M{"$ne": "USD"}},
+		bson.M{"currency": bson.M{"$ne": "USD"}},
 		bson.M{"$set": bson.M{"currency": "USD", "updatedAt": now}},
 	); err != nil {
 		return fmt.Errorf("normalize catalog currency to USD: %w", err)
