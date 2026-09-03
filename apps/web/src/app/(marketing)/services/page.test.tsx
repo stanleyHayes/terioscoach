@@ -86,6 +86,15 @@ describe("Services page", () => {
     expect(bookLinks[1].getAttribute("href")).toBe("/work-with-me?service=s2");
   });
 
+  it("gives every service an accompanying image", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: services }));
+
+    render(await ServicesPage());
+
+    expect(screen.getByRole("img", { name: /wellness coaching at terios wellness/i })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /nursing consultation at terios wellness/i })).toBeTruthy();
+  });
+
   it("shows a branded inline error with a retry link when the fetch fails", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
 

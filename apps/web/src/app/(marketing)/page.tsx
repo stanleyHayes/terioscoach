@@ -43,14 +43,17 @@ const servicesPreview = [
   {
     title: "Wellness coaching",
     body: "Ongoing one-on-one coaching to build sustainable rhythms of rest, movement and nourishment — at your pace.",
+    image: "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp",
   },
   {
     title: "Nursing consultations",
     body: "Clinical guidance from a registered nurse, by video. Clear answers, careful follow-up, no waiting rooms.",
+    image: "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp",
   },
   {
     title: "Rest & recovery programs",
     body: "Structured multi-week programs that pair nursing oversight with coaching, for seasons that ask more of you.",
+    image: "/images/blog/lavender-3605688_1280.webp",
   },
 ];
 
@@ -177,10 +180,13 @@ export default async function Home() {
             <li key={service.title} className={index === 0 ? "lg:col-span-5" : index === 1 ? "lg:col-span-7" : "lg:col-span-12"}>
               <Link
                 href="/services"
-                className={`terios-feature-card group flex h-full min-h-72 flex-col justify-between overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 p-8 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:min-h-56" : ""}`}
+                className={`terios-feature-card group grid h-full min-h-72 overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:grid-cols-[.8fr_1.2fr]" : ""}`}
               >
-                <span className="font-mono text-xs font-medium text-ink-muted">0{index + 1}</span>
-                <div className="mt-12 max-w-[54ch]">
+                <span className={`relative min-h-52 overflow-hidden bg-eucalyptus-100 ${index === 2 ? "lg:min-h-64" : ""}`}>
+                  <Image src={service.image} alt="" fill sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
+                  <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-950/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">0{index + 1}</span>
+                </span>
+                <div className="flex max-w-[54ch] flex-col justify-end p-8">
                   <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.title}</h3>
                   <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.body}</p>
                   <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">See how it works <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
@@ -193,20 +199,24 @@ export default async function Home() {
 
       {/* Approach teaser → /about. */}
       <Section background="sunken" ariaLabelledby="approach-heading">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <SectionHeading
-            id="approach-heading"
-            eyebrow="The approach"
-            title="The trust of a nurse, the exhale of a spa"
-            description="Terios sits deliberately between a clinic and a retreat. You get the precision and confidentiality of registered nursing, delivered with the unhurried warmth of a wellness practice — and a plan shaped around your life, not around a system."
-          />
-          <div className="lg:justify-self-end">
-            <Link
-              href="/about"
-              className={buttonClasses({ variant: "secondary", size: "lg" })}
-            >
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_.9fr] lg:gap-16">
+          <div>
+            <SectionHeading
+              id="approach-heading"
+              eyebrow="The approach"
+              title="The trust of a nurse, the exhale of a spa"
+              description="Terios sits deliberately between a clinic and a retreat. You get the precision and confidentiality of registered nursing, delivered with the unhurried warmth of a wellness practice — and a plan shaped around your life, not around a system."
+            />
+            <Link href="/about" className={buttonClasses({ variant: "secondary", size: "lg", className: "mt-8" })}>
               About the practice
             </Link>
+          </div>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100 shadow-[0_24px_70px_rgba(31,41,34,.12)]">
+            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa Yirerong welcoming clients to Terios Wellness" fill sizes="(min-width: 1024px) 42vw, 94vw" className="object-cover" />
+            <div className="absolute inset-x-5 bottom-5 rounded-[1.25rem] border border-sand-0/25 bg-eucalyptus-950/70 p-5 text-sand-0 backdrop-blur-md">
+              <p className="font-display text-xl">A familiar face from first conversation to follow-up.</p>
+              <Link href="/about" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-eucalyptus-100">Meet Theresa <ArrowRight className="size-4" /></Link>
+            </div>
           </div>
         </div>
       </Section>

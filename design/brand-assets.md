@@ -35,6 +35,8 @@ Twenty supplied blog images were converted to WebP and stored in `apps/web/publi
 
 These are an editorial library, not automatically published posts. Editors should confirm subject fit, attribution/licensing, alt text, and clinical context before uploading or linking one in the CMS.
 
+The marketing website also uses this retained library as a curated visual layer. Homepage previews, FAQ context, and live service rows draw from approved portraits and editorial images. Service imagery is selected by care theme (introductory conversation, nursing, coaching, mindfulness/recovery, nutrition, or bodywork) with a stable fallback rotation for custom service names, so every published service has an accompanying image without weakening the live catalog contract.
+
 ## Legal templates
 
 The supplied nurse-coaching and holistic-coaching agreements are retained in `design/legal/templates`. They are examples with blanks and explicit legal disclaimers. They must be reviewed and customized by qualified counsel before use. They are not public downloads and are not wired into client consent flows.

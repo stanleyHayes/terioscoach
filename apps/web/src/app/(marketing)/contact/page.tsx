@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Clock, Mail, MessageCircle } from "lucide-react";
 import { EnquiryForm } from "@/components/content/EnquiryForm";
@@ -32,6 +33,9 @@ export default function ContactPage() {
           </div>
 
           <aside className="flex flex-col gap-8 lg:pt-2">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100">
+              <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-009.webp" alt="Theresa Yirerong, the person who reads every enquiry" fill sizes="(min-width: 1024px) 320px, 94vw" className="object-cover" />
+            </div>
             <div className="flex gap-4">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken">
                 <MessageCircle size={18} aria-hidden="true" className="text-ink-muted" />

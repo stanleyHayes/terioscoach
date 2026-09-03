@@ -117,6 +117,21 @@ export default async function About() {
         </div>
       </Section>
 
+      <Section containerClassName="pt-0" ariaLabelledby="care-in-practice-heading">
+        <div className="grid gap-5 md:grid-cols-[1.25fr_.75fr]">
+          <div className="relative min-h-80 overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100 md:min-h-[480px]">
+            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp" alt="Theresa Yirerong in nursing scrubs" fill sizes="(min-width: 768px) 58vw, 94vw" className="object-cover" />
+            <div className="absolute inset-x-6 bottom-6 max-w-sm rounded-[1.25rem] border border-sand-0/20 bg-eucalyptus-950/75 p-5 text-sand-0 backdrop-blur-md">
+              <h2 id="care-in-practice-heading" className="font-display text-2xl">Nursing experience, brought closer.</h2>
+              <p className="mt-2 text-sm leading-relaxed text-eucalyptus-100">Professional care can still feel personal, familiar and human.</p>
+            </div>
+          </div>
+          <div className="relative min-h-72 overflow-hidden rounded-[4rem_2rem_4rem_2rem] bg-eucalyptus-100 md:min-h-[480px]">
+            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa smiling in the Terios Wellness studio" fill sizes="(min-width: 768px) 34vw, 94vw" className="object-cover" />
+          </div>
+        </div>
+      </Section>
+
       {/* Philosophy — numbered principles. */}
       <Section background="sunken" ariaLabelledby="philosophy-heading">
         <SectionHeading
