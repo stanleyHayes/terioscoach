@@ -89,6 +89,10 @@ export interface WeekCalendarProps {
   /** Monday of the visible week, as a civil date in `timeZone`. */
   weekStart: CivilDate;
   bookings: Booking[];
+  /** clientId → display name, so blocks and the modal show a name not an id. */
+  clientNames?: Record<string, string>;
+  /** serviceId → display name. */
+  serviceNames?: Record<string, string>;
   timeZone?: string;
   onPrevWeek: () => void;
   onNextWeek: () => void;
@@ -101,6 +105,8 @@ export interface WeekCalendarProps {
 export function WeekCalendar({
   weekStart,
   bookings,
+  clientNames = {},
+  serviceNames = {},
   timeZone = PRACTICE_TIMEZONE,
   onPrevWeek,
   onNextWeek,
@@ -285,29 +291,34 @@ export function WeekCalendar({
                       />
                     ))}
 
-                    {dayBookings.map(({ booking, top, height }) => (
-                      <button
-                        key={booking.id}
-                        type="button"
-                        onClick={() => setSelected(booking)}
-                        aria-label={`${formatTime(booking.startAt, timeZone)} to ${formatTime(booking.endAt, timeZone)}, client ${booking.clientId}, ${STATUS_LABEL[booking.status]}`}
-                        className={cn(
-                          "absolute right-1 left-1 overflow-hidden rounded-sm border-l-[3px] px-1.5 py-0.5 text-left text-[11px] leading-[1.3] tabular-nums transition-opacity duration-fast ease-out hover:opacity-80",
-                          STATUS_BLOCK_CLASSES[booking.status],
-                        )}
-                        style={{ top, height }}
-                      >
-                        <span className="block truncate font-semibold">
-                          {formatTime(booking.startAt, timeZone)}–
-                          {formatTime(booking.endAt, timeZone)}
-                        </span>
-                        {height >= 40 ? (
-                          <span className="block truncate">
-                            {STATUS_LABEL[booking.status]}
+                    {dayBookings.map(({ booking, top, height }) => {
+                      const clientName = clientNames[booking.clientId] ?? booking.clientId;
+                      const serviceName = serviceNames[booking.serviceId] ?? booking.serviceId;
+                      return (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => setSelected(booking)}
+                          aria-label={`${formatTime(booking.startAt, timeZone)} to ${formatTime(booking.endAt, timeZone)}, ${clientName}, ${serviceName}, ${STATUS_LABEL[booking.status]}`}
+                          className={cn(
+                            "absolute right-1 left-1 overflow-hidden rounded-sm border-l-[3px] px-1.5 py-0.5 text-left text-[11px] leading-[1.3] tabular-nums transition-opacity duration-fast ease-out hover:opacity-80",
+                            STATUS_BLOCK_CLASSES[booking.status],
+                          )}
+                          style={{ top, height }}
+                        >
+                          <span className="block truncate font-semibold">
+                            {formatTime(booking.startAt, timeZone)}–
+                            {formatTime(booking.endAt, timeZone)}
                           </span>
-                        ) : null}
-                      </button>
-                    ))}
+                          {height >= 40 ? (
+                            <span className="block truncate">{clientName}</span>
+                          ) : null}
+                          {height >= 56 ? (
+                            <span className="block truncate">{serviceName}</span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
 
                     {/* now-line: 1px accent + 8px dot at the left edge (§3.12) */}
                     {isToday && nowInLanes ? (
@@ -330,6 +341,8 @@ export function WeekCalendar({
       {selected ? (
         <BookingDetailModal
           booking={selected}
+          clientName={clientNames[selected.clientId] ?? selected.clientId}
+          serviceName={serviceNames[selected.serviceId] ?? selected.serviceId}
           timeZone={timeZone}
           onClose={() => setSelected(null)}
           onAction={onAction}

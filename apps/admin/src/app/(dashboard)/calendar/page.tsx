@@ -8,7 +8,9 @@ import { KpiStrip } from "@/components/insights/KpiStrip";
 import type { BookingAction } from "@/components/schedule/BookingDetailModal";
 import { ApiError, SessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { clientsApi } from "@/lib/clients";
 import { cn } from "@/lib/cn";
+import { servicesApi } from "@/lib/services";
 import {
   addDaysCivil,
   dateKey,
@@ -54,6 +56,10 @@ export default function CalendarPage() {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // ID → name lookups so the calendar and its detail modal can show who and
+  // what a booking is for, rather than the raw IDs the API returns.
+  const [clientNames, setClientNames] = useState<Record<string, string>>({});
+  const [serviceNames, setServiceNames] = useState<Record<string, string>>({});
 
   const handleSessionExpiry = useCallback(
     (error: unknown) => {
@@ -96,6 +102,30 @@ export default function CalendarPage() {
   }, [session, refreshCallbacks, weekStart, filter, handleSessionExpiry]);
 
   useEffect(() => load(), [load]);
+
+  // Load the client and service directories once per session so calendar
+  // blocks and the detail modal can resolve booking.clientId/serviceId to
+  // display names instead of raw IDs.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    Promise.all([
+      clientsApi.list(session, refreshCallbacks),
+      servicesApi.listAll(session, refreshCallbacks),
+    ])
+      .then(([clients, services]) => {
+        if (cancelled) return;
+        setClientNames(Object.fromEntries(clients.map((c) => [c.id, c.name])));
+        setServiceNames(Object.fromEntries(services.map((s) => [s.id, s.name])));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        handleSessionExpiry(err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, refreshCallbacks, handleSessionExpiry]);
 
   function replaceBooking(updated: Booking) {
     setBookings((prev) =>
@@ -266,6 +296,8 @@ export default function CalendarPage() {
         <WeekCalendar
           weekStart={weekStart}
           bookings={bookings ?? []}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
           onPrevWeek={() => {
             setBookings(null);
             setWeekStart((current) => addDaysCivil(current, -7));

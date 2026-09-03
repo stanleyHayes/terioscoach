@@ -91,14 +91,14 @@ describe("WeekCalendar", () => {
 
     // Tuesday 09:00–10:30 → top (540-360)/60*48 = 144px, height 90/60*48 = 72px.
     const block = screen.getByRole("button", {
-      name: "9:00 AM to 10:30 AM, client client-1, Confirmed",
+      name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
     });
     expect(block.style.top).toBe("144px");
     expect(block.style.height).toBe("72px");
     expect(block.className).toContain("border-l-primary");
 
     const noShow = screen.getByRole("button", {
-      name: "2:00 PM to 3:00 PM, client client-2, No-show",
+      name: "2:00 PM to 3:00 PM, client-2, svc-1, No-show",
     });
     expect(noShow.style.top).toBe("384px"); // (840-360)/60*48
     expect(noShow.style.height).toBe("48px");
@@ -106,7 +106,7 @@ describe("WeekCalendar", () => {
 
     // 15-minute booking gets the 24px minimum visual height.
     const cancelled = screen.getByRole("button", {
-      name: "6:00 AM to 6:15 AM, client client-3, Cancelled",
+      name: "6:00 AM to 6:15 AM, client-3, svc-1, Cancelled",
     });
     expect(cancelled.style.top).toBe("0px");
     expect(cancelled.style.height).toBe("24px");
@@ -123,7 +123,7 @@ describe("WeekCalendar", () => {
 
     // Starts before the lanes: top clamps to 0, height counts from 06:00.
     const block = screen.getByRole("button", {
-      name: "4:00 AM to 7:00 AM, client client-1, Confirmed",
+      name: "4:00 AM to 7:00 AM, client-1, svc-1, Confirmed",
     });
     expect(block.style.top).toBe("0px");
     expect(block.style.height).toBe("48px");
@@ -166,7 +166,7 @@ describe("WeekCalendar", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "9:00 AM to 10:30 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
       }),
     );
 
@@ -186,7 +186,7 @@ describe("WeekCalendar", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "9:00 AM to 10:30 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
       }),
     );
     const dialog = screen.getByRole("dialog");
@@ -217,7 +217,7 @@ describe("WeekCalendar", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "9:00 AM to 10:30 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
       }),
     );
     const dialog = screen.getByRole("dialog");
@@ -238,7 +238,7 @@ describe("WeekCalendar", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "9:00 AM to 10:30 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
       }),
     );
     const dialog = screen.getByRole("dialog");

@@ -25,7 +25,7 @@ import {
 
 /**
  * Booking detail modal (design-system §3.14 + §3.12 event keyboard target).
- * Shows the booking's client id, service id, practice-zone time range (with
+ * Shows the booking's client name, service name, practice-zone time range (with
  * the timezone always spelled out, per the brand voice rule), and status.
  * Confirmed bookings get the four transitions: Complete / No-show / Cancel /
  * Reschedule — reschedule is a small date+time form (validated HH:MM text
@@ -66,12 +66,18 @@ interface RescheduleErrors {
 
 export function BookingDetailModal({
   booking,
+  clientName,
+  serviceName,
   timeZone,
   onClose,
   onAction,
   onReschedule,
 }: {
   booking: Booking;
+  /** Resolved display name for booking.clientId; falls back to the id if unresolved. */
+  clientName?: string;
+  /** Resolved display name for booking.serviceId; falls back to the id if unresolved. */
+  serviceName?: string;
   timeZone: string;
   onClose: () => void;
   onAction: BookingActionHandler;
@@ -220,11 +226,11 @@ export function BookingDetailModal({
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-ink-muted">Client</dt>
-            <dd className="tabular-nums text-ink">{current.clientId}</dd>
+            <dd className="text-ink">{clientName ?? current.clientId}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-ink-muted">Service</dt>
-            <dd className="tabular-nums text-ink">{current.serviceId}</dd>
+            <dd className="text-ink">{serviceName ?? current.serviceId}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-ink-muted">Time</dt>

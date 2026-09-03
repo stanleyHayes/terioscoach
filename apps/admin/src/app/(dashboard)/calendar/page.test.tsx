@@ -38,6 +38,28 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/clients", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/clients")>();
+  return {
+    ...original,
+    clientsApi: {
+      ...original.clientsApi,
+      list: vi.fn().mockResolvedValue([]),
+    },
+  };
+});
+
+vi.mock("@/lib/services", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/services")>();
+  return {
+    ...original,
+    servicesApi: {
+      ...original.servicesApi,
+      listAll: vi.fn().mockResolvedValue([]),
+    },
+  };
+});
+
 vi.mock("@/lib/schedule", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/schedule")>();
   return {
@@ -98,7 +120,7 @@ describe("CalendarPage", () => {
     render(<CalendarPage />);
 
     const block = await screen.findByRole("button", {
-      name: "9:00 AM to 10:00 AM, client client-1, Confirmed",
+      name: "9:00 AM to 10:00 AM, client-1, svc-1, Confirmed",
     });
     expect(block).toBeTruthy();
     expect(listBookingsMock).toHaveBeenCalledWith(session, refreshCallbacks, {
@@ -163,7 +185,7 @@ describe("CalendarPage", () => {
     fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     expect(
       await screen.findByRole("button", {
-        name: "9:00 AM to 10:00 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:00 AM, client-1, svc-1, Confirmed",
       }),
     ).toBeTruthy();
   });
@@ -176,7 +198,7 @@ describe("CalendarPage", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "9:00 AM to 10:00 AM, client client-1, Confirmed",
+        name: "9:00 AM to 10:00 AM, client-1, svc-1, Confirmed",
       }),
     );
     const dialog = await screen.findByRole("dialog");
@@ -187,7 +209,7 @@ describe("CalendarPage", () => {
     );
     expect(
       await screen.findByRole("button", {
-        name: "9:00 AM to 10:00 AM, client client-1, Completed",
+        name: "9:00 AM to 10:00 AM, client-1, svc-1, Completed",
       }),
     ).toBeTruthy();
   });

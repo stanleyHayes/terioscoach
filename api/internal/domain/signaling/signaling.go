@@ -122,11 +122,18 @@ func Authorize(b booking.Booking, id identity.Identity, policy JoinPolicy, now t
 
 // RoleFor returns the caller's part in the call. It is derived from the
 // booking, never from the request.
+//
+// Staff act as the practitioner for any booking as long as they hold the
+// schedule-management permission, mirroring the RequireRole middleware's
+// staff fallback on the booking routes — otherwise a staff account could
+// see a booking on the calendar but never be able to start its session.
 func RoleFor(b booking.Booking, id identity.Identity) (Role, bool) {
 	switch {
 	case b.ClientID == id.UserID && id.Role == identity.RoleClient:
 		return RoleClient, true
 	case b.PractitionerID == id.UserID && id.Role == identity.RolePractitioner:
+		return RolePractitioner, true
+	case id.Role == identity.RoleStaff && id.HasPermission(identity.PermissionSchedule):
 		return RolePractitioner, true
 	}
 	return "", false
