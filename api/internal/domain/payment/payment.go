@@ -143,9 +143,15 @@ func (p *Payment) MarkFailed(now time.Time) error {
 // abandoned tab and pays produces a charge under it. Forgetting it would
 // leave that charge with no record to join to — money taken and a booking
 // still showing as unpaid.
-func (p *Payment) Reinitialize(reference string, now time.Time) error {
+func (p *Payment) Reinitialize(reference string, amountMinor int64, currency string, now time.Time) error {
 	if p.Status != StatusPending && p.Status != StatusFailed {
 		return ErrInvalidTransition
+	}
+	if amountMinor < 0 {
+		return ErrInvalidAmount
+	}
+	if len(currency) != 3 {
+		return ErrInvalidCurrency
 	}
 	if reference == "" {
 		return ErrReferenceRequired
@@ -156,6 +162,8 @@ func (p *Payment) Reinitialize(reference string, now time.Time) error {
 	}
 	p.Status = StatusPending
 	p.ProviderReference = reference
+	p.AmountKobo = amountMinor
+	p.Currency = currency
 	p.Channel = ""
 	p.PaidAt = nil
 	p.UpdatedAt = now

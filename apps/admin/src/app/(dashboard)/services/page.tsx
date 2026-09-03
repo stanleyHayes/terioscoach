@@ -250,7 +250,7 @@ export default function ServicesPage() {
                         0,
                       ) / services.length,
                     ),
-                    services[0]?.currency || "GHS",
+					services[0]?.currency || "USD",
                   )
                 : "—",
               detail: "across the menu",

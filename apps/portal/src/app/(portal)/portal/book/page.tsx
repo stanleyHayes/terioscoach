@@ -165,18 +165,20 @@ function BookingFlow() {
       // client keeps the slot and pays from the portal instead. Failing the
       // whole booking because a payment provider was briefly unreachable
       // would be the worse outcome by far.
-      try {
-        const checkoutUrl = await paymentsApi.initialize(
-          session,
-          { onTokensRefreshed },
-          created.id,
-        );
-        window.location.assign(checkoutUrl);
-        // Navigation is under way; leaving `submitting` set avoids a
-        // flash of the confirmation screen behind the redirect.
-        return;
-      } catch {
-        setCheckoutDeferred(true);
+      if (service.priceKobo > 0) {
+        try {
+          const checkoutUrl = await paymentsApi.initialize(
+            session,
+            { onTokensRefreshed },
+            created.id,
+          );
+          window.location.assign(checkoutUrl);
+          // Navigation is under way; leaving `submitting` set avoids a
+          // flash of the confirmation screen behind the redirect.
+          return;
+        } catch {
+          setCheckoutDeferred(true);
+        }
       }
     } catch (error) {
       if (error instanceof ApiError && error.code === "slot_unavailable") {

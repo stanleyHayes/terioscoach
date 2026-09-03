@@ -102,7 +102,10 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 
 	if hasExisting {
 		// Re-initialize the same record — one payment per booking.
-		if err := existing.Reinitialize(init.Reference, s.now()); err != nil {
+		// A service price or currency may have changed since an abandoned
+		// checkout was created. The fresh Stripe session and our pending
+		// snapshot must agree or the signed webhook will correctly refuse it.
+		if err := existing.Reinitialize(init.Reference, svc.PriceKobo, svc.Currency, s.now()); err != nil {
 			return ports.Initialization{}, err
 		}
 		p, err := s.payments.Update(ctx, existing)

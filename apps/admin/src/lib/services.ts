@@ -25,7 +25,7 @@ export interface Service {
   updatedAt: string;
 }
 
-/** Fields accepted on create. `currency` defaults to "GHS" server-side when omitted. */
+/** Fields accepted on create. `currency` defaults to "USD" server-side when omitted. */
 export interface ServiceDraft {
   name: string;
   description: string;

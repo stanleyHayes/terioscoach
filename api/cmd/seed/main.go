@@ -141,8 +141,8 @@ func seedServices(ctx context.Context, db *mongo.Database, practitionerID bson.O
 			"name":           "Swedish Massage",
 			"description":    "Classic full-body relaxation massage.",
 			"durationMin":    60,
-			"priceKobo":      250_00, // GHS 250.00 in minor units
-			"currency":       "GHS",
+			"priceKobo":      250_00, // USD 250.00 in minor units
+			"currency":       "USD",
 			"active":         true,
 			"sortOrder":      1,
 			"createdAt":      now,
@@ -153,8 +153,8 @@ func seedServices(ctx context.Context, db *mongo.Database, practitionerID bson.O
 			"name":           "Deep Tissue Massage",
 			"description":    "Targeted pressure for chronic muscle tension.",
 			"durationMin":    90,
-			"priceKobo":      400_00, // GHS 400.00
-			"currency":       "GHS",
+			"priceKobo":      400_00, // USD 400.00
+			"currency":       "USD",
 			"active":         true,
 			"sortOrder":      2,
 			"createdAt":      now,

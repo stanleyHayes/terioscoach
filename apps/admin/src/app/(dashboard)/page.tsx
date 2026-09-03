@@ -147,7 +147,7 @@ function OverviewSnapshot() {
       </div>
     );
   const data = report.data;
-  const currency = data.summary.currency || "GHS";
+  const currency = data.summary.currency || "USD";
   return (
     <section aria-labelledby="snapshot-heading" className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4">

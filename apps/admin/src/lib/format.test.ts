@@ -7,11 +7,11 @@ import {
 } from "./format";
 
 describe("formatMoney", () => {
-  it("formats minor units as GH₵ major units", () => {
-    expect(formatMoney(123450)).toBe("GH₵1,234.50");
-    expect(formatMoney(0)).toBe("GH₵0.00");
-    expect(formatMoney(25000)).toBe("GH₵250.00");
-    expect(formatMoney(5)).toBe("GH₵0.05");
+	it("formats minor units as USD major units", () => {
+	  expect(formatMoney(123450)).toBe("$1,234.50");
+	  expect(formatMoney(0)).toBe("$0.00");
+	  expect(formatMoney(25000)).toBe("$250.00");
+	  expect(formatMoney(5)).toBe("$0.05");
   });
 
   it("honours other ISO currencies", () => {
@@ -29,7 +29,7 @@ describe("minorToMajorString", () => {
 });
 
 describe("parseMajorToMinor", () => {
-  it("converts valid major-units input to integer kobo", () => {
+  it("converts valid major-units input to integer minor units", () => {
     expect(parseMajorToMinor("250")).toBe(25000);
     expect(parseMajorToMinor("250.5")).toBe(25050);
     expect(parseMajorToMinor("250.50")).toBe(25050);

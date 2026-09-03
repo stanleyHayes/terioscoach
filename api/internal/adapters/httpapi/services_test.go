@@ -154,8 +154,8 @@ func TestServiceCreateShape(t *testing.T) {
 	if created.ID == "" || created.PractitionerID != testPractitionerID {
 		t.Errorf("created = %+v, want id assigned and practitioner stamped", created)
 	}
-	if created.Currency != "GHS" || !created.Active || created.DurationMinutes != 60 || created.PriceKobo != 25000 {
-		t.Errorf("created = %+v, want contract defaults (GHS, active)", created)
+	if created.Currency != "USD" || !created.Active || created.DurationMinutes != 60 || created.PriceKobo != 25000 {
+		t.Errorf("created = %+v, want contract defaults (USD, active)", created)
 	}
 }
 

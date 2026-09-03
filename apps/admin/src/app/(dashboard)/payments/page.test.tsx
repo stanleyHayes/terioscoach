@@ -165,6 +165,6 @@ describe("summarize", () => {
   });
 
   it("is all zeros for an empty month", () => {
-    expect(summarize([])).toEqual({ paidKobo: 0, refundedKobo: 0, currency: "GHS" });
+    expect(summarize([])).toEqual({ paidKobo: 0, refundedKobo: 0, currency: "USD" });
   });
 });

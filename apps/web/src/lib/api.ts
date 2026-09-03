@@ -168,7 +168,7 @@ export interface ServiceSummary {
   durationMinutes: number;
   /** Integer minor units, e.g. 45000 = GH₵450.00. */
   priceKobo: number;
-  /** ISO 4217, "GHS" unless the practitioner set otherwise. */
+  /** ISO 4217, "USD" unless the practitioner set otherwise. */
   currency: string;
   sortOrder: number;
 }

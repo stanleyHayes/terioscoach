@@ -84,13 +84,16 @@ func TestMarkFailedAndReinitialize(t *testing.T) {
 		t.Errorf("status = %q, want failed", p.Status)
 	}
 	// Abandoned checkout: a failed payment may restart with a fresh reference.
-	if err := p.Reinitialize("terios_booking-1_2", testNow.Add(2*time.Hour)); err != nil {
+	if err := p.Reinitialize("terios_booking-1_2", 9900, "USD", testNow.Add(2*time.Hour)); err != nil {
 		t.Fatalf("Reinitialize: %v", err)
 	}
 	if p.Status != StatusPending || p.ProviderReference != "terios_booking-1_2" {
 		t.Errorf("after reinit: %+v, want pending with new reference", p)
 	}
-	if err := p.Reinitialize("", testNow); !errors.Is(err, ErrReferenceRequired) {
+	if p.AmountKobo != 9900 || p.Currency != "USD" {
+		t.Errorf("after reinit amount/currency = %d %s, want 9900 USD", p.AmountKobo, p.Currency)
+	}
+	if err := p.Reinitialize("", 9900, "USD", testNow); !errors.Is(err, ErrReferenceRequired) {
 		t.Errorf("empty reference err = %v, want ErrReferenceRequired", err)
 	}
 }
@@ -113,7 +116,7 @@ func TestMarkRefundedSuccessOnly(t *testing.T) {
 	if err := p.MarkRefunded(testNow); !errors.Is(err, ErrInvalidTransition) {
 		t.Errorf("double refund err = %v, want ErrInvalidTransition", err)
 	}
-	if err := p.Reinitialize("ref-2", testNow); !errors.Is(err, ErrInvalidTransition) {
+	if err := p.Reinitialize("ref-2", 100, "USD", testNow); !errors.Is(err, ErrInvalidTransition) {
 		t.Errorf("reinit refunded err = %v, want ErrInvalidTransition", err)
 	}
 }

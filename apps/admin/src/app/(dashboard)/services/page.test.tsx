@@ -154,12 +154,12 @@ describe("ServicesPage", () => {
       within(dialog).getByText("Enter a duration between 5 and 480 minutes"),
     ).toBeTruthy();
     expect(
-      within(dialog).getByText("Enter a price in cedis, e.g. 250 or 250.50"),
+      within(dialog).getByText("Enter a price in US dollars, e.g. 250 or 250.50"),
     ).toBeTruthy();
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it("creates a service, converting the cedi price to kobo", async () => {
+  it("creates a service, converting the dollar price to minor units", async () => {
     listAllMock.mockResolvedValue([massage]);
     const created = service({
       id: "svc-3",
@@ -192,7 +192,7 @@ describe("ServicesPage", () => {
       description: "",
       durationMinutes: 45,
       priceKobo: 25050,
-      currency: "GHS",
+	  currency: "USD",
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("Sauna session")).toBeTruthy();

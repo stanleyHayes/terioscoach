@@ -10,12 +10,12 @@ import {
 } from "./format";
 
 describe("formatMoney", () => {
-  it("formats GHS minor units with the cedi symbol", () => {
-    expect(formatMoney(45000, "GHS")).toBe("GH₵450.00");
+  it("formats USD minor units with the dollar symbol", () => {
+	  expect(formatMoney(45000, "USD")).toBe("$450.00");
   });
 
-  it("defaults to GHS when no currency is given", () => {
-    expect(formatMoney(45000)).toBe("GH₵450.00");
+  it("defaults to USD when no currency is given", () => {
+	  expect(formatMoney(45000)).toBe("$450.00");
   });
 
   it("groups thousands", () => {

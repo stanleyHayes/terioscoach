@@ -48,7 +48,7 @@ var productionServices = []bookableService{
 		description:     "A private, obligation-free conversation to explore what support you are looking for and whether Terios is the right fit.",
 		durationMinutes: 30,
 		priceMinor:      0,
-		currency:        "GHS",
+		currency:        "USD",
 		sortOrder:       0,
 	},
 }
@@ -173,6 +173,16 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 	}
 
 	now := time.Now().UTC()
+	// Terios operates in the United States. Normalize services created under
+	// the former GHS default before seeding so Stripe Checkout receives USD.
+	// Settled payment history is deliberately left in its original currency;
+	// unfinished payments refresh their snapshot when checkout is retried.
+	if _, err := db.Collection("services").UpdateMany(ctx,
+		bson.M{"practitionerId": owner.ID, "currency": bson.M{"$ne": "USD"}},
+		bson.M{"$set": bson.M{"currency": "USD", "updatedAt": now}},
+	); err != nil {
+		return fmt.Errorf("normalize catalog currency to USD: %w", err)
+	}
 	for _, service := range productionServices {
 		_, err := db.Collection("services").UpdateOne(ctx,
 			bson.M{"practitionerId": owner.ID, "name": service.name},

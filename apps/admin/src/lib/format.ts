@@ -1,19 +1,18 @@
 /**
  * Display + conversion helpers for money and durations.
  *
- * Money is integer minor units (kobo) per the API contract; the UI speaks in
- * major units (cedis). Formatting goes through Intl.NumberFormat — for GHS the
- * en-GH locale renders the GH₵ narrow symbol.
+ * Money is integer minor units per the API contract; the UI speaks in major
+ * units (US dollars). Formatting goes through Intl.NumberFormat.
  */
 
-export const DEFAULT_CURRENCY = "GHS";
+export const DEFAULT_CURRENCY = "USD";
 
 const moneyFormatters = new Map<string, Intl.NumberFormat>();
 
 function moneyFormatter(currency: string): Intl.NumberFormat {
   let formatter = moneyFormatters.get(currency);
   if (!formatter) {
-    formatter = new Intl.NumberFormat("en-GH", {
+    formatter = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
@@ -23,7 +22,7 @@ function moneyFormatter(currency: string): Intl.NumberFormat {
   return formatter;
 }
 
-/** 123450, "GHS" → "GH₵1,234.50". */
+/** 123450, "USD" → "$1,234.50". */
 export function formatMoney(minorUnits: number, currency = DEFAULT_CURRENCY): string {
   return moneyFormatter(currency).format(minorUnits / 100);
 }

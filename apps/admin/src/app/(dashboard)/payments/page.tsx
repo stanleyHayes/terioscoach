@@ -287,7 +287,7 @@ export function summarize(payments: Payment[]): {
 } {
   let paidKobo = 0;
   let refundedKobo = 0;
-  let currency = "GHS";
+  let currency = "USD";
 
   for (const payment of payments) {
     if (payment.status === "success") paidKobo += payment.amountKobo;

@@ -11,7 +11,7 @@ import (
 
 const (
 	// DefaultCurrency is applied on create when none is supplied.
-	DefaultCurrency = "GHS"
+	DefaultCurrency = "USD"
 
 	maxNameLength      = 200
 	minDurationMinutes = 5

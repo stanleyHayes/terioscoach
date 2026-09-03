@@ -64,7 +64,7 @@ Two independent throttles guard the credential routes, plus reuse detection on s
 | DELETE | `/v1/services/{id}` | practitioner | — | 204 | 401, 403, 404 `service_not_found` |
 
 - `service` shape: `{id, practitionerId, name, description, durationMinutes, priceKobo, currency, active, sortOrder, createdAt, updatedAt}` — IDs and timestamps per Conventions.
-- `priceKobo` is integer minor units, `>= 0`. `currency` is ISO 4217, defaults to `"GHS"` when omitted on create.
+- `priceKobo` is integer minor units, `>= 0`. `currency` is ISO 4217, defaults to `"USD"` when omitted on create.
 - Validation: `name` required (1–200 chars), `durationMinutes` 5–480, `priceKobo >= 0`, `currency` 3 uppercase letters.
 - PATCH with `active: false` deactivates (hides from public list); `sortOrder` reordering is done by PATCHing the new order value(s). Unknown fields are ignored.
 - **Delete rule:** if any booking references the service, DELETE soft-deletes (sets `deletedAt`, deactivates; record retained for booking history and never returned by any list endpoint). Without bookings it hard-deletes. Both answer 204 — the difference is invisible to the client.

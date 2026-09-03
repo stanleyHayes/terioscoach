@@ -4,11 +4,10 @@
  * (contract Conventions); durations arrive as minutes.
  */
 
-/** Minor units + ISO 4217 → localized display, e.g. (45000, "GHS") → "GH₵450.00".
- * The practice trades in GHS (contract default), which is also the default here. */
-export function formatMoney(minorUnits: number, currency = "GHS"): string {
+/** Minor units + ISO 4217 → localized display, e.g. (45000, "USD") → "$450.00". */
+export function formatMoney(minorUnits: number, currency = "USD"): string {
   try {
-    return new Intl.NumberFormat("en-GH", {
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",

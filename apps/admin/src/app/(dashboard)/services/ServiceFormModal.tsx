@@ -15,7 +15,7 @@ import type { Service, ServiceDraft } from "@/lib/services";
  * field wrapper). Custom validation only — the form is noValidate and errors
  * render below each field; API failures surface in a banner at the top.
  *
- * Price is edited in major units (cedis) and converted to integer kobo on
+ * Price is edited in major units (US dollars) and converted to integer minor units on
  * submit; on edit the stored priceKobo is shown divided by 100.
  */
 
@@ -71,7 +71,7 @@ export function ServiceFormModal({
       errors.duration = "Enter a duration between 5 and 480 minutes";
     }
     if (parseMajorToMinor(price) === null) {
-      errors.price = "Enter a price in cedis, e.g. 250 or 250.50";
+      errors.price = "Enter a price in US dollars, e.g. 250 or 250.50";
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -87,8 +87,8 @@ export function ServiceFormModal({
       description: description.trim(),
       durationMinutes: Number(duration.trim()),
       priceKobo: parseMajorToMinor(price)!,
-      // Currency is fixed to GHS in v1; on edit the stored currency is kept.
-      ...(editing ? {} : { currency: "GHS" }),
+      // Currency is fixed to USD for this US-based practice.
+      currency: "USD",
     };
 
     setSubmitting(true);
@@ -178,7 +178,7 @@ export function ServiceFormModal({
             required
             inputMode="decimal"
             placeholder="250"
-            hint="In cedis (GH₵) — 250.50 is stored as 25050 kobo."
+            hint="In US dollars ($) — 250.50 is stored as 25050 minor units."
             value={price}
             error={fieldErrors.price}
             onChange={(event) => {

@@ -173,7 +173,7 @@ Public website         Client portal             Practice dashboard
 ## 11. Open Items to Confirm
 
 1. **Version pins** — "latest stable" recorded at scaffold time (FND-01); Go / Next.js / mongo-driver / Stripe & Cloudinary SDKs verified that day.
-2. **Currencies** — default settlement currency(s) in Stripe (GHS base? USD for internationals?).
+2. **Currencies** — Resolved 3 Sep 2026: Terios operates in the USA and all current/future service checkout is USD. The production catalog seed normalizes legacy service records to USD; unfinished payments refresh their amount/currency snapshot when retried, while completed/refunded history remains unchanged.
 3. **Analytics** — privacy-friendly choice for the "website visits / content engagement" reporting (e.g. Plausible vs first-party collection into MongoDB).
 4. **Session video length / recording** — recording exists as **client-local** capture after explicit consent from the other participant (MediaRecorder → `.webm` download on the recorder's own machine, with a ● Rec indicator relayed to the other party). Server-side recording/storage remains a scope change (needs a media server and retention/compliance design).
 5. **Reminders** — email-only via Resend per current scope; SMS/WhatsApp reminders would be a scope addition.

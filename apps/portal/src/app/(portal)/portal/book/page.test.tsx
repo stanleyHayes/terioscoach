@@ -80,7 +80,7 @@ const service = {
   description: "A calming full-body treatment.",
   durationMinutes: 60,
   priceKobo: 25000,
-  currency: "GHS",
+  currency: "USD",
   sortOrder: 1,
 };
 
@@ -152,6 +152,17 @@ describe("Booking flow → checkout", () => {
     await waitFor(() =>
       expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_abc"),
     );
+  });
+
+  it("confirms a free introductory session without opening Stripe", async () => {
+	listServices.mockResolvedValueOnce([{ ...service, priceKobo: 0 }]);
+
+	await confirmABooking();
+
+	expect(await screen.findByText(/you.re booked/i)).toBeTruthy();
+	expect(initialize).not.toHaveBeenCalled();
+	expect(assign).not.toHaveBeenCalled();
+	expect(screen.queryByText(/couldn.t open the payment page/i)).toBeNull();
   });
 
   it("books first and pays second, never the other way round", async () => {

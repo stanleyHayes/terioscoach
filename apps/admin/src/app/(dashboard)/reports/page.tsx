@@ -145,7 +145,7 @@ export default function ReportsPage() {
               label="Taken"
               value={formatMoney(
                 data.summary.incomeKobo,
-                data.summary.currency || "GHS",
+				data.summary.currency || "USD",
               )}
             />
             <Stat label="New clients" value={String(data.summary.newClients)} />
@@ -156,7 +156,7 @@ export default function ReportsPage() {
               label="Refunded"
               value={formatMoney(
                 data.summary.refundedKobo,
-                data.summary.currency || "GHS",
+				data.summary.currency || "USD",
               )}
               muted
             />
@@ -224,7 +224,7 @@ export default function ReportsPage() {
                         <td>
                           {formatMoney(
                             bucket.incomeKobo,
-                            data.summary.currency || "GHS",
+							data.summary.currency || "USD",
                           )}
                         </td>
                       </tr>
@@ -280,7 +280,7 @@ export default function ReportsPage() {
                       <td className="px-5 py-4 text-sm font-medium tabular-nums text-ink">
                         {formatMoney(
                           row.incomeKobo,
-                          data.summary.currency || "GHS",
+						  data.summary.currency || "USD",
                         )}
                       </td>
                     </tr>
