@@ -6,11 +6,12 @@
 |---|---|---|
 | Theresa clinical portrait | `/images/brand/theresa-yirerong-clinical.webp` | Homepage CMS fallback |
 | Theresa founder portrait | `/images/brand/theresa-yirerong-about.webp` | About-page CMS fallback |
-| Generated consultation still life | `/images/marketing/services-care.webp` | Work-with-me CMS fallback |
+| Theresa outdoor portrait | `/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp` | Work-with-me CMS fallback |
 | Generated wellness scene | `/images/marketing/home-hero.webp` | Optional campaign or CMS replacement |
 | Generated practitioner portrait | `/images/marketing/about-practitioner.webp` | Optional campaign or CMS replacement |
 | Clean supplied wordmark | `/images/brand/terios-logo.svg` | Archived web-ready logo variant |
 | Clean supplied symbol | `/images/brand/terios-mark.svg` | Archived web-ready mark variant |
+| Cropped supplied symbol | `/images/brand/identity/terios-mark.svg` | Live public, portal, and dashboard navigation identity |
 | Complete supplied portrait library (28 optimized files) | `/images/brand/portraits/*.webp` | CMS-selectable editorial portraits |
 | Final supplied logo set (six vectors) | `/images/brand/logo-variants/terios-logo-{1..6}.svg` | Master light/dark/lockup variants for controlled reuse |
 
@@ -22,7 +23,7 @@ The published CMS pages with slugs `home`, `about`, and `work-with-me` each expo
 
 CMS uploads accept JPEG, PNG, and WebP. Prefer WebP, at least 1400 px on the long edge, under 2 MB. Use portrait crops for `home` and `about`; use a landscape crop for `work-with-me`.
 
-The Admin image picker exposes the three generated marketing images, all 28 supplied portraits, and all 20 supplied blog images. The portrait originals remain out of the runtime bundle; each was resized to a maximum width of 1600 pixels and converted to WebP at quality 82. This reduces the source set from roughly 88 MB to roughly 6.4 MB while keeping enough resolution for CMS hero and article use.
+The Admin image picker exposes the three generated marketing images, all 28 supplied portraits, and all 20 supplied blog images. The portrait originals remain out of the runtime bundle; each was resized to a maximum width of 1600 pixels and converted to WebP at quality 82. This reduces the source set from roughly 88 MB to roughly 6.4 MB while keeping enough resolution for CMS hero and article use. The journal listing renders a post's selected cover image, so published editorial images now appear in both the listing and article surfaces.
 
 ## Blog image library
 

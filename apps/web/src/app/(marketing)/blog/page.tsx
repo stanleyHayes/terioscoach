@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
@@ -120,39 +121,51 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             {posts.map((post, index) => (
               <li key={post.id} className={index === 0 ? "lg:col-span-2" : ""}>
                 <article
-                  className={`terios-journal-entry group flex h-full flex-col bg-surface-raised p-8 transition-colors hover:bg-eucalyptus-50 ${index === 0 ? "min-h-80 justify-end sm:p-12" : "min-h-72"}`}
+                  className={`terios-journal-entry group grid h-full overflow-hidden bg-surface-raised transition-colors hover:bg-eucalyptus-50 ${index === 0 ? "min-h-80 md:grid-cols-[1.05fr_.95fr]" : "min-h-72"}`}
                 >
-                  {post.category ? (
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
-                      {post.category}
-                    </p>
+                  {post.coverImage ? (
+                    <div className={`relative overflow-hidden bg-eucalyptus-100 ${index === 0 ? "min-h-64 md:min-h-full" : "aspect-[16/9]"}`}>
+                      <Image
+                        src={post.coverImage}
+                        alt=""
+                        fill
+                        unoptimized={post.coverImage.startsWith("http")}
+                        sizes={index === 0 ? "(min-width: 1024px) 56vw, 94vw" : "(min-width: 1024px) 46vw, 94vw"}
+                        className="object-cover transition-transform duration-page ease-out group-hover:scale-[1.025] motion-reduce:transition-none"
+                      />
+                    </div>
                   ) : null}
-                  <h3
-                    className={`mt-3 font-display leading-[1.05] font-semibold tracking-[-0.035em] text-ink ${index === 0 ? "max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]" : "text-3xl"}`}
-                  >
-                    {/* The card is not a link; the title is — one target,
-                        no nested interactive elements (design-system §3.21). */}
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      className="transition-colors duration-instant ease-out hover:text-primary"
+                  <div className={`flex flex-col p-8 ${index === 0 ? "justify-end sm:p-12" : ""}`}>
+                    {post.category ? (
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                        {post.category}
+                      </p>
+                    ) : null}
+                    <h3
+                      className={`mt-3 font-display leading-[1.05] font-semibold tracking-[-0.035em] text-ink ${index === 0 ? "max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]" : "text-3xl"}`}
                     >
-                      {post.title}
-                    </Link>
-                  </h3>
-                  {post.excerpt ? (
-                    <p className="mt-3 flex-1 text-sm leading-[1.55] text-ink-muted [text-wrap:pretty]">
-                      {post.excerpt}
-                    </p>
-                  ) : (
-                    <div className="flex-1" />
-                  )}
-                  {post.publishedAt ? (
-                    <p className="mt-8 text-[13px] tabular-nums text-ink-faint">
-                      <time dateTime={post.publishedAt}>
-                        {formatSessionDate(post.publishedAt, "UTC")}
-                      </time>
-                    </p>
-                  ) : null}
+                      <Link
+                        href={`/blog/${post.slug}`}
+                        className="transition-colors duration-instant ease-out hover:text-primary"
+                      >
+                        {post.title}
+                      </Link>
+                    </h3>
+                    {post.excerpt ? (
+                      <p className="mt-3 flex-1 text-sm leading-[1.55] text-ink-muted [text-wrap:pretty]">
+                        {post.excerpt}
+                      </p>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
+                    {post.publishedAt ? (
+                      <p className="mt-8 text-[13px] tabular-nums text-ink-faint">
+                        <time dateTime={post.publishedAt}>
+                          {formatSessionDate(post.publishedAt, "UTC")}
+                        </time>
+                      </p>
+                    ) : null}
+                  </div>
                 </article>
               </li>
             ))}

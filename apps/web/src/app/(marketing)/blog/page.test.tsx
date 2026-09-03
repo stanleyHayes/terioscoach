@@ -40,6 +40,18 @@ describe("BlogPage", () => {
     expect(screen.getByText(/what recovery actually asks of you/i)).toBeTruthy();
   });
 
+  it("renders the supplied cover image when a post has one", async () => {
+    listPosts.mockResolvedValue([
+      post({ coverImage: "/images/blog/lavender-3605688_1280.webp" }),
+    ]);
+
+    const { container } = render(await BlogPage({ searchParams: Promise.resolve({}) }));
+
+    expect(container.querySelector("img")?.getAttribute("src")).toContain(
+      encodeURIComponent("/images/blog/lavender-3605688_1280.webp"),
+    );
+  });
+
   it("passes the category and tag filters to the API", async () => {
     await renderPage({ category: "Recovery", tag: "rest" });
 

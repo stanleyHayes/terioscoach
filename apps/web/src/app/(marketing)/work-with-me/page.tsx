@@ -82,8 +82,8 @@ export default async function WorkWithMePage({
       <Section containerClassName="pt-0 pb-0">
         <div className="relative aspect-[3/2] max-h-[520px] overflow-hidden rounded-[2rem] bg-eucalyptus-50 lg:aspect-[21/9]">
           <Image
-            src={page?.coverImage || "/images/marketing/services-care.webp"}
-            alt="A calm virtual wellness consultation setting"
+            src={page?.coverImage || "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp"}
+            alt="Theresa Yirerong, founder of Terios Wellness, seated outdoors"
             fill
             unoptimized={Boolean(page?.coverImage?.startsWith("http"))}
             sizes="(min-width: 1280px) 1200px, 94vw"

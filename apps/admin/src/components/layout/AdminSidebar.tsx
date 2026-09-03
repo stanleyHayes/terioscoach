@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -172,8 +173,8 @@ export function AdminSidebar({
       >
         <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-sand-0/10 px-5">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sand-0 font-display font-semibold text-eucalyptus-900">
-              T
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sand-0 p-1">
+              <Image src="/images/brand/identity/terios-mark.svg" alt="" width={36} height={54} className="h-full w-auto" />
             </span>
             {!compact ? (
               <span>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Leaf, Menu, X } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -111,7 +112,7 @@ export function SiteNav() {
         )}
       >
         <Link href="/" className={wordmarkClasses}>
-          <span className="relative flex size-9 items-center justify-center rounded-[.85rem] bg-eucalyptus-900 text-sand-0 transition-transform duration-base group-hover:-rotate-3"><Leaf size={15} aria-hidden="true" /><span className="absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-surface bg-clay-300" /></span>
+          <span className="flex size-10 items-center justify-center rounded-[.85rem] bg-surface-raised p-1 shadow-xs transition-transform duration-base group-hover:-rotate-2"><Image src="/images/brand/identity/terios-mark.svg" alt="" width={40} height={60} className="h-full w-auto" /></span>
           <span>Terios <span className="font-medium text-ink-muted">Wellness</span></span>
         </Link>
 
@@ -168,7 +169,7 @@ export function SiteNav() {
           className="pointer-events-auto fixed inset-0 z-overlay flex w-full max-w-full flex-col overflow-x-hidden overflow-y-hidden bg-eucalyptus-900 text-sand-0 lg:hidden"
         >
           <div className="flex h-[76px] items-center justify-between border-b border-sand-0/12 px-6">
-            <span className="inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em]"><span className="relative flex size-9 items-center justify-center rounded-[.85rem] bg-sand-0 text-eucalyptus-900"><Leaf size={15} aria-hidden="true" /><span className="absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-eucalyptus-900 bg-clay-300" /></span>Terios Wellness</span>
+            <span className="inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em]"><span className="flex size-10 items-center justify-center rounded-[.85rem] bg-sand-0 p-1"><Image src="/images/brand/identity/terios-mark.svg" alt="" width={40} height={60} className="h-full w-auto" /></span>Terios Wellness</span>
             <button
               type="button"
               aria-label="Close menu"

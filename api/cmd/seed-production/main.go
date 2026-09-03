@@ -58,7 +58,7 @@ type marketingPage struct{ slug, title, body, coverImage string }
 var marketingPages = []marketingPage{
 	{"home", "Terios Wellness", "Total wellness is possible. Together, we turn the changes you want into realistic steps that support more health, clarity and vitality.\n\nGrounded in more than two decades of nursing experience, Terios combines clinical understanding with holistic coaching so you can build a way of living well that is genuinely your own.", "/images/brand/theresa-yirerong-clinical.webp"},
 	{"about", "About Theresa Yirerong", "I’m Theresa Yirerong. After more than two decades as a registered nurse, I have come to believe that nothing is more valuable than your health and wellbeing.\n\nAfter caring for thousands of people, many with preventable conditions, I reshaped my nursing practice around a simple truth: wellness can be pursued at every stage of life, whether or not you are living with a diagnosis.\n\nTerios gives you one-to-one space to look honestly at where you are, decide what living well means for you, and build realistic steps toward it.", "/images/brand/theresa-yirerong-about.webp"},
-	{"work-with-me", "Work with me", "Your care should be as individual as you are. Begin with an obligation-free conversation in a quiet, undistracted space, then choose nurse coaching or holistic coaching shaped around your goals.", "/images/marketing/services-care.webp"},
+	{"work-with-me", "Work with me", "Your care should be as individual as you are. Begin with an obligation-free conversation in a quiet, undistracted space, then choose nurse coaching or holistic coaching shaped around your goals.", "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp"},
 }
 
 type marketingPost struct {
@@ -290,6 +290,17 @@ func migrateUnpaidPricedBookings(ctx context.Context, db *mongo.Database, practi
 
 func ensureMarketingPages(ctx context.Context, db *mongo.Database) error {
 	now := time.Now().UTC()
+	// Move only the old bundled placeholder to the supplied Theresa portrait.
+	// Custom practitioner uploads remain untouched.
+	if _, err := db.Collection("cms_pages").UpdateOne(ctx,
+		bson.M{"slug": "work-with-me", "coverImage": "/images/marketing/services-care.webp"},
+		bson.M{"$set": bson.M{
+			"coverImage": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp",
+			"updatedAt":  now,
+		}},
+	); err != nil {
+		return fmt.Errorf("refresh supplied work-with-me image: %w", err)
+	}
 	for _, page := range marketingPages {
 		_, err := db.Collection("cms_pages").UpdateOne(ctx,
 			bson.M{"slug": page.slug},

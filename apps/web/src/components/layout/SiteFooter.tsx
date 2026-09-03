@@ -1,4 +1,5 @@
-import { ArrowUpRight, HeartPulse, Leaf } from "lucide-react";
+import { ArrowUpRight, HeartPulse } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { buttonClasses } from "@/components/ui/Button";
 
@@ -55,7 +56,7 @@ export function SiteFooter() {
         <div className="grid gap-12 pb-12 pt-16 lg:grid-cols-[1.1fr_.9fr] lg:gap-24 lg:pb-16 lg:pt-20">
           <div>
             <Link href="/" aria-label="Terios Wellness" className="group inline-flex items-center gap-4 text-sand-0">
-              <span className="relative flex size-12 items-center justify-center rounded-[1.1rem] bg-sand-0 text-eucalyptus-900 transition-transform duration-base group-hover:-rotate-3"><Leaf size={20} aria-hidden="true" /><span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-eucalyptus-900 bg-clay-300" /></span>
+              <span className="flex size-14 items-center justify-center rounded-[1.1rem] bg-sand-0 p-1.5 transition-transform duration-base group-hover:-rotate-2"><Image src="/images/brand/identity/terios-mark.svg" alt="" width={44} height={66} className="h-full w-auto" /></span>
               <span className="font-display text-3xl font-semibold tracking-[-0.04em]">Terios <span className="font-medium text-eucalyptus-300">Wellness</span></span>
             </Link>
             <p className="mt-6 max-w-[39ch] text-base leading-[1.75] text-eucalyptus-200">Registered nursing and wellness coaching, held in one private, video-first practice.</p>
