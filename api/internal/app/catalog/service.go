@@ -49,6 +49,11 @@ func (s *Service) CreateService(ctx context.Context, practitionerID string, in p
 	if err != nil {
 		return domain.Service{}, err
 	}
+	imageURL := strings.TrimSpace(in.ImageURL)
+	if err := domain.ValidateImageURL(imageURL); err != nil {
+		return domain.Service{}, err
+	}
+	svc.ImageURL = imageURL
 	return s.services.Create(ctx, svc)
 }
 
@@ -69,6 +74,13 @@ func (s *Service) UpdateService(ctx context.Context, practitionerID, id string, 
 	}
 	if patch.Description != nil {
 		svc.Description = strings.TrimSpace(*patch.Description)
+	}
+	if patch.ImageURL != nil {
+		imageURL := strings.TrimSpace(*patch.ImageURL)
+		if err := domain.ValidateImageURL(imageURL); err != nil {
+			return domain.Service{}, err
+		}
+		svc.ImageURL = imageURL
 	}
 	if patch.DurationMinutes != nil {
 		if err := domain.ValidateDuration(*patch.DurationMinutes); err != nil {

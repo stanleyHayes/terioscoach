@@ -16,4 +16,6 @@ var (
 	ErrInvalidPrice = errors.New("price must be zero or greater")
 	// ErrInvalidCurrency means a non ISO 4217 currency code was supplied.
 	ErrInvalidCurrency = errors.New("currency must be a 3-letter ISO 4217 code")
+	// ErrInvalidImageURL means the service image is neither local nor HTTP(S).
+	ErrInvalidImageURL = errors.New("image URL must be a local path or an HTTP(S) URL")
 )

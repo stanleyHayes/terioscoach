@@ -7,7 +7,9 @@ const listTestimonials = vi.hoisted(() => vi.fn());
 const listReviews = vi.hoisted(() => vi.fn());
 const getReviewSummary = vi.hoisted(() => vi.fn());
 const getPage = vi.hoisted(() => vi.fn());
+const listServices = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/content", () => ({ listTestimonials, listReviews, getReviewSummary, getPage }));
+vi.mock("@/lib/api", () => ({ listServices }));
 
 /** Renders the async server component. */
 async function renderHome() {
@@ -24,6 +26,10 @@ describe("Home page", () => {
     listReviews.mockResolvedValue([]);
     getReviewSummary.mockResolvedValue({ count: 2, average: 5, distribution: { "5": 2 } });
     getPage.mockResolvedValue({ slug: "home", coverImage: "/custom-home.webp" });
+    listServices.mockResolvedValue([
+      { id: "svc-1", name: "Wellness coaching", description: "Personal support.", imageUrl: "https://images.example/coaching.webp", durationMinutes: 60, priceKobo: 10000, currency: "USD", sortOrder: 0 },
+      { id: "svc-2", name: "Nursing consultations", description: "Clinical guidance.", imageUrl: "", durationMinutes: 45, priceKobo: 8000, currency: "USD", sortOrder: 1 },
+    ]);
   });
 
   it("renders the hero headline and lead", async () => {
@@ -64,7 +70,7 @@ describe("Home page", () => {
     }
   });
 
-  it("renders the services preview with cards linking to /services", async () => {
+  it("renders the live services preview with dashboard images and booking links", async () => {
     await renderHome();
     const services = screen.getByRole("region", {
       name: /care that fits the season you are in/i,
@@ -72,10 +78,10 @@ describe("Home page", () => {
     expect(within(services).getByText(/wellness coaching/i)).toBeTruthy();
     expect(within(services).getByText(/nursing consultations/i)).toBeTruthy();
     const cardLinks = within(services).getAllByRole("link");
-    expect(cardLinks).toHaveLength(3);
-    for (const link of cardLinks) {
-      expect(link.getAttribute("href")).toBe("/services");
-    }
+    expect(cardLinks).toHaveLength(2);
+    expect(cardLinks[0]?.getAttribute("href")).toBe("/work-with-me?service=svc-1");
+    expect(cardLinks[1]?.getAttribute("href")).toBe("/work-with-me?service=svc-2");
+    expect(services.querySelector('img[src="https://images.example/coaching.webp"]')).toBeTruthy();
   });
 
   it("links the approach teaser to /about", async () => {

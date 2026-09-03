@@ -59,8 +59,8 @@ Two independent throttles guard the credential routes, plus reuse detection on s
 |---|---|---|---|---|---|
 | GET | `/v1/services` | public | — | 200 `{items: [service]}` — active, non-deleted, ordered by `sortOrder` then `createdAt` | 503 `service_unavailable` |
 | GET | `/v1/services/all` | practitioner | — | 200 `{items: [service]}` — all non-deleted incl. inactive, same ordering | 401, 403 `forbidden`, 503 |
-| POST | `/v1/services` | practitioner | `{name, description, durationMinutes, priceKobo, currency?, sortOrder?}` | 201 `{service}` | 400 `validation_error`, 401, 403 |
-| PATCH | `/v1/services/{id}` | practitioner | any subset of `{name, description, durationMinutes, priceKobo, currency, active, sortOrder}` | 200 `{service}` | 400 `validation_error`, 401, 403, 404 `service_not_found` |
+| POST | `/v1/services` | practitioner | `{name, description, imageUrl?, durationMinutes, priceKobo, currency?, sortOrder?}` | 201 `{service}` | 400 `validation_error`, 401, 403 |
+| PATCH | `/v1/services/{id}` | practitioner | any subset of `{name, description, imageUrl, durationMinutes, priceKobo, currency, active, sortOrder}` | 200 `{service}` | 400 `validation_error`, 401, 403, 404 `service_not_found` |
 | DELETE | `/v1/services/{id}` | practitioner | — | 204 | 401, 403, 404 `service_not_found` |
 
 - `service` shape: `{id, practitionerId, name, description, durationMinutes, priceKobo, currency, active, sortOrder, createdAt, updatedAt}` — IDs and timestamps per Conventions.
@@ -70,6 +70,7 @@ Two independent throttles guard the credential routes, plus reuse detection on s
 - **Delete rule:** if any booking references the service, DELETE soft-deletes (sets `deletedAt`, deactivates; record retained for booking history and never returned by any list endpoint). Without bookings it hard-deletes. Both answer 204 — the difference is invisible to the client.
 - Not paginated: a practitioner's catalog is small; `items` is the full list, no `nextCursor`.
 - When the database is not configured, all `/v1/services*` routes answer 503 `service_unavailable`.
+- `imageUrl` is a dashboard-managed local path or absolute HTTP(S) image URL. The homepage, services page, work-with-me chooser, and booking clients consume the same active service records; inactive/retired services are omitted from every public list.
 
 ## Availability (BE-04)
 

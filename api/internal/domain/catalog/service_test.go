@@ -73,3 +73,16 @@ func TestNewServiceBoundaryValues(t *testing.T) {
 		t.Fatalf("NewService max duration: %v", err)
 	}
 }
+
+func TestValidateImageURL(t *testing.T) {
+	for _, value := range []string{"", "/images/services/coaching.webp", "https://res.cloudinary.com/demo/image/upload/service"} {
+		if err := ValidateImageURL(value); err != nil {
+			t.Errorf("ValidateImageURL(%q) = %v", value, err)
+		}
+	}
+	for _, value := range []string{"javascript:alert(1)", "//untrusted.example/image", "data:image/svg+xml,bad"} {
+		if !errors.Is(ValidateImageURL(value), ErrInvalidImageURL) {
+			t.Errorf("ValidateImageURL(%q) did not reject unsafe URL", value)
+		}
+	}
+}

@@ -3,6 +3,7 @@
 import { CircleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { ImagePicker } from "@/components/content/ImagePicker";
 import { Modal } from "@/components/ui/Modal";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextInput } from "@/components/ui/TextInput";
@@ -40,12 +41,14 @@ export function ServiceFormModal({
   const initial = {
     name: service?.name ?? "",
     description: service?.description ?? "",
+    imageUrl: service?.imageUrl ?? "",
     duration: service ? String(service.durationMinutes) : "",
     price: service ? minorToMajorString(service.priceKobo) : "",
   };
 
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description);
+  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [duration, setDuration] = useState(initial.duration);
   const [price, setPrice] = useState(initial.price);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -55,6 +58,7 @@ export function ServiceFormModal({
   const dirty =
     name !== initial.name ||
     description !== initial.description ||
+    imageUrl !== initial.imageUrl ||
     duration !== initial.duration ||
     price !== initial.price;
 
@@ -85,6 +89,7 @@ export function ServiceFormModal({
     const draft: ServiceDraft = {
       name: name.trim(),
       description: description.trim(),
+      imageUrl: imageUrl.trim(),
       durationMinutes: Number(duration.trim()),
       priceKobo: parseMajorToMinor(price)!,
       // Currency is fixed to USD for this US-based practice.
@@ -156,6 +161,12 @@ export function ServiceFormModal({
           placeholder="What the client gets, in a sentence or two"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+        />
+        <ImagePicker
+          label="Service image"
+          value={imageUrl}
+          disabled={submitting}
+          onChange={setImageUrl}
         />
         <div className="grid grid-cols-2 gap-4">
           <TextInput

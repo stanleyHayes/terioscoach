@@ -16,6 +16,7 @@ export interface Service {
   practitionerId: string;
   name: string;
   description: string;
+  imageUrl?: string;
   durationMinutes: number;
   priceKobo: number;
   currency: string;
@@ -29,6 +30,7 @@ export interface Service {
 export interface ServiceDraft {
   name: string;
   description: string;
+  imageUrl?: string;
   durationMinutes: number;
   priceKobo: number;
   currency?: string;

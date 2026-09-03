@@ -174,6 +174,7 @@ export interface ServiceSummary {
   id: string;
   name: string;
   description: string;
+  imageUrl?: string;
   durationMinutes: number;
   /** Integer minor units, e.g. 45000 = GH₵450.00. */
   priceKobo: number;

@@ -8,6 +8,7 @@ const services = [
     id: "s1",
     name: "Wellness coaching",
     description: "Ongoing one-on-one coaching to build sustainable rhythms.",
+    imageUrl: "https://images.example/wellness.webp",
     durationMinutes: 45,
     priceKobo: 45000,
     currency: "GHS",
@@ -93,6 +94,7 @@ describe("Services page", () => {
 
     expect(screen.getByRole("img", { name: /wellness coaching at terios wellness/i })).toBeTruthy();
     expect(screen.getByRole("img", { name: /nursing consultation at terios wellness/i })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /wellness coaching at terios wellness/i }).getAttribute("src")).toBe("https://images.example/wellness.webp");
   });
 
   it("shows a branded inline error with a retry link when the fetch fails", async () => {

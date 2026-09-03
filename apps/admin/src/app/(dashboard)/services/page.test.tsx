@@ -90,8 +90,8 @@ describe("ServicesPage", () => {
     expect(screen.getByText("GH₵150.50")).toBeTruthy();
     expect(screen.getByText("1 hr 30 min")).toBeTruthy();
     expect(screen.getByText("45 min")).toBeTruthy();
-    expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByText("Inactive")).toBeTruthy();
+    expect(screen.getAllByText("Published").length).toBeGreaterThan(0);
+    expect(screen.getByText("Retired")).toBeTruthy();
     expect(listAllMock).toHaveBeenCalledWith(session, refreshCallbacks);
   });
 
@@ -108,20 +108,20 @@ describe("ServicesPage", () => {
     render(<ServicesPage />);
 
     const toggle = await screen.findByRole("switch", {
-      name: "Deactivate Aromatherapy massage",
+      name: "Retire Aromatherapy massage",
     });
     fireEvent.click(toggle);
 
     // Optimistic: the switch flips before the API answers.
     expect(
-      screen.getByRole("switch", { name: "Activate Aromatherapy massage" }),
+      screen.getByRole("switch", { name: "Republish Aromatherapy massage" }),
     ).toBeTruthy();
     await waitFor(() =>
       expect(updateMock).toHaveBeenCalledWith(session, refreshCallbacks, "svc-1", {
         active: false,
       }),
     );
-    expect(await screen.findByText("Inactive")).toBeTruthy();
+    expect(await screen.findByText("Retired")).toBeTruthy();
   });
 
   it("reverts the toggle and shows a banner when the PATCH fails", async () => {
@@ -130,15 +130,15 @@ describe("ServicesPage", () => {
     render(<ServicesPage />);
 
     fireEvent.click(
-      await screen.findByRole("switch", { name: "Deactivate Aromatherapy massage" }),
+      await screen.findByRole("switch", { name: "Retire Aromatherapy massage" }),
     );
 
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain("Couldn't save that. Try again."),
     );
-    const toggle = screen.getByRole("switch", { name: "Deactivate Aromatherapy massage" });
+    const toggle = screen.getByRole("switch", { name: "Retire Aromatherapy massage" });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("Active")).toBeTruthy();
+    expect(screen.getAllByText("Published").length).toBeGreaterThan(0);
   });
 
   it("validates the create form without native bubbles", async () => {
@@ -165,6 +165,7 @@ describe("ServicesPage", () => {
       id: "svc-3",
       name: "Sauna session",
       description: "",
+      imageUrl: "",
       durationMinutes: 45,
       priceKobo: 25050,
       sortOrder: 2,
@@ -190,6 +191,7 @@ describe("ServicesPage", () => {
     expect(createMock.mock.calls[0]![2]).toEqual({
       name: "Sauna session",
       description: "",
+      imageUrl: "",
       durationMinutes: 45,
       priceKobo: 25050,
 	  currency: "USD",

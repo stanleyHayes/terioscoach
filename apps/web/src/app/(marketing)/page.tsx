@@ -14,6 +14,8 @@ import {
   type ReviewSummary,
   type Testimonial,
 } from "@/lib/content";
+import { listServices, type ServiceSummary } from "@/lib/api";
+import { serviceImageFor } from "@/lib/service-imagery";
 
 // Testimonials and reviews are moderated in the dashboard and appear the
 // moment they are approved, so this page is never statically cached.
@@ -37,26 +39,6 @@ const trustPoints = [
   },
 ];
 
-// TODO(cms): replace with services from the CMS API (WEB-04 services page
-// will own the canonical fetch; this preview should consume the same data).
-const servicesPreview = [
-  {
-    title: "Wellness coaching",
-    body: "Ongoing one-on-one coaching to build sustainable rhythms of rest, movement and nourishment — at your pace.",
-    image: "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp",
-  },
-  {
-    title: "Nursing consultations",
-    body: "Clinical guidance from a registered nurse, by video. Clear answers, careful follow-up, no waiting rooms.",
-    image: "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp",
-  },
-  {
-    title: "Rest & recovery programs",
-    body: "Structured multi-week programs that pair nursing oversight with coaching, for seasons that ask more of you.",
-    image: "/images/blog/lavender-3605688_1280.webp",
-  },
-];
-
 /** Social proof, fetched together so the count beside the stars always
  * matches the list under them. Every route here returns approved content
  * only; a failure degrades to an empty section rather than a broken page. */
@@ -74,9 +56,10 @@ async function loadSocialProof(): Promise<{
 }
 
 export default async function Home() {
-  const [{ testimonials, reviews, summary }, homePage] = await Promise.all([
+  const [{ testimonials, reviews, summary }, homePage, services] = await Promise.all([
     loadSocialProof(),
     getPage("home").catch(() => undefined),
+    listServices().catch(() => null),
   ]);
   const hasSocialProof = testimonials.length > 0 || reviews.length > 0;
   const homeLead = homePage?.body?.split(/\n\s*\n/).find(Boolean) ?? "Registered nursing and wellness coaching, brought together in one calm, private practice. Thoughtful video sessions. A plan that fits your real life. Care that travels with you.";
@@ -173,28 +156,28 @@ export default async function Home() {
           id="services-preview-heading"
           eyebrow="Services"
           title="Care that fits the season you are in"
-          description="Three ways to work together, each one-to-one and by video. Every engagement begins with a conversation, not a form."
+          description="Explore the practice’s current one-to-one services. Every published offering comes directly from the live care menu."
         />
-        <ul className="mt-12 grid gap-5 lg:grid-cols-12">
-          {servicesPreview.map((service, index) => (
-            <li key={service.title} className={index === 0 ? "lg:col-span-5" : index === 1 ? "lg:col-span-7" : "lg:col-span-12"}>
+        {services?.length ? <ul className="mt-12 grid gap-5 lg:grid-cols-12">
+          {services.slice(0, 3).map((service: ServiceSummary, index) => (
+            <li key={service.id} className={index === 0 ? "lg:col-span-5" : index === 1 ? "lg:col-span-7" : "lg:col-span-12"}>
               <Link
-                href="/services"
+                href={`/work-with-me?service=${service.id}`}
                 className={`terios-feature-card group grid h-full min-h-72 overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:grid-cols-[.8fr_1.2fr]" : ""}`}
               >
                 <span className={`relative min-h-52 overflow-hidden bg-eucalyptus-100 ${index === 2 ? "lg:min-h-64" : ""}`}>
-                  <Image src={service.image} alt="" fill sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
+                  <Image src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill unoptimized={Boolean(service.imageUrl?.startsWith("http"))} sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
                   <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-950/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">0{index + 1}</span>
                 </span>
                 <div className="flex max-w-[54ch] flex-col justify-end p-8">
-                  <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.title}</h3>
-                  <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.body}</p>
-                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">See how it works <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
+                  <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.name}</h3>
+                  <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.description}</p>
+                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">Book this service <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
                 </div>
               </Link>
             </li>
           ))}
-        </ul>
+        </ul> : <p className="mt-10 rounded-2xl border border-border bg-surface-raised p-6 text-sm text-ink-muted">The live service menu is being prepared. <Link href="/services" className="font-semibold text-primary">View service availability</Link>.</p>}
       </Section>
 
       {/* Approach teaser → /about. */}

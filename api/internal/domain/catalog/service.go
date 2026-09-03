@@ -4,6 +4,7 @@
 package catalog
 
 import (
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -27,6 +28,7 @@ type Service struct {
 	PractitionerID  string
 	Name            string
 	Description     string
+	ImageURL        string
 	DurationMinutes int
 	PriceKobo       int64
 	Currency        string
@@ -112,6 +114,20 @@ func ValidateCurrency(currency string) error {
 		if currency[i] < 'A' || currency[i] > 'Z' {
 			return ErrInvalidCurrency
 		}
+	}
+	return nil
+}
+
+// ValidateImageURL accepts a local public asset path or an absolute HTTP(S)
+// delivery URL. Other schemes must never reach a public image element.
+func ValidateImageURL(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" || (strings.HasPrefix(value, "/") && !strings.HasPrefix(value, "//")) {
+		return nil
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ErrInvalidImageURL
 	}
 	return nil
 }

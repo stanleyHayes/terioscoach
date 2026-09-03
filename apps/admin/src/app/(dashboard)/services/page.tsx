@@ -203,7 +203,7 @@ export default function ServicesPage() {
       <AdminPageHeader
         eyebrow="Practice menu"
         title="Services"
-        description="Shape what you offer, what it costs, and the order clients see it in."
+        description="Manage service details, imagery, pricing, publishing, and the order clients see everywhere."
         actions={
           <Button
             onClick={() => {
@@ -394,15 +394,19 @@ export default function ServicesPage() {
                   key={service.id}
                   className="h-[52px] border-b border-border transition-colors duration-fast ease-out last:border-0 hover:bg-eucalyptus-50"
                 >
-                  <td className="max-w-[320px] px-4 py-2">
-                    <p className="truncate font-medium text-ink">
-                      {service.name}
-                    </p>
-                    {service.description ? (
-                      <p className="truncate text-[13px] leading-[1.45] text-ink-faint">
-                        {service.description}
-                      </p>
-                    ) : null}
+                  <td className="max-w-[360px] px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      {service.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={service.imageUrl} alt="" className="size-12 shrink-0 rounded-lg object-cover" />
+                      ) : (
+                        <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-eucalyptus-50 text-primary"><Sparkles size={16} aria-hidden="true" /></span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">{service.name}</p>
+                        {service.description ? <p className="truncate text-[13px] leading-[1.45] text-ink-faint">{service.description}</p> : null}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 tabular-nums text-ink-muted">
                     {formatDuration(service.durationMinutes)}
@@ -417,8 +421,8 @@ export default function ServicesPage() {
                         loading={pendingToggleId === service.id}
                         label={
                           service.active
-                            ? `Deactivate ${service.name}`
-                            : `Activate ${service.name}`
+                            ? `Retire ${service.name}`
+                            : `Republish ${service.name}`
                         }
                         onChange={(active) =>
                           void handleToggle(service, active)
@@ -428,7 +432,7 @@ export default function ServicesPage() {
                         variant={service.active ? "success" : "neutral"}
                         dot
                       >
-                        {service.active ? "Active" : "Inactive"}
+                        {service.active ? "Published" : "Retired"}
                       </Badge>
                     </div>
                   </td>

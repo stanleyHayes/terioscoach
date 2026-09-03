@@ -82,6 +82,7 @@ type serviceTestBody struct {
 	ID              string `json:"id"`
 	PractitionerID  string `json:"practitionerId"`
 	Name            string `json:"name"`
+	ImageURL        string `json:"imageUrl"`
 	DurationMinutes int    `json:"durationMinutes"`
 	PriceKobo       int64  `json:"priceKobo"`
 	Currency        string `json:"currency"`
@@ -98,6 +99,7 @@ func createServiceViaHTTP(t *testing.T, rig catalogTestRig, name string, sortOrd
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/services", map[string]any{
 		"name":            name,
 		"description":     "desc",
+		"imageUrl":        "https://images.example/service.webp",
 		"durationMinutes": 60,
 		"priceKobo":       25000,
 		"sortOrder":       sortOrder,
@@ -157,6 +159,9 @@ func TestServiceCreateShape(t *testing.T) {
 	if created.Currency != "USD" || !created.Active || created.DurationMinutes != 60 || created.PriceKobo != 25000 {
 		t.Errorf("created = %+v, want contract defaults (USD, active)", created)
 	}
+	if created.ImageURL != "https://images.example/service.webp" {
+		t.Errorf("imageUrl = %q, want dashboard-managed image", created.ImageURL)
+	}
 }
 
 func TestServiceCreateValidation(t *testing.T) {
@@ -183,6 +188,7 @@ func TestServiceUpdateAndDelete(t *testing.T) {
 	rec := doJSON(t, rig.srv, http.MethodPatch, "/v1/services/"+created.ID, map[string]any{
 		"priceKobo": 30000,
 		"sortOrder": 5,
+		"imageUrl":  "/images/services/new.webp",
 	}, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("patch status = %d, body %s", rec.Code, rec.Body.String())
@@ -191,7 +197,7 @@ func TestServiceUpdateAndDelete(t *testing.T) {
 		Service serviceTestBody `json:"service"`
 	}
 	decodeBody(t, rec, &res)
-	if res.Service.PriceKobo != 30000 || res.Service.SortOrder != 5 || res.Service.Name != "Massage" {
+	if res.Service.PriceKobo != 30000 || res.Service.SortOrder != 5 || res.Service.Name != "Massage" || res.Service.ImageURL != "/images/services/new.webp" {
 		t.Errorf("patched = %+v, want price 30000, order 5, name untouched", res.Service)
 	}
 

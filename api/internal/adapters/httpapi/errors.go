@@ -154,7 +154,8 @@ func mapCatalogError(err error) (apiError, bool) {
 	case errors.Is(err, catalog.ErrInvalidName),
 		errors.Is(err, catalog.ErrInvalidDuration),
 		errors.Is(err, catalog.ErrInvalidPrice),
-		errors.Is(err, catalog.ErrInvalidCurrency):
+		errors.Is(err, catalog.ErrInvalidCurrency),
+		errors.Is(err, catalog.ErrInvalidImageURL):
 		return validationError(err)
 	}
 	return apiError{}, false

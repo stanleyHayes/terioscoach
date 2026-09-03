@@ -36,6 +36,7 @@ type serviceDoc struct {
 	PractitionerID bson.ObjectID  `bson:"practitionerId"`
 	Name           string         `bson:"name"`
 	Description    string         `bson:"description"`
+	ImageURL       string         `bson:"imageUrl,omitempty"`
 	DurationMin    int            `bson:"durationMin"`
 	PriceKobo      int64          `bson:"priceKobo"`
 	Currency       string         `bson:"currency"`
@@ -179,6 +180,7 @@ func newServiceDoc(svc catalog.Service) (serviceDoc, error) {
 		PractitionerID: practitionerOID,
 		Name:           svc.Name,
 		Description:    svc.Description,
+		ImageURL:       svc.ImageURL,
 		DurationMin:    svc.DurationMinutes,
 		PriceKobo:      svc.PriceKobo,
 		Currency:       svc.Currency,
@@ -207,6 +209,7 @@ func serviceFromDoc(doc serviceDoc) catalog.Service {
 		PractitionerID:  doc.PractitionerID.Hex(),
 		Name:            doc.Name,
 		Description:     doc.Description,
+		ImageURL:        doc.ImageURL,
 		DurationMinutes: doc.DurationMin,
 		PriceKobo:       doc.PriceKobo,
 		Currency:        doc.Currency,

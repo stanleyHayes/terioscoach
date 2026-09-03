@@ -79,11 +79,12 @@ func TestUpdateService(t *testing.T) {
 	updated, err := svc.UpdateService(ctx, "prac-1", created.ID, ports.ServicePatch{
 		PriceKobo: ptr(int64(5000)),
 		Active:    ptr(false),
+		ImageURL:  ptr("https://images.example/service.webp"),
 	})
 	if err != nil {
 		t.Fatalf("UpdateService: %v", err)
 	}
-	if updated.PriceKobo != 5000 || updated.Active {
+	if updated.PriceKobo != 5000 || updated.Active || updated.ImageURL != "https://images.example/service.webp" {
 		t.Errorf("updated = %+v, want price 5000 and inactive", updated)
 	}
 	if updated.UpdatedAt.Before(created.UpdatedAt) {
@@ -93,6 +94,9 @@ func TestUpdateService(t *testing.T) {
 	// Invalid patch value is rejected before persistence.
 	if _, err := svc.UpdateService(ctx, "prac-1", created.ID, ports.ServicePatch{DurationMinutes: ptr(3)}); !errors.Is(err, domain.ErrInvalidDuration) {
 		t.Fatalf("bad duration err = %v, want ErrInvalidDuration", err)
+	}
+	if _, err := svc.UpdateService(ctx, "prac-1", created.ID, ports.ServicePatch{ImageURL: ptr("javascript:bad")}); !errors.Is(err, domain.ErrInvalidImageURL) {
+		t.Fatalf("bad image err = %v, want ErrInvalidImageURL", err)
 	}
 
 	// Unknown id and foreign ownership are both plain not-found.

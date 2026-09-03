@@ -48,6 +48,7 @@ type serviceBody struct {
 	PractitionerID  string    `json:"practitionerId"`
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
+	ImageURL        string    `json:"imageUrl"`
 	DurationMinutes int       `json:"durationMinutes"`
 	PriceKobo       int64     `json:"priceKobo"`
 	Currency        string    `json:"currency"`
@@ -63,6 +64,7 @@ func newServiceBody(s catalog.Service) serviceBody {
 		PractitionerID:  s.PractitionerID,
 		Name:            s.Name,
 		Description:     s.Description,
+		ImageURL:        s.ImageURL,
 		DurationMinutes: s.DurationMinutes,
 		PriceKobo:       s.PriceKobo,
 		Currency:        s.Currency,
@@ -117,6 +119,7 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name            string `json:"name"`
 		Description     string `json:"description"`
+		ImageURL        string `json:"imageUrl"`
 		DurationMinutes int    `json:"durationMinutes"`
 		PriceKobo       int64  `json:"priceKobo"`
 		Currency        string `json:"currency"`
@@ -128,6 +131,7 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 	svc, err := h.svc.CreateService(r.Context(), id.UserID, ports.ServiceInput{
 		Name:            req.Name,
 		Description:     req.Description,
+		ImageURL:        req.ImageURL,
 		DurationMinutes: req.DurationMinutes,
 		PriceKobo:       req.PriceKobo,
 		Currency:        req.Currency,
@@ -151,6 +155,7 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name            *string `json:"name"`
 		Description     *string `json:"description"`
+		ImageURL        *string `json:"imageUrl"`
 		DurationMinutes *int    `json:"durationMinutes"`
 		PriceKobo       *int64  `json:"priceKobo"`
 		Currency        *string `json:"currency"`
@@ -163,6 +168,7 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 	svc, err := h.svc.UpdateService(r.Context(), id.UserID, chi.URLParam(r, "id"), ports.ServicePatch{
 		Name:            req.Name,
 		Description:     req.Description,
+		ImageURL:        req.ImageURL,
 		DurationMinutes: req.DurationMinutes,
 		PriceKobo:       req.PriceKobo,
 		Currency:        req.Currency,

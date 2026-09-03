@@ -10,6 +10,7 @@ import (
 type ServiceInput struct {
 	Name            string
 	Description     string
+	ImageURL        string
 	DurationMinutes int
 	PriceKobo       int64
 	Currency        string // empty defaults to catalog.DefaultCurrency
@@ -20,6 +21,7 @@ type ServiceInput struct {
 type ServicePatch struct {
 	Name            *string
 	Description     *string
+	ImageURL        *string
 	DurationMinutes *int
 	PriceKobo       *int64
 	Currency        *string

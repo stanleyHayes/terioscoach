@@ -91,9 +91,10 @@ export default async function ServicesPage() {
               >
                 <div className="relative min-h-64 overflow-hidden bg-eucalyptus-100 md:min-h-80">
                   <Image
-                    src={serviceImageFor(service.name, index)}
+                    src={service.imageUrl || serviceImageFor(service.name, index)}
                     alt={`${service.name} at Terios Wellness`}
                     fill
+                    unoptimized={Boolean(service.imageUrl?.startsWith("http"))}
                     loading={index === 0 ? "eager" : "lazy"}
                     sizes="(min-width: 768px) 38vw, 94vw"
                     className="object-cover transition-transform duration-page ease-out group-hover:scale-[1.025] motion-reduce:transition-none"

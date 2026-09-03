@@ -98,11 +98,13 @@ export function ImagePicker({
   value,
   onChange,
   disabled = false,
+  label = "Cover image",
 }: {
   /** The current cover URL, or "" for none. */
   value: string;
   onChange: (url: string) => void;
   disabled?: boolean;
+  label?: string;
 }) {
   const { session, refreshCallbacks } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -159,7 +161,7 @@ export function ImagePicker({
   return (
     <div className="flex flex-col gap-2">
       <span id="cover-image-label" className="text-sm font-medium text-ink">
-        Cover image
+        {label}
       </span>
 
       {value ? (
