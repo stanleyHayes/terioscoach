@@ -23,7 +23,9 @@ The published CMS pages with slugs `home`, `about`, and `work-with-me` each expo
 
 CMS uploads accept JPEG, PNG, and WebP. Prefer WebP, at least 1400 px on the long edge, under 2 MB. Use portrait crops for `home` and `about`; use a landscape crop for `work-with-me`.
 
-The Admin image picker exposes the three generated marketing images, all 28 supplied portraits, and all 20 supplied blog images. The portrait originals remain out of the runtime bundle; each was resized to a maximum width of 1600 pixels and converted to WebP at quality 82. This reduces the source set from roughly 88 MB to roughly 6.4 MB while keeping enough resolution for CMS hero and article use. The journal listing renders a post's selected cover image, so published editorial images now appear in both the listing and article surfaces.
+The Admin media library exposes the three generated marketing images, all 28 supplied portraits, all 20 supplied blog images, and every image previously uploaded through the CMS. The library is searchable and filterable, and persisted uploads can be reused across pages and posts on any signed-in device. The portrait originals remain out of the runtime bundle; each was resized to a maximum width of 1600 pixels and converted to WebP at quality 82. This reduces the source set from roughly 88 MB to roughly 6.4 MB while keeping enough resolution for CMS hero and article use. The journal listing renders a post's selected cover image, so published editorial images now appear in both the listing and article surfaces.
+
+The supplied cropped symbol is also the single source for the web, client-portal, and practice-dashboard favicons and dashboard identity badges. This avoids the former generic leaf and letter placeholders and keeps browser tabs, authentication screens, and navigation visually consistent.
 
 ## Blog image library
 

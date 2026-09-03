@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -125,7 +126,9 @@ export function PortalSidebar({
       >
         <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-sand-0/10 px-5">
           <Link href="/portal" className="flex min-w-0 items-center gap-3" onClick={onMobileClose}>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sand-0 font-display font-semibold text-eucalyptus-900">T</span>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sand-0 p-1.5">
+              <Image src="/images/brand/identity/terios-mark.svg" alt="" width={24} height={36} className="h-full w-auto" priority />
+            </span>
             {!compact ? <span><span className="block font-display text-xl font-semibold text-sand-0">Terios</span><span className="block text-[10px] uppercase tracking-[.12em] text-eucalyptus-300">Client portal</span></span> : null}
           </Link>
           {mobileOpen ? <button type="button" onClick={onMobileClose} aria-label="Close navigation panel" className="rounded-lg p-2 text-eucalyptus-200 hover:bg-sand-0/10 hover:text-sand-0"><X size={18}/></button> : null}

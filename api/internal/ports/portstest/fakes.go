@@ -1977,6 +1977,19 @@ func (f *FakeDocumentRepository) ListByClient(_ context.Context, clientID string
 	return out, nil
 }
 
+func (f *FakeDocumentRepository) ListByKind(_ context.Context, kind document.Kind) ([]document.Document, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []document.Document
+	for i := len(f.order) - 1; i >= 0; i-- {
+		d, ok := f.byID[f.order[i]]
+		if ok && d.Kind == kind {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
 // FakeMediaStore records what was signed and deleted, without any provider.
 type FakeMediaStore struct {
 	mu        sync.Mutex
@@ -2017,6 +2030,13 @@ func (f *FakeMediaStore) SignedURL(_ context.Context, asset ports.Asset, ttl tim
 	}
 	f.Signed = append(f.Signed, asset)
 	return fmt.Sprintf("https://delivery.test/%s?expires=%d", asset.PublicID, int(ttl.Seconds())), nil
+}
+
+func (f *FakeMediaStore) PublicURL(asset ports.Asset) (string, error) {
+	if f.SignErr != nil {
+		return "", f.SignErr
+	}
+	return "https://delivery.test/" + asset.PublicID, nil
 }
 
 func (f *FakeMediaStore) Delete(_ context.Context, asset ports.Asset) error {

@@ -174,3 +174,21 @@ func (r *DocumentRepository) ListByClient(ctx context.Context, clientID string) 
 	}
 	return out, nil
 }
+
+func (r *DocumentRepository) ListByKind(ctx context.Context, kind document.Kind) ([]document.Document, error) {
+	cursor, err := r.coll.Find(ctx, bson.M{"kind": string(kind)},
+		options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}))
+	if err != nil {
+		return nil, fmt.Errorf("list documents by kind: %w", err)
+	}
+	defer func() { _ = cursor.Close(ctx) }()
+	var docs []documentDoc
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode documents by kind: %w", err)
+	}
+	out := make([]document.Document, 0, len(docs))
+	for _, doc := range docs {
+		out = append(out, doc.toDomain())
+	}
+	return out, nil
+}

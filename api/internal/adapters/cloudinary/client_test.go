@@ -199,6 +199,25 @@ func TestSignedURLDefaultsTheTTL(t *testing.T) {
 	}
 }
 
+func TestPublicURLBuildsDurableImageDeliveryURL(t *testing.T) {
+	link, err := testClient().PublicURL(ports.Asset{
+		PublicID:     "terios/cms/about-portrait",
+		ResourceType: document.ResourceImage,
+	})
+	if err != nil {
+		t.Fatalf("PublicURL: %v", err)
+	}
+	if link != "https://res.cloudinary.com/terios/image/upload/terios/cms/about-portrait" {
+		t.Errorf("url = %q, want durable public delivery url", link)
+	}
+}
+
+func TestPublicURLRequiresAnAsset(t *testing.T) {
+	if _, err := testClient().PublicURL(ports.Asset{}); err == nil {
+		t.Error("built a public url without an asset id")
+	}
+}
+
 // TestDeleteSignsTheRequest.
 func TestDeleteSignsTheRequest(t *testing.T) {
 	var form url.Values

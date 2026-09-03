@@ -33,6 +33,29 @@ export interface UploadedImage {
   bytes: number;
 }
 
+export interface MediaLibraryItem {
+  id: string;
+  url: string;
+  title: string;
+  filename: string;
+  bytes: number;
+  createdAt: string;
+}
+
+/** Reusable CMS uploads, newest first. URLs are durable public Cloudinary
+ * delivery URLs, so choosing an existing asset is safe to persist on a page. */
+export async function listCMSImages(
+  session: Session,
+  callbacks: RefreshCallbacks,
+): Promise<MediaLibraryItem[]> {
+  const { items } = await authedRequest<{ items: MediaLibraryItem[] }>(
+    "/v1/admin/documents/media",
+    session,
+    callbacks,
+  );
+  return items;
+}
+
 /** Cloudinary's free tier tops out well above this; the limit is here so a
  * mistaken 40MB original fails immediately rather than after a long upload. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;

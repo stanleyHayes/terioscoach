@@ -417,3 +417,11 @@ running production origins.
 | BOOK-PAY-02 | Send payment instructions before confirmation | Done and live | Stripe initialization queues a branded payment-required email containing the hosted checkout link and explicitly states that the appointment is not booked until payment succeeds; portal production deployment is Ready |
 | BOOK-PAY-03 | Confirm and notify only after verified payment | Done and live | A verified Stripe webhook atomically promotes the request to `confirmed`, then queues confirmation/reminder notifications; a competing later charge is automatically refunded and its request cancelled |
 | BOOK-PAY-04 | Reconcile legacy production bookings | Done and live | Catalog-scope production job `job-daclu5vavr4c73fn5vp0` succeeded, demoting legacy confirmed/unpaid bookings for priced services while excluding paid booking stamps and successful payment records |
+
+## 26. Reusable media library and complete dashboard identity (3 Sep 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| MEDIA-01 | Make uploaded editorial images reusable | Done locally | Authenticated `GET /v1/admin/documents/media` lists persisted `cms_image` records with durable Cloudinary delivery URLs while withholding provider storage IDs; focused API tests pass |
+| MEDIA-02 | Replace the cramped embedded image chooser | Done locally | Page editing now uses a wide editorial modal, large cover preview, searchable/filterable media library, immediate reuse of new uploads, and canonical-domain previews for bundled brand assets |
+| BRAND-04 | Apply the supplied identity to dashboard and browser surfaces | Done locally | Client portal sidebar placeholder and portal/admin auth badges use the supplied Terios mark; web, portal, and admin SVG/ICO favicons are generated from the same master vector |

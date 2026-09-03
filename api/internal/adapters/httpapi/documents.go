@@ -39,11 +39,33 @@ func WithDocuments(svc ports.DocumentService, auth ports.AuthService) Option {
 			r.Post("/sign-upload", h.signUpload)
 			r.Post("/", h.record)
 			r.Get("/", h.list)
+			r.Get("/media", h.listMedia)
 			r.Get("/{id}/url", h.downloadAny)
 			r.Patch("/{id}", h.patch)
 			r.Delete("/{id}", h.delete)
 		})
 	}
+}
+
+func (h *documentHandler) listMedia(w http.ResponseWriter, r *http.Request) {
+	items, err := h.svc.ListCMSImages(r.Context())
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	type mediaBody struct {
+		ID        string    `json:"id"`
+		URL       string    `json:"url"`
+		Title     string    `json:"title"`
+		Filename  string    `json:"filename"`
+		Bytes     int64     `json:"bytes"`
+		CreatedAt time.Time `json:"createdAt"`
+	}
+	out := make([]mediaBody, 0, len(items))
+	for _, item := range items {
+		out = append(out, mediaBody{item.ID, item.URL, item.Title, item.Filename, item.Bytes, item.CreatedAt.UTC()})
+	}
+	writeJSON(w, http.StatusOK, map[string][]mediaBody{"items": out})
 }
 
 // handleDocumentsUnavailable answers every document route when the

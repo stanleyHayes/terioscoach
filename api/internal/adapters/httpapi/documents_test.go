@@ -245,6 +245,39 @@ func TestPublicIDNeverLeaves(t *testing.T) {
 	_ = doc
 }
 
+func TestCMSMediaLibraryReturnsReusablePublicImages(t *testing.T) {
+	rig := newDocumentTestRig(t)
+	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/admin/documents", map[string]any{
+		"kind": "cms_image", "publicId": "terios/cms/about-portrait",
+		"filename": "about-portrait.webp", "bytes": 2048,
+	}, bearer(rig.practitionerToken))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("record cms image = %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, rig.srv, http.MethodGet, "/v1/admin/documents/media", nil, bearer(rig.practitionerToken))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list media = %d, body %s", rec.Code, rec.Body.String())
+	}
+	var list struct {
+		Items []struct {
+			ID, URL, Title, Filename string
+			Bytes                    int64
+		} `json:"items"`
+	}
+	decodeBody(t, rec, &list)
+	if len(list.Items) != 1 {
+		t.Fatalf("media items = %d, want 1", len(list.Items))
+	}
+	item := list.Items[0]
+	if item.URL != "https://delivery.test/terios/cms/about-portrait" || item.Filename != "about-portrait.webp" || item.Bytes != 2048 {
+		t.Errorf("media item = %+v, want reusable delivery metadata", item)
+	}
+	if strings.Contains(rec.Body.String(), "publicId") {
+		t.Errorf("media library leaked provider public id: %s", rec.Body.String())
+	}
+}
+
 // TestDeleteRemovesTheStoredFile: a file must not outlive the record that
 // governed who could see it.
 func TestDeleteRemovesTheStoredFile(t *testing.T) {
@@ -305,6 +338,7 @@ func TestDocumentRoleGuards(t *testing.T) {
 		{http.MethodPost, "/v1/admin/documents/sign-upload", rig.clientToken},
 		{http.MethodPost, "/v1/admin/documents", rig.clientToken},
 		{http.MethodGet, "/v1/admin/documents", rig.clientToken},
+		{http.MethodGet, "/v1/admin/documents/media", rig.clientToken},
 		{http.MethodGet, "/v1/documents/mine", rig.practitionerToken},
 	} {
 		rec := doJSON(t, rig.srv, tc.method, tc.path, map[string]any{}, bearer(tc.token))

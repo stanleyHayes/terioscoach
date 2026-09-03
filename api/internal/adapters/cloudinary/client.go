@@ -135,6 +135,19 @@ func (c *Client) SignedURL(_ context.Context, asset ports.Asset, ttl time.Durati
 		signature, expiresAt, asset.PublicID), nil
 }
 
+// PublicURL builds the stable delivery URL for public CMS imagery. Unlike a
+// private client document it has no expiry and is safe to persist in content.
+func (c *Client) PublicURL(asset ports.Asset) (string, error) {
+	if asset.PublicID == "" {
+		return "", fmt.Errorf("cloudinary: public id is required")
+	}
+	resourceType := string(asset.ResourceType)
+	if resourceType == "" {
+		resourceType = "image"
+	}
+	return fmt.Sprintf("%s/%s/%s/upload/%s", baseDeliveryURL, c.cloudName, resourceType, asset.PublicID), nil
+}
+
 // Delete removes an asset from the store. It is used when a document
 // record is deleted, so the file does not outlive the record that governed
 // who could see it.

@@ -193,8 +193,12 @@ describe("Modal", () => {
 
   it("widens for form content", () => {
     const { unmount } = open({ size: "form" });
-    expect(screen.getByRole("dialog").className).toContain("sm:max-w-[560px]");
+    expect(screen.getByRole("dialog").className).toContain("sm:max-w-[640px]");
     unmount();
+
+    const wide = open({ size: "wide" });
+    expect(screen.getByRole("dialog").className).toContain("sm:max-w-[980px]");
+    wide.unmount();
 
     open();
     expect(screen.getByRole("dialog").className).toContain("sm:max-w-[480px]");

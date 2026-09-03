@@ -92,6 +92,25 @@ func (s *Service) ListForClient(ctx context.Context, clientID string) ([]documen
 	return s.documents.ListByClient(ctx, clientID)
 }
 
+func (s *Service) ListCMSImages(ctx context.Context) ([]ports.CMSImage, error) {
+	documents, err := s.documents.ListByKind(ctx, document.KindCMSImage)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.CMSImage, 0, len(documents))
+	for _, d := range documents {
+		url, err := s.media.PublicURL(assetOf(d))
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, ports.CMSImage{
+			ID: d.ID, URL: url, Title: d.Title, Filename: d.Filename,
+			Bytes: d.Bytes, CreatedAt: d.CreatedAt,
+		})
+	}
+	return items, nil
+}
+
 // UpdateDocument edits the title or the sharing flag.
 func (s *Service) UpdateDocument(ctx context.Context, id string, patch document.Patch) (document.Document, error) {
 	d, err := s.documents.FindByID(ctx, id)

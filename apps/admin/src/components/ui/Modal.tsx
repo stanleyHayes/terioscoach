@@ -10,7 +10,8 @@ import { cn } from "@/lib/cn";
  * Modal — design-system §3.14.
  * Custom chrome throughout (no native <dialog>): overlay scrim (250ms fade),
  * panel surface-raised radius-xl shadow-lg, entrance fade + scale .96→1 +
- * translateY 8px→0 (duration-slow ease-out). Width 480px default / 560px form,
+ * translateY 8px→0 (duration-slow ease-out). Width 480px default / 640px form,
+ * with a 980px wide option for visual libraries and editorial work,
  * max-height 85vh with internal scroll. Below 640px it docks as a bottom sheet
  * with a decorative drag-handle pill.
  *
@@ -25,8 +26,8 @@ export interface ModalProps {
   onClose: () => void;
   title: string;
   description?: string;
-  /** 480px default, 560px for forms (per spec). */
-  size?: "default" | "form";
+  /** 480px default, 640px for forms, 980px for visual/editorial work. */
+  size?: "default" | "form" | "wide";
   /** When true, Esc will not close the modal (dirty form protection). */
   dirty?: boolean;
   children: ReactNode;
@@ -123,7 +124,7 @@ export function Modal({
         tabIndex={-1}
         className={cn(
           "animate-modal-enter relative flex max-h-[88vh] w-full flex-col overflow-y-auto rounded-t-[2rem] border border-border bg-surface-raised p-6 shadow-[0_35px_100px_rgba(0,0,0,.28)] sm:rounded-[2rem] sm:p-8",
-          size === "form" ? "sm:max-w-[560px]" : "sm:max-w-[480px]",
+          size === "wide" ? "sm:max-w-[980px]" : size === "form" ? "sm:max-w-[640px]" : "sm:max-w-[480px]",
         )}
       >
         {/* mobile bottom-sheet drag handle (decorative) */}

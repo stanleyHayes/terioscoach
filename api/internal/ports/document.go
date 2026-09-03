@@ -49,6 +49,8 @@ type MediaStore interface {
 	SignUpload(ctx context.Context, params UploadParams) (SignedUpload, error)
 	// SignedURL builds a short-lived delivery URL for a private asset.
 	SignedURL(ctx context.Context, asset Asset, ttl time.Duration) (string, error)
+	// PublicURL returns the durable delivery URL for a public CMS asset.
+	PublicURL(asset Asset) (string, error)
 	// Delete removes an asset, so a file never outlives the record that
 	// governed who could see it.
 	Delete(ctx context.Context, asset Asset) error
@@ -64,6 +66,18 @@ type DocumentRepository interface {
 	// ListByClient returns one client's documents newest-first, leading
 	// with clientId — the isolation rule.
 	ListByClient(ctx context.Context, clientID string) ([]document.Document, error)
+	// ListByKind returns one media class newest-first.
+	ListByKind(ctx context.Context, kind document.Kind) ([]document.Document, error)
+}
+
+// CMSImage is one reusable public upload in the practitioner media library.
+type CMSImage struct {
+	ID        string
+	URL       string
+	Title     string
+	Filename  string
+	Bytes     int64
+	CreatedAt time.Time
 }
 
 // UploadRequest asks the API to authorize an upload.
@@ -90,6 +104,8 @@ type DocumentService interface {
 	RecordUpload(ctx context.Context, uploadedBy string, in RecordUploadInput) (document.Document, error)
 	// ListForClient returns a client's documents — practitioner only.
 	ListForClient(ctx context.Context, clientID string) ([]document.Document, error)
+	// ListCMSImages returns reusable public uploads newest-first.
+	ListCMSImages(ctx context.Context) ([]CMSImage, error)
 	// UpdateDocument edits the title or sharing — practitioner only.
 	UpdateDocument(ctx context.Context, id string, patch document.Patch) (document.Document, error)
 	// DeleteDocument removes the record and the stored file — practitioner

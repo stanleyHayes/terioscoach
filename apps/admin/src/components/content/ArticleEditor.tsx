@@ -153,9 +153,17 @@ export function ArticleEditor({
 
         {kind === "post" ? <TextArea label="Excerpt" rows={2} value={values.excerpt} hint="The line that appears under the title on the blog index." onChange={(event) => update("excerpt", event.target.value)} /> : null}
 
-        <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
-
-        {kind === "post" ? <MarkdownEditor value={values.body} error={fieldErrors.body} onChange={(body) => update("body", body)} /> : <TextArea label="Body" required rows={12} value={values.body} error={fieldErrors.body} hint="Plain text. A blank line starts a new paragraph." onChange={(event) => update("body", event.target.value)} />}
+        {kind === "page" ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-start">
+            <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
+            <TextArea label="Body" required rows={16} value={values.body} error={fieldErrors.body} hint="Plain text. A blank line starts a new paragraph." onChange={(event) => update("body", event.target.value)} />
+          </div>
+        ) : (
+          <>
+            <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
+            <MarkdownEditor value={values.body} error={fieldErrors.body} onChange={(body) => update("body", body)} />
+          </>
+        )}
 
         {kind === "post" ? <div className="grid gap-4 sm:grid-cols-2"><TextInput label="Category" value={values.category} placeholder="Wellbeing" onChange={(event) => update("category", event.target.value)} /><TextInput label="Tags" value={values.tags} hint="Separated by commas." placeholder="rest, sleep" onChange={(event) => update("tags", event.target.value)} /></div> : null}
 
@@ -189,7 +197,7 @@ export function ArticleEditor({
           ? "This is live. Your changes go out as soon as you save."
           : "Saving keeps it as a draft — publish it when you're ready."
       }
-      size="form"
+      size={kind === "page" ? "wide" : "form"}
       dirty={dirty}
       footer={
         <>
