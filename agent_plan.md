@@ -412,7 +412,7 @@ running production origins.
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| BOOK-PAY-01 | Prevent unpaid paid-service requests from occupying the calendar | Engineering complete | Priced requests use `pending_payment`; availability and default practitioner lists ignore them; free services remain immediately confirmed |
-| BOOK-PAY-02 | Send payment instructions before confirmation | Engineering complete | Stripe initialization queues a branded payment-required email containing the hosted checkout link and explicitly states that the appointment is not booked until payment succeeds |
-| BOOK-PAY-03 | Confirm and notify only after verified payment | Engineering complete | A verified Stripe webhook atomically promotes the request to `confirmed`, then queues confirmation/reminder notifications; a competing later charge is automatically refunded and its request cancelled |
-| BOOK-PAY-04 | Reconcile legacy production bookings | Ready to deploy | The catalog seed demotes legacy confirmed, unpaid bookings for priced services while excluding paid booking stamps and successful payment records |
+| BOOK-PAY-01 | Prevent unpaid paid-service requests from occupying the calendar | Done and live | Priced requests use `pending_payment`; availability and default practitioner lists ignore them; free services remain immediately confirmed; API deployment `dep-daclt4jncjis73aehilg` is live on `36d6e7b` |
+| BOOK-PAY-02 | Send payment instructions before confirmation | Done and live | Stripe initialization queues a branded payment-required email containing the hosted checkout link and explicitly states that the appointment is not booked until payment succeeds; portal production deployment is Ready |
+| BOOK-PAY-03 | Confirm and notify only after verified payment | Done and live | A verified Stripe webhook atomically promotes the request to `confirmed`, then queues confirmation/reminder notifications; a competing later charge is automatically refunded and its request cancelled |
+| BOOK-PAY-04 | Reconcile legacy production bookings | Done and live | Catalog-scope production job `job-daclu5vavr4c73fn5vp0` succeeded, demoting legacy confirmed/unpaid bookings for priced services while excluding paid booking stamps and successful payment records |
