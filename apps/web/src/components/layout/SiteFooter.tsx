@@ -74,7 +74,10 @@ export function SiteFooter() {
         <div className="grid gap-4 border-t border-sand-0/12 pt-6 text-xs text-eucalyptus-300 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
           <p>© {year} Terios Wellness Spa</p>
           <nav aria-label="Legal" className="flex items-center gap-5"><Link href="/privacy" className="transition-colors hover:text-sand-0">Privacy</Link><Link href="/terms" className="transition-colors hover:text-sand-0">Terms</Link></nav>
-          <p className="sm:text-right">Clinical calm, wherever you are. <span aria-hidden="true" className="ml-2 text-clay-300">❦</span></p>
+          <div className="flex flex-col gap-2 sm:items-end sm:text-right">
+            <p>Clinical calm, wherever you are. <span aria-hidden="true" className="ml-2 text-clay-300">❦</span></p>
+            <a href="https://xcreativs.com" target="_blank" rel="noopener noreferrer" className="font-semibold uppercase tracking-[0.1em] text-eucalyptus-200 transition-colors hover:text-sand-0">DEVELOPED BY XCREATIVS TECHNOLOGIES</a>
+          </div>
         </div>
       </div>
     </footer>

@@ -17,5 +17,8 @@ describe("SiteFooter", () => {
     expect(
       screen.getByText(`© ${new Date().getFullYear()} Terios Wellness Spa`),
     ).toBeTruthy();
+    const credit = screen.getByRole("link", { name: "DEVELOPED BY XCREATIVS TECHNOLOGIES" });
+    expect(credit.getAttribute("href")).toBe("https://xcreativs.com");
+    expect(credit.getAttribute("rel")).toContain("noopener");
   });
 });

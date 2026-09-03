@@ -31,6 +31,7 @@ describe("FAQPage", () => {
 
     expect(screen.getByLabelText(/search the questions/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /how do i pay/i })).toBeTruthy();
+    expect(screen.queryByAltText(/quiet mountain lake/i)).toBeNull();
   });
 
   it("always offers a way to ask something that is not listed", async () => {

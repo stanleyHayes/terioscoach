@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { HelpCircle } from "lucide-react";
 import { FAQSearch } from "@/components/content/FAQSearch";
@@ -38,14 +37,6 @@ export default async function FAQPage() {
         title="The things people ask first"
         description="Booking, payment, what a first session is like. If yours is not here, ask it — a real answer comes back."
       />
-
-      <Section containerClassName="pt-0 pb-0">
-        <div className="relative min-h-64 overflow-hidden rounded-[2rem] bg-eucalyptus-100 sm:min-h-80 lg:min-h-[420px]">
-          <Image src="/images/blog/lake-192979_1280.webp" alt="A quiet mountain lake reflecting the landscape" fill sizes="(min-width: 1280px) 1200px, 94vw" className="object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-eucalyptus-950/70 via-eucalyptus-950/20 to-transparent" />
-          <p className="absolute bottom-7 left-7 max-w-[24ch] font-display text-[clamp(1.6rem,4vw,2.6rem)] leading-tight text-sand-0 sm:bottom-10 sm:left-10">Clear answers make the next step feel lighter.</p>
-        </div>
-      </Section>
 
       <Section ariaLabelledby="faq-heading">
         <h2 id="faq-heading" className="sr-only">
