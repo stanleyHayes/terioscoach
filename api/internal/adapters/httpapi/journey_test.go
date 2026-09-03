@@ -128,7 +128,8 @@ func newJourneyRig(t *testing.T) journeyRig {
 		WithCatalog(catalog.NewService(services), authSvc),
 		WithScheduling(schedulingapp.NewService(services, availability, bookings), authSvc),
 		WithBooking(bookingSvc, authSvc),
-		WithPayments(paymentsapp.NewService(payments, bookings, services, users, gateway), authSvc),
+		WithPayments(paymentsapp.NewService(payments, bookings, services, users, gateway,
+			paymentsapp.WithNotifications(notifier)), authSvc),
 		WithNotes(notesSvc, authSvc),
 		WithReviews(reviewsapp.NewService(reviews, bookings, users, services), authSvc),
 		WithSessions(signalingSvc, nil, authSvc),
@@ -230,7 +231,7 @@ func TestTheWholeJourney(t *testing.T) {
 		} `json:"service"`
 	}
 	rig.mustJSON(t, http.MethodPost, "/v1/services", map[string]any{
-		"name": "Aromatherapy massage", "durationMinutes": 60, "priceKobo": 25000, "currency": "GHS",
+		"name": "Aromatherapy massage", "durationMinutes": 60, "priceKobo": 25000, "currency": "USD",
 	}, rig.practitionerToken, http.StatusCreated, &created)
 	serviceID := created.Service.ID
 
@@ -280,26 +281,23 @@ func TestTheWholeJourney(t *testing.T) {
 		"serviceId": serviceID, "startAt": start.Format(time.RFC3339), "tz": "UTC",
 	}, rig.clientToken, http.StatusCreated, &booked)
 	bookingID := booked.Booking.ID
-	if booked.Booking.Status != "confirmed" {
-		t.Fatalf("booking status = %q, want confirmed", booked.Booking.Status)
+	if booked.Booking.Status != "pending_payment" {
+		t.Fatalf("booking status = %q, want pending_payment", booked.Booking.Status)
 	}
 
-	// The slot is gone from the public list, so nobody else is offered it.
+	// Requesting a paid appointment does not reserve the slot.
 	rig.mustJSON(t, http.MethodGet, slotsPath, nil, "", http.StatusOK, &slots)
+	stillAvailable := false
 	for _, slot := range slots.Slots {
 		if slot.StartAt.Equal(start) {
-			t.Fatal("the booked slot is still being offered")
+			stillAvailable = true
 		}
 	}
+	if !stillAvailable {
+		t.Fatal("an unpaid appointment request removed the slot from availability")
+	}
 
-	// ---- 3. Confirmation and reminder are queued ------------------------
-
-	assertQueued(t, rig, notification.KindBookingConfirmation)
-	assertQueued(t, rig, notification.KindSessionReminder)
-	// The confirmation is due immediately; the reminder is not.
-	assertDispatches(t, rig)
-
-	// ---- 4. The client pays ---------------------------------------------
+	// ---- 3. The client receives a payment link --------------------------
 
 	var initialized struct {
 		AuthorizationURL string `json:"authorizationUrl"`
@@ -311,7 +309,10 @@ func TestTheWholeJourney(t *testing.T) {
 	if initialized.AuthorizationURL == "" || initialized.Reference == "" {
 		t.Fatalf("initialize returned %+v, want a checkout URL and reference", initialized)
 	}
+	assertQueued(t, rig, notification.KindBookingPaymentRequired)
+	assertDispatches(t, rig)
 
+	// ---- 4. Stripe confirms payment, then the booking is confirmed ------
 	// Stripe calls the webhook. The body alone proves nothing — the
 	// service re-verifies against the gateway before changing any state —
 	// so a forged body with a valid signature still could not invent a
@@ -337,6 +338,22 @@ func TestTheWholeJourney(t *testing.T) {
 	}
 	if paid.Items[0].AmountKobo != created.Service.PriceKobo {
 		t.Errorf("paid %d kobo, want the service price %d", paid.Items[0].AmountKobo, created.Service.PriceKobo)
+	}
+	confirmed, err := rig.bookings.FindByID(t.Context(), bookingID)
+	if err != nil {
+		t.Fatalf("find paid booking: %v", err)
+	}
+	if confirmed.Status != domainbooking.StatusConfirmed || confirmed.PaymentStatus != domainbooking.PaymentPaid {
+		t.Fatalf("paid booking = %+v, want confirmed and paid", confirmed)
+	}
+	assertQueued(t, rig, notification.KindBookingConfirmation)
+	assertQueued(t, rig, notification.KindSessionReminder)
+	assertDispatches(t, rig)
+	rig.mustJSON(t, http.MethodGet, slotsPath, nil, "", http.StatusOK, &slots)
+	for _, slot := range slots.Slots {
+		if slot.StartAt.Equal(start) {
+			t.Fatal("the paid booking slot is still being offered")
+		}
 	}
 
 	// ---- 5. The session happens ------------------------------------------
@@ -534,7 +551,7 @@ func TestTheJourneyRefusesToSkipSteps(t *testing.T) {
 		} `json:"service"`
 	}
 	rig.mustJSON(t, http.MethodPost, "/v1/services", map[string]any{
-		"name": "Massage", "durationMinutes": 60, "priceKobo": 25000,
+		"name": "Massage", "durationMinutes": 60, "priceKobo": 0,
 	}, rig.practitionerToken, http.StatusCreated, &created)
 
 	day := time.Now().UTC().Add(7 * 24 * time.Hour).Truncate(24 * time.Hour)

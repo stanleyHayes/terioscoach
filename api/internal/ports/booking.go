@@ -11,9 +11,10 @@ import (
 // BookingFilter narrows the practitioner's calendar view. Zero values mean
 // "unbounded" / "all statuses".
 type BookingFilter struct {
-	From   *time.Time
-	To     *time.Time
-	Status booking.Status // empty = all statuses
+	From                  *time.Time
+	To                    *time.Time
+	Status                booking.Status // empty = all statuses
+	IncludePendingPayment bool           // payment operations only; calendars leave false
 }
 
 // BookingService is the inbound port for the booking slice.

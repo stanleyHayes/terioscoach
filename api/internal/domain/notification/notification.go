@@ -19,18 +19,19 @@ import (
 type Kind string
 
 const (
-	KindBookingConfirmation Kind = "booking_confirmation"
-	KindSessionReminder     Kind = "session_reminder"
-	KindBookingRescheduled  Kind = "booking_rescheduled"
-	KindBookingCancelled    Kind = "booking_cancelled"
-	KindFeedbackShared      Kind = "feedback_shared"
-	KindEnquiryReceived     Kind = "enquiry_received"
+	KindBookingPaymentRequired Kind = "booking_payment_required"
+	KindBookingConfirmation    Kind = "booking_confirmation"
+	KindSessionReminder        Kind = "session_reminder"
+	KindBookingRescheduled     Kind = "booking_rescheduled"
+	KindBookingCancelled       Kind = "booking_cancelled"
+	KindFeedbackShared         Kind = "feedback_shared"
+	KindEnquiryReceived        Kind = "enquiry_received"
 )
 
 // Valid reports whether k is a known kind.
 func (k Kind) Valid() bool {
 	switch k {
-	case KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
+	case KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
 		KindBookingCancelled, KindFeedbackShared, KindEnquiryReceived:
 		return true
 	}

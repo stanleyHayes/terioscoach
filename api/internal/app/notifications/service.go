@@ -93,6 +93,15 @@ func NewService(
 	}
 }
 
+// BookingPaymentRequired queues the checkout link without claiming that the
+// appointment is confirmed. Confirmation and reminders are queued only after
+// the signed Stripe webhook promotes the booking.
+func (s *Service) BookingPaymentRequired(ctx context.Context, notice ports.BookingNotice) {
+	data := s.bookingData(notice)
+	data["paymentUrl"] = notice.PaymentURL
+	s.queue(ctx, notification.KindBookingPaymentRequired, notice.ClientEmail, notice.BookingID, data, s.now())
+}
+
 // BookingConfirmed queues the confirmation and schedules the reminder.
 // A session booked inside the reminder lead gets no reminder — it would
 // land alongside the confirmation.

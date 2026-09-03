@@ -407,3 +407,12 @@ running production origins.
 | PAY-STRIPE-02 | Make payment contracts provider-neutral and Stripe-backed | Done locally | `providerReference` replaces the provider-branded API/domain/Mongo field; Stripe Checkout is wired directly, `/v1/webhooks/stripe` is the sole signed webhook endpoint, and production now refuses to boot without both Stripe secrets |
 | PAY-STRIPE-03 | Verify the migration | Done locally | Full `go test ./... -count=1`, all-workspace frontend tests (admin 432, portal 277, web 177), lint, three production builds, and `git diff --check` pass; a read-only Stripe account probe confirms the configured API key is accepted |
 | PAY-STRIPE-04 | Activate production Stripe payments | Live; transaction drill pending | Both Stripe secrets were written to the `terios-api` Render environment, commit `c676b48` deployed live as `dep-dab0gg68bjmc73fvdgrg`, `/readyz` returns 200, and an unsigned `/v1/webhooks/stripe` request returns the intended 401 `invalid_signature` instead of 503. A smallest-amount payment/refund remains the final provider transaction drill |
+
+## 25. Payment-gated booking confirmation (3 Sep 2026)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| BOOK-PAY-01 | Prevent unpaid paid-service requests from occupying the calendar | Engineering complete | Priced requests use `pending_payment`; availability and default practitioner lists ignore them; free services remain immediately confirmed |
+| BOOK-PAY-02 | Send payment instructions before confirmation | Engineering complete | Stripe initialization queues a branded payment-required email containing the hosted checkout link and explicitly states that the appointment is not booked until payment succeeds |
+| BOOK-PAY-03 | Confirm and notify only after verified payment | Engineering complete | A verified Stripe webhook atomically promotes the request to `confirmed`, then queues confirmation/reminder notifications; a competing later charge is automatically refunded and its request cancelled |
+| BOOK-PAY-04 | Reconcile legacy production bookings | Ready to deploy | The catalog seed demotes legacy confirmed, unpaid bookings for priced services while excluding paid booking stamps and successful payment records |

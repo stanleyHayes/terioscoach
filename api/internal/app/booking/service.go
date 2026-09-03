@@ -126,12 +126,17 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 	if err != nil {
 		return booking.Booking{}, err
 	}
+	if svc.PriceKobo > 0 {
+		b.RequirePayment()
+	}
 	b, err = s.bookings.Create(ctx, b)
 	if err != nil {
 		return booking.Booking{}, err
 	}
-	if notice, ok := s.notice(ctx, b, tz); ok {
-		s.notifier.BookingConfirmed(ctx, notice)
+	if b.Status == booking.StatusConfirmed {
+		if notice, ok := s.notice(ctx, b, tz); ok {
+			s.notifier.BookingConfirmed(ctx, notice)
+		}
 	}
 	return b, nil
 }
@@ -204,6 +209,7 @@ func (s *Service) CancelBooking(ctx context.Context, id identity.Identity, booki
 	if err := s.checkCutoff(id, b); err != nil {
 		return booking.Booking{}, err
 	}
+	wasConfirmed := b.Status == booking.StatusConfirmed
 	if err := b.Cancel(s.now()); err != nil {
 		return booking.Booking{}, err
 	}
@@ -213,8 +219,10 @@ func (s *Service) CancelBooking(ctx context.Context, id identity.Identity, booki
 	}
 	// Cancellation has no request timezone of its own; the notifier's
 	// practice default presents the time.
-	if notice, ok := s.notice(ctx, b, ""); ok {
-		s.notifier.BookingCancelled(ctx, notice)
+	if wasConfirmed {
+		if notice, ok := s.notice(ctx, b, ""); ok {
+			s.notifier.BookingCancelled(ctx, notice)
+		}
 	}
 	return b, nil
 }

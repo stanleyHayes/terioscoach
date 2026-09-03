@@ -5,27 +5,32 @@ package booking
 
 import "time"
 
-// Status is the lifecycle state of a booking. Confirmed is the only
-// non-terminal state and the only one that blocks a slot (mirroring the
-// partial unique index in the storage layer). Cancelled, Completed, and
-// NoShow are terminal: no transition leaves them.
+// Status is the lifecycle state of a booking. PendingPayment is a client-side
+// checkout record and does not appear on the practitioner calendar or block a
+// slot. Confirmed is reached only after successful payment (or immediately for
+// a free service) and is the only state that occupies a slot.
 type Status string
 
 const (
-	StatusConfirmed Status = "confirmed"
-	StatusCancelled Status = "cancelled"
-	StatusCompleted Status = "completed"
-	StatusNoShow    Status = "no_show"
+	StatusPendingPayment Status = "pending_payment"
+	StatusConfirmed      Status = "confirmed"
+	StatusCancelled      Status = "cancelled"
+	StatusCompleted      Status = "completed"
+	StatusNoShow         Status = "no_show"
 )
 
 // Valid reports whether s is a known status.
 func (s Status) Valid() bool {
 	switch s {
-	case StatusConfirmed, StatusCancelled, StatusCompleted, StatusNoShow:
+	case StatusPendingPayment, StatusConfirmed, StatusCancelled, StatusCompleted, StatusNoShow:
 		return true
 	}
 	return false
 }
+
+// RequirePayment keeps a newly-created paid-service booking out of the
+// confirmed calendar until the payment webhook promotes it.
+func (b *Booking) RequirePayment() { b.Status = StatusPendingPayment }
 
 // PaymentStatus is the denormalized payment state stamped on a booking for
 // list display (BE-06). It is additive display state only — the payments
@@ -80,10 +85,10 @@ func New(clientID, practitionerID, serviceID string, startAt time.Time, duration
 	}, nil
 }
 
-// Cancel moves a confirmed booking to cancelled, freeing its slot. Any
-// other source state is terminal and rejected.
+// Cancel withdraws a confirmed booking or an unpaid booking request. Any
+// terminal source state is rejected.
 func (b *Booking) Cancel(now time.Time) error {
-	if b.Status != StatusConfirmed {
+	if b.Status != StatusConfirmed && b.Status != StatusPendingPayment {
 		return ErrInvalidTransition
 	}
 	now = now.UTC()
@@ -127,12 +132,16 @@ func (b *Booking) MarkNoShow(now time.Time) error {
 }
 
 // MarkPaid stamps the denormalized payment state after a charge succeeds
-// (BE-06). It is idempotent and deliberately independent of the lifecycle
-// Status: paying does not confirm, complete, or cancel anything.
+// (BE-06). A pending paid-service booking becomes confirmed only here, after
+// the gateway charge has been verified server-side.
 func (b *Booking) MarkPaid(paidAt time.Time) {
 	paid := paidAt.UTC()
 	b.PaymentStatus = PaymentPaid
 	b.PaidAt = &paid
+	if b.Status == StatusPendingPayment {
+		b.Status = StatusConfirmed
+	}
+	b.UpdatedAt = paid
 }
 
 // MarkRefunded stamps the denormalized payment state after a refund. The

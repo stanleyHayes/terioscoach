@@ -36,6 +36,7 @@ import { useAction, useResource } from "@/lib/use-resource";
  */
 
 const statusVariant: Record<ClientBooking["status"], BadgeVariant> = {
+  pending_payment: "warning",
   confirmed: "info",
   completed: "success",
   cancelled: "neutral",
@@ -43,6 +44,7 @@ const statusVariant: Record<ClientBooking["status"], BadgeVariant> = {
 };
 
 const statusLabel: Record<ClientBooking["status"], string> = {
+  pending_payment: "Payment required",
   confirmed: "Confirmed",
   completed: "Completed",
   cancelled: "Cancelled",

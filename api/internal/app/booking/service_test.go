@@ -51,7 +51,7 @@ var (
 func seedBookable(t *testing.T, rig testRig) (catalog.Service, time.Time) {
 	t.Helper()
 	ctx := context.Background()
-	svc, err := catalog.NewService("prac-1", "Massage", "", 60, 25000, "GHS", 1, fixedNow)
+	svc, err := catalog.NewService("prac-1", "Massage", "", 60, 0, "USD", 1, fixedNow)
 	if err != nil {
 		t.Fatalf("domain NewService: %v", err)
 	}
@@ -93,6 +93,25 @@ func TestCreateBookingHappyPath(t *testing.T) {
 	}
 	if !b.EndAt.Equal(start.Add(time.Hour)) {
 		t.Errorf("endAt = %v, want startAt+60m", b.EndAt)
+	}
+}
+
+func TestPaidServiceWaitsForPaymentAndDoesNotOccupyTheCalendarSlot(t *testing.T) {
+	rig := newTestRig()
+	svc, day := seedBookable(t, rig)
+	svc.PriceKobo = 25000
+	if _, err := rig.services.Update(context.Background(), svc); err != nil {
+		t.Fatalf("price service: %v", err)
+	}
+	start := day.Add(9 * time.Hour)
+
+	first := createBooking(t, rig, "client-1", svc.ID, start)
+	if first.Status != booking.StatusPendingPayment {
+		t.Fatalf("status = %q, want pending_payment", first.Status)
+	}
+	second := createBooking(t, rig, "client-2", svc.ID, start)
+	if second.Status != booking.StatusPendingPayment {
+		t.Fatalf("second status = %q, want pending_payment", second.Status)
 	}
 }
 

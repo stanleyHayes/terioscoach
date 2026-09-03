@@ -135,7 +135,7 @@ func TestPaymentStamp(t *testing.T) {
 	if b.PaymentStatus != PaymentPaid || b.PaidAt == nil || !b.PaidAt.Equal(paidAt) {
 		t.Errorf("after MarkPaid: %+v, want paid with timestamp", b)
 	}
-	// The lifecycle status is untouched by the payment stamp.
+	// A legacy/already-confirmed booking stays confirmed.
 	if b.Status != StatusConfirmed {
 		t.Errorf("status = %q, want still confirmed", b.Status)
 	}
@@ -150,5 +150,17 @@ func TestPaymentStamp(t *testing.T) {
 	}
 	if b.PaidAt == nil {
 		t.Error("paidAt should be retained as history after refund")
+	}
+}
+
+func TestPaymentRequiredBookingConfirmsOnlyAfterPayment(t *testing.T) {
+	b := newTestBooking(t)
+	b.RequirePayment()
+	if b.Status != StatusPendingPayment {
+		t.Fatalf("status = %q, want pending_payment", b.Status)
+	}
+	b.MarkPaid(testNow.Add(time.Hour))
+	if b.Status != StatusConfirmed || b.PaymentStatus != PaymentPaid {
+		t.Fatalf("after payment = %+v, want confirmed and paid", b)
 	}
 }

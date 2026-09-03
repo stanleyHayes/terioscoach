@@ -30,10 +30,9 @@ import { cn } from "@/lib/cn";
  * step 2 pick a time (SlotPicker, visitor timezone) → step 3 review & confirm.
  * Confirming requires an account: guests are sent to /login?next=… with the
  * chosen service + slot in the URL and land back here signed in, state intact.
- * Confirming creates the booking and then hands off to Stripe's hosted
- * checkout. The two are deliberately separate: the booking is confirmed the
- * moment it is created, so a failed or abandoned checkout costs the client
- * their money, never their slot. They can pay from the portal afterwards.
+ * Confirming a paid service creates a payment-pending record and then hands
+ * off to Stripe. The appointment is confirmed only by the verified payment
+ * webhook. Free services are confirmed immediately without opening Stripe.
  */
 
 type Step = "service" | "time" | "review" | "done";
@@ -76,8 +75,8 @@ function BookingFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
-  // Set when the booking succeeded but checkout could not be opened. The
-  // session is held either way; this only changes what the client is told
+  // Set when the payment request exists but checkout could not be opened. The
+  // requested time is not confirmed; this changes what the client is told
   // and which button leads.
   const [checkoutDeferred, setCheckoutDeferred] = useState(false);
   const initializedRef = useRef(false);
@@ -160,11 +159,9 @@ function BookingFlow() {
       setBooking(created);
       setStep("done");
 
-      // Hand off to Stripe. The booking already exists and is confirmed,
-      // so nothing here may undo it: if checkout cannot be opened, the
-      // client keeps the slot and pays from the portal instead. Failing the
-      // whole booking because a payment provider was briefly unreachable
-      // would be the worse outcome by far.
+      // Paid services remain pending and non-blocking until Stripe's verified
+      // webhook confirms them. If checkout cannot open, the client can retry
+      // from Payments, but the requested time has not been reserved.
       if (service.priceKobo > 0) {
         try {
           const checkoutUrl = await paymentsApi.initialize(
@@ -235,7 +232,7 @@ function BookingFlow() {
           <div className="flex flex-col items-center py-4 text-center">
             <Badge tone={meta.tone}>{meta.label}</Badge>
             <h1 className="mt-4 font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink">
-              You&rsquo;re booked
+              {booking.status === "pending_payment" ? "Payment required" : "You’re booked"}
             </h1>
             <p className="mt-3 text-base leading-[1.6] text-ink-muted">
               {service.name}
@@ -251,17 +248,17 @@ function BookingFlow() {
               Times shown in {gmtOffsetLabel(tz)} ({tz})
             </p>
             <p className="mt-4 max-w-[48ch] text-sm leading-[1.55] text-ink-muted">
-              A confirmation is on its way to your inbox. Your session lives in
-              your portal now — you can reschedule or cancel there up to 24
-              hours before.
+              {booking.status === "pending_payment"
+                ? "Your appointment is not booked yet. It will only be confirmed and placed on the practice calendar after payment is successful."
+                : "A confirmation is on its way to your inbox. Your session lives in your portal now — you can reschedule or cancel there up to 24 hours before."}
             </p>
             {checkoutDeferred ? (
               <p
                 role="status"
                 className="mt-4 max-w-[48ch] rounded-md bg-warning-bg px-4 py-3 text-sm leading-[1.55] text-warning-ink"
               >
-                We couldn&rsquo;t open the payment page just now. Your session is
-                held — you can pay from your portal whenever you&rsquo;re ready.
+                We couldn&rsquo;t open the payment page just now. This time is not
+                booked yet — open Payments to try again.
               </p>
             ) : null}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -449,7 +446,7 @@ function BookingFlow() {
           {status !== "authenticated" ? (
             <p className="text-sm leading-[1.55] text-ink-muted">
               You&rsquo;ll sign in — or create your account in a minute — to
-              confirm. Your time stays selected.
+              continue. Your time stays selected.
             </p>
           ) : null}
 
@@ -458,11 +455,10 @@ function BookingFlow() {
               <ArrowLeft size={16} aria-hidden="true" />
               Back
             </Button>
-            {/* Books the session, then hands off to Stripe checkout. The
-                slot is held from the moment the booking is created, so an
-                abandoned or failed checkout never costs it. */}
+            {/* Paid services request the time and hand off to Stripe; only
+                the verified webhook confirms and reserves the slot. */}
             <Button loading={submitting} onClick={handleConfirm}>
-              Confirm booking
+              {service.priceKobo > 0 ? "Continue to payment" : "Confirm booking"}
             </Button>
           </div>
         </div>

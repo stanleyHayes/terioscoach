@@ -27,6 +27,7 @@ func job(kind notification.Kind, data map[string]string) notification.Job {
 // template, a subject, and a body that actually got filled in.
 func TestRendersEveryKind(t *testing.T) {
 	kinds := []notification.Kind{
+		notification.KindBookingPaymentRequired,
 		notification.KindBookingConfirmation,
 		notification.KindSessionReminder,
 		notification.KindBookingRescheduled,
@@ -42,6 +43,7 @@ func TestRendersEveryKind(t *testing.T) {
 				"serviceName": "Deep Tissue Massage",
 				"startTime":   "Thursday 20 August, 09:00",
 				"timezone":    "Africa/Accra",
+				"paymentUrl":  "https://checkout.stripe.com/c/pay/test",
 			}))
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -59,6 +61,20 @@ func TestRendersEveryKind(t *testing.T) {
 				t.Error("copyright year not substituted")
 			}
 		})
+	}
+}
+
+func TestPaymentRequiredExplainsThatTheSlotIsNotBooked(t *testing.T) {
+	msg, err := testRenderer().Render(job(notification.KindBookingPaymentRequired, map[string]string{
+		"clientName": "Ama", "serviceName": "Coaching", "paymentUrl": "https://checkout.stripe.com/c/pay/test",
+	}))
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, required := range []string{"not booked yet", "only be confirmed", "https://checkout.stripe.com/c/pay/test"} {
+		if !strings.Contains(msg.HTML, required) {
+			t.Errorf("payment email is missing %q", required)
+		}
 	}
 }
 

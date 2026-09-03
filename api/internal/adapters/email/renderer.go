@@ -24,23 +24,25 @@ var templateFS embed.FS
 
 // templateFiles maps each message kind to its brand template.
 var templateFiles = map[notification.Kind]string{
-	notification.KindBookingConfirmation: "templates/booking-confirmation.html",
-	notification.KindSessionReminder:     "templates/session-reminder.html",
-	notification.KindBookingRescheduled:  "templates/booking-rescheduled.html",
-	notification.KindBookingCancelled:    "templates/booking-cancelled.html",
-	notification.KindFeedbackShared:      "templates/feedback-shared.html",
-	notification.KindEnquiryReceived:     "templates/enquiry-notification.html",
+	notification.KindBookingPaymentRequired: "templates/booking-payment-required.html",
+	notification.KindBookingConfirmation:    "templates/booking-confirmation.html",
+	notification.KindSessionReminder:        "templates/session-reminder.html",
+	notification.KindBookingRescheduled:     "templates/booking-rescheduled.html",
+	notification.KindBookingCancelled:       "templates/booking-cancelled.html",
+	notification.KindFeedbackShared:         "templates/feedback-shared.html",
+	notification.KindEnquiryReceived:        "templates/enquiry-notification.html",
 }
 
 // subjects are the subject lines, in the brand voice. The reminder's is
 // completed with the job's own timeUntil value.
 var subjects = map[notification.Kind]string{
-	notification.KindBookingConfirmation: "Your session is confirmed",
-	notification.KindSessionReminder:     "Reminder: your session is coming up",
-	notification.KindBookingRescheduled:  "Your session has been rescheduled",
-	notification.KindBookingCancelled:    "Your session has been cancelled",
-	notification.KindFeedbackShared:      "Notes and resources from your session",
-	notification.KindEnquiryReceived:     "New enquiry from your website",
+	notification.KindBookingPaymentRequired: "Payment required to confirm your session",
+	notification.KindBookingConfirmation:    "Your session is confirmed",
+	notification.KindSessionReminder:        "Reminder: your session is coming up",
+	notification.KindBookingRescheduled:     "Your session has been rescheduled",
+	notification.KindBookingCancelled:       "Your session has been cancelled",
+	notification.KindFeedbackShared:         "Notes and resources from your session",
+	notification.KindEnquiryReceived:        "New enquiry from your website",
 }
 
 // Renderer produces brand messages from jobs.
@@ -152,6 +154,9 @@ func plainText(job notification.Job, data map[string]string) string {
 		if value := data[key]; value != "" {
 			fmt.Fprintf(&b, "%s: %s (%s)\n", label, value, data["timezone"])
 		}
+	}
+	if link := data["paymentUrl"]; link != "" {
+		fmt.Fprintf(&b, "\nYour appointment is not booked yet. It will only be confirmed and placed on the practice calendar after payment is successful.\n\nComplete payment:\n%s\n", link)
 	}
 	if message := data["message"]; message != "" {
 		fmt.Fprintf(&b, "\n%s\n", message)

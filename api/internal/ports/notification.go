@@ -62,6 +62,8 @@ type BookingNotice struct {
 	PreviousStartAt time.Time
 	// Timezone is the IANA name the times are presented in.
 	Timezone string
+	// PaymentURL is populated only for the payment-required message.
+	PaymentURL string
 }
 
 // FeedbackNotice is what the post-session feedback email needs.
@@ -95,6 +97,7 @@ type EnquiryNotice struct {
 // durability and for reporting its own failures (see notifications.Service,
 // which reports through an injected sink).
 type Notifier interface {
+	BookingPaymentRequired(ctx context.Context, notice BookingNotice)
 	BookingConfirmed(ctx context.Context, notice BookingNotice)
 	BookingRescheduled(ctx context.Context, notice BookingNotice)
 	BookingCancelled(ctx context.Context, notice BookingNotice)

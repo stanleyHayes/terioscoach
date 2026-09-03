@@ -25,7 +25,7 @@ export interface ClientSummary {
   lastSessionAt?: string;
 }
 
-export type BookingStatus = "confirmed" | "cancelled" | "completed" | "no_show";
+export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "completed" | "no_show";
 
 export interface ClientBooking {
   id: string;

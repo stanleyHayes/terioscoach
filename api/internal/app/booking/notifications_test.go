@@ -57,7 +57,7 @@ func seedClient(t *testing.T, rig notifiedRig, email, name string) string {
 func seedBookableFor(t *testing.T, rig notifiedRig) (catalog.Service, time.Time) {
 	t.Helper()
 	ctx := context.Background()
-	svc, err := catalog.NewService("prac-1", "Deep Tissue Massage", "", 60, 25000, "GHS", 1, fixedNow)
+	svc, err := catalog.NewService("prac-1", "Deep Tissue Massage", "", 60, 0, "USD", 1, fixedNow)
 	if err != nil {
 		t.Fatalf("domain NewService: %v", err)
 	}

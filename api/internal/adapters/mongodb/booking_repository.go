@@ -129,6 +129,11 @@ func (r *BookingRepository) ListByPractitioner(ctx context.Context, practitioner
 		return nil, nil
 	}
 	m := bson.M{"practitionerId": oid}
+	// Payment-pending records belong in the client's payment flow, not on the
+	// practitioner calendar or operational booking lists.
+	if filter.Status == "" && !filter.IncludePendingPayment {
+		m["status"] = bson.M{"$ne": string(booking.StatusPendingPayment)}
+	}
 	if filter.From != nil || filter.To != nil {
 		start := bson.M{}
 		if filter.From != nil {

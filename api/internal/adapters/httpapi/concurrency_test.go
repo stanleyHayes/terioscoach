@@ -240,7 +240,7 @@ func seedConcurrencySchedule(t *testing.T, rig journeyRig) (string, time.Time) {
 		} `json:"service"`
 	}
 	rig.mustJSON(t, http.MethodPost, "/v1/services", map[string]any{
-		"name": "Massage", "durationMinutes": 60, "priceKobo": 25000,
+		"name": "Massage", "durationMinutes": 60, "priceKobo": 0,
 	}, rig.practitionerToken, http.StatusCreated, &created)
 
 	day := time.Now().UTC().Add(7 * 24 * time.Hour).Truncate(24 * time.Hour)

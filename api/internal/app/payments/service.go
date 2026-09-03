@@ -27,7 +27,17 @@ type Service struct {
 	services ports.ServiceRepository
 	users    ports.UserRepository
 	gateway  ports.PaymentGateway
+	notifier ports.Notifier
 	now      func() time.Time
+}
+
+// Option customizes payment orchestration.
+type Option func(*Service)
+
+// WithNotifications sends the payment link after checkout initialization and
+// the real confirmation only after Stripe verifies the charge.
+func WithNotifications(notifier ports.Notifier) Option {
+	return func(s *Service) { s.notifier = notifier }
 }
 
 // Compile-time check: Service satisfies the inbound port.
@@ -43,8 +53,9 @@ func NewService(
 	services ports.ServiceRepository,
 	users ports.UserRepository,
 	gateway ports.PaymentGateway,
+	opts ...Option,
 ) *Service {
-	return &Service{
+	s := &Service{
 		payments: payments,
 		bookings: bookings,
 		services: services,
@@ -52,10 +63,15 @@ func NewService(
 		gateway:  gateway,
 		now:      func() time.Time { return time.Now().UTC() },
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
-// InitializePayment starts a hosted checkout for the caller's own confirmed
-// booking. Exactly one payment record exists per booking: a pending or
+// InitializePayment starts a hosted checkout for the caller's own unpaid
+// booking request (and tolerates legacy confirmed/unpaid records). Exactly one
+// payment record exists per booking: a pending or
 // failed one is re-initialized with a fresh reference (abandoned checkout),
 // a successful one refuses with ErrAlreadyPaid.
 func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, bookingID string) (ports.Initialization, error) {
@@ -67,7 +83,7 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 		// Cross-owner access is reported as not-found — no existence leak.
 		return ports.Initialization{}, booking.ErrBookingNotFound
 	}
-	if b.Status != booking.StatusConfirmed {
+	if b.Status != booking.StatusPendingPayment && b.Status != booking.StatusConfirmed {
 		return ports.Initialization{}, booking.ErrInvalidTransition
 	}
 
@@ -112,7 +128,9 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 		if err != nil {
 			return ports.Initialization{}, err
 		}
-		return ports.Initialization{Payment: p, AuthorizationURL: init.AuthorizationURL}, nil
+		result := ports.Initialization{Payment: p, AuthorizationURL: init.AuthorizationURL}
+		s.notifyPaymentRequired(ctx, b, user.Name, user.Email, svc.Name, result.AuthorizationURL)
+		return result, nil
 	}
 
 	p, err := payment.New(bookingID, id.UserID, svc.PriceKobo, svc.Currency, init.Reference, s.now())
@@ -123,7 +141,19 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 	if err != nil {
 		return ports.Initialization{}, err
 	}
-	return ports.Initialization{Payment: p, AuthorizationURL: init.AuthorizationURL}, nil
+	result := ports.Initialization{Payment: p, AuthorizationURL: init.AuthorizationURL}
+	s.notifyPaymentRequired(ctx, b, user.Name, user.Email, svc.Name, result.AuthorizationURL)
+	return result, nil
+}
+
+func (s *Service) notifyPaymentRequired(ctx context.Context, b booking.Booking, clientName, clientEmail, serviceName, paymentURL string) {
+	if s.notifier == nil {
+		return
+	}
+	s.notifier.BookingPaymentRequired(ctx, ports.BookingNotice{
+		BookingID: b.ID, ClientName: clientName, ClientEmail: clientEmail,
+		ServiceName: serviceName, StartAt: b.StartAt, PaymentURL: paymentURL,
+	})
 }
 
 // stripeWebhookEvent is the minimal shape read from a Stripe delivery —
@@ -171,7 +201,11 @@ func (s *Service) confirmCharge(ctx context.Context, reference string) error {
 		return err
 	}
 	if p.Status == payment.StatusSuccess {
-		return nil // idempotent: repeat delivery of an already-recorded charge
+		paidAt := s.now()
+		if p.PaidAt != nil {
+			paidAt = *p.PaidAt
+		}
+		return s.confirmBooking(ctx, &p, paidAt)
 	}
 	if p.Status != payment.StatusPending {
 		return nil
@@ -201,7 +235,53 @@ func (s *Service) confirmCharge(ctx context.Context, reference string) error {
 	if _, err := s.payments.Update(ctx, p); err != nil {
 		return err
 	}
-	return s.stampBooking(ctx, p.BookingID, func(b *booking.Booking) { b.MarkPaid(paidAt) })
+	return s.confirmBooking(ctx, &p, paidAt)
+}
+
+func (s *Service) confirmBooking(ctx context.Context, p *payment.Payment, paidAt time.Time) error {
+	b, err := s.bookings.FindByID(ctx, p.BookingID)
+	if errors.Is(err, booking.ErrBookingNotFound) {
+		return nil
+	}
+	if err != nil || (b.Status == booking.StatusConfirmed && b.PaymentStatus == booking.PaymentPaid) {
+		return err
+	}
+	b.MarkPaid(paidAt)
+	updated, err := s.bookings.Update(ctx, b)
+	if errors.Is(err, booking.ErrSlotUnavailable) {
+		// Another checkout for the same open time completed first. The user's
+		// requirement deliberately leaves unpaid requests non-blocking, so this
+		// race is possible; compensate immediately rather than keep money for a
+		// session that cannot be placed on the calendar.
+		if refundErr := s.gateway.Refund(ctx, p.ProviderReference); refundErr != nil {
+			return refundErr
+		}
+		if refundErr := p.MarkRefunded(s.now()); refundErr != nil {
+			return refundErr
+		}
+		if _, refundErr := s.payments.Update(ctx, *p); refundErr != nil {
+			return refundErr
+		}
+		if cancelErr := b.Cancel(s.now()); cancelErr == nil {
+			_, _ = s.bookings.Update(ctx, b)
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	b = updated
+	if s.notifier != nil {
+		user, userErr := s.users.FindByID(ctx, b.ClientID)
+		svc, serviceErr := s.services.FindByID(ctx, b.ServiceID)
+		if userErr == nil && serviceErr == nil {
+			s.notifier.BookingConfirmed(ctx, ports.BookingNotice{
+				BookingID: b.ID, ClientName: user.Name, ClientEmail: user.Email,
+				ServiceName: svc.Name, StartAt: b.StartAt,
+			})
+		}
+	}
+	return nil
 }
 
 // stampBooking applies the denormalized payment display state to the
@@ -229,7 +309,7 @@ func (s *Service) ListMine(ctx context.Context, clientID string) ([]payment.Paym
 // payments collection carries no practitionerId (the index design is
 // fixed), so the view joins through the practitioner's booking ids.
 func (s *Service) ListForPractitioner(ctx context.Context, practitionerID string, filter ports.PaymentFilter) ([]payment.Payment, error) {
-	bookings, err := s.bookings.ListByPractitioner(ctx, practitionerID, ports.BookingFilter{})
+	bookings, err := s.bookings.ListByPractitioner(ctx, practitionerID, ports.BookingFilter{IncludePendingPayment: true})
 	if err != nil {
 		return nil, err
 	}

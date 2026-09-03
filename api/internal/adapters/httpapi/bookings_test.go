@@ -82,7 +82,7 @@ type bookingTestBody struct {
 func seedBookableSlot(t *testing.T, rig bookingTestRig) (string, time.Time) {
 	t.Helper()
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/services", map[string]any{
-		"name": "Massage", "durationMinutes": 60, "priceKobo": 25000,
+		"name": "Massage", "durationMinutes": 60, "priceKobo": 0,
 	}, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create service status = %d, body %s", rec.Code, rec.Body.String())

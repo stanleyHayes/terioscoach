@@ -12,9 +12,9 @@ import BookPage from "./page";
  * `/v1/payments/initialize` thoroughly, and this page — the only thing that
  * would ever call it after a booking — had no tests at all.
  *
- * The rule the tests below pin down is that **the booking and the payment
- * are separate**. Confirming books the session. Checkout is what happens
- * next, and if it fails the client keeps the slot.
+ * The rule the tests below pin down is that a paid appointment remains
+ * pending and does not reserve the slot until Stripe confirms payment. Free
+ * services still confirm immediately.
  */
 
 const listServices = vi.hoisted(() => vi.fn());
@@ -91,7 +91,7 @@ const booking = {
   serviceId: "service-1",
   startAt: "2026-09-01T09:00:00.000Z",
   endAt: "2026-09-01T10:00:00.000Z",
-  status: "confirmed" as const,
+  status: "pending_payment" as const,
 };
 
 /** Drives the flow to the point of confirming. */
@@ -103,7 +103,7 @@ async function confirmABooking() {
   fireEvent.click(await screen.findByRole("button", { name: /pick 09:00/i }));
   // Picking a slot arms Continue; it does not skip the review step.
   fireEvent.click(await screen.findByRole("button", { name: /^continue$/i }));
-  fireEvent.click(await screen.findByRole("button", { name: /confirm booking/i }));
+  fireEvent.click(await screen.findByRole("button", { name: /confirm booking|continue to payment/i }));
 }
 
 describe("Booking flow → checkout", () => {
@@ -156,6 +156,7 @@ describe("Booking flow → checkout", () => {
 
   it("confirms a free introductory session without opening Stripe", async () => {
 	listServices.mockResolvedValueOnce([{ ...service, priceKobo: 0 }]);
+	createBooking.mockResolvedValueOnce({ ...booking, status: "confirmed" });
 
 	await confirmABooking();
 
@@ -182,12 +183,12 @@ describe("Booking flow → checkout", () => {
 
     await confirmABooking();
 
-    // The booking stands. Losing a confirmed slot because a payment
-    // provider was briefly unreachable would be the worse failure.
-    expect(await screen.findByText(/you.re booked/i)).toBeTruthy();
+	// The request remains payable, but it is not called booked or placed on
+	// the calendar before Stripe confirms payment.
+	expect(await screen.findByRole("heading", { name: /payment required/i })).toBeTruthy();
     expect(await screen.findByRole("status")).toHaveProperty(
       "textContent",
-      expect.stringContaining("Your session is held"),
+	  expect.stringContaining("This time is not booked yet"),
     );
     expect(assign).not.toHaveBeenCalled();
   });

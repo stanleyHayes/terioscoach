@@ -199,6 +199,9 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 			return fmt.Errorf("provision service %s: %w", service.name, err)
 		}
 	}
+	if err := migrateUnpaidPricedBookings(ctx, db, owner.ID, now); err != nil {
+		return err
+	}
 
 	// The supplied source describes broad 06:00-22:00 availability. Seed a
 	// conservative weekday baseline; the practitioner can narrow or extend it
@@ -218,6 +221,70 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 		}
 	}
 	slog.Info("production catalog ready", "owner", catalogOwnerEmail, "services", len(productionServices))
+	return nil
+}
+
+// migrateUnpaidPricedBookings removes legacy unpaid appointments from the
+// practitioner calendar. Older releases created priced bookings as confirmed
+// before Stripe payment; paid rows are excluded defensively using both the
+// booking stamp and successful payment records.
+func migrateUnpaidPricedBookings(ctx context.Context, db *mongo.Database, practitionerID bson.ObjectID, now time.Time) error {
+	serviceCursor, err := db.Collection("services").Find(ctx, bson.M{
+		"practitionerId": practitionerID,
+		"priceKobo":      bson.M{"$gt": 0},
+	}, options.Find().SetProjection(bson.M{"_id": 1}))
+	if err != nil {
+		return fmt.Errorf("find priced services: %w", err)
+	}
+	defer func() { _ = serviceCursor.Close(ctx) }()
+	var services []struct {
+		ID bson.ObjectID `bson:"_id"`
+	}
+	if err := serviceCursor.All(ctx, &services); err != nil {
+		return fmt.Errorf("decode priced services: %w", err)
+	}
+	serviceIDs := make([]bson.ObjectID, 0, len(services))
+	for _, service := range services {
+		serviceIDs = append(serviceIDs, service.ID)
+	}
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+
+	paidCursor, err := db.Collection("payments").Find(ctx, bson.M{"status": "success"},
+		options.Find().SetProjection(bson.M{"bookingId": 1}))
+	if err != nil {
+		return fmt.Errorf("find successful payments: %w", err)
+	}
+	defer func() { _ = paidCursor.Close(ctx) }()
+	var paid []struct {
+		BookingID bson.ObjectID `bson:"bookingId"`
+	}
+	if err := paidCursor.All(ctx, &paid); err != nil {
+		return fmt.Errorf("decode successful payments: %w", err)
+	}
+	paidBookingIDs := make([]bson.ObjectID, 0, len(paid))
+	for _, payment := range paid {
+		if !payment.BookingID.IsZero() {
+			paidBookingIDs = append(paidBookingIDs, payment.BookingID)
+		}
+	}
+
+	filter := bson.M{
+		"practitionerId": practitionerID,
+		"serviceId":      bson.M{"$in": serviceIDs},
+		"status":         "confirmed",
+		"paymentStatus":  bson.M{"$ne": "paid"},
+	}
+	if len(paidBookingIDs) > 0 {
+		filter["_id"] = bson.M{"$nin": paidBookingIDs}
+	}
+	result, err := db.Collection("bookings").UpdateMany(ctx, filter,
+		bson.M{"$set": bson.M{"status": "pending_payment", "updatedAt": now}})
+	if err != nil {
+		return fmt.Errorf("migrate unpaid priced bookings: %w", err)
+	}
+	slog.Info("legacy unpaid bookings removed from calendar", "modified", result.ModifiedCount)
 	return nil
 }
 

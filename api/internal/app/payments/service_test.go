@@ -27,6 +27,7 @@ type testRig struct {
 	services *portstest.FakeServiceRepository
 	users    *portstest.FakeUserRepository
 	gateway  *portstest.FakePaymentGateway
+	notifier *portstest.FakeNotifier
 }
 
 func newTestRig() testRig {
@@ -36,8 +37,9 @@ func newTestRig() testRig {
 		services: portstest.NewFakeServiceRepository(),
 		users:    portstest.NewFakeUserRepository(),
 		gateway:  portstest.NewFakePaymentGateway(webhookSecret),
+		notifier: portstest.NewFakeNotifier(),
 	}
-	rig.svc = NewService(rig.payments, rig.bookings, rig.services, rig.users, rig.gateway)
+	rig.svc = NewService(rig.payments, rig.bookings, rig.services, rig.users, rig.gateway, WithNotifications(rig.notifier))
 	rig.svc.now = func() time.Time { return fixedNow }
 	return rig
 }
@@ -63,6 +65,7 @@ func seedBooked(t *testing.T, rig testRig) (identity.Identity, booking.Booking) 
 	if err != nil {
 		t.Fatalf("domain booking New: %v", err)
 	}
+	b.RequirePayment()
 	b, err = rig.bookings.Create(ctx, b)
 	if err != nil {
 		t.Fatalf("seed booking: %v", err)
@@ -126,6 +129,12 @@ func TestInitializeDerivesEverythingServerSide(t *testing.T) {
 	if call.Reference != init.Payment.ProviderReference {
 		t.Errorf("gateway reference %q != stored %q", call.Reference, init.Payment.ProviderReference)
 	}
+	if len(rig.notifier.PaymentRequired) != 1 || rig.notifier.PaymentRequired[0].PaymentURL != init.AuthorizationURL {
+		t.Errorf("payment-required notices = %+v, want checkout URL", rig.notifier.PaymentRequired)
+	}
+	if len(rig.notifier.Confirmed) != 0 {
+		t.Errorf("confirmations before payment = %d, want 0", len(rig.notifier.Confirmed))
+	}
 }
 
 func TestInitializeOwnershipAndIsolation(t *testing.T) {
@@ -169,6 +178,52 @@ func TestInitializeAlreadyPaid(t *testing.T) {
 	}
 	if _, err := rig.svc.InitializePayment(context.Background(), id, b.ID); !errors.Is(err, payment.ErrAlreadyPaid) {
 		t.Errorf("second initialize err = %v, want ErrAlreadyPaid", err)
+	}
+}
+
+func TestSecondPaymentForSameSlotIsRefundedInsteadOfDoubleBooking(t *testing.T) {
+	rig := newTestRig()
+	firstID, first := seedBooked(t, rig)
+
+	secondUser, err := rig.users.Create(context.Background(), mustUser(t, "second@example.com", identity.RoleClient))
+	if err != nil {
+		t.Fatalf("seed second user: %v", err)
+	}
+	second, err := booking.New(secondUser.ID, first.PractitionerID, first.ServiceID, first.StartAt, 60, fixedNow)
+	if err != nil {
+		t.Fatalf("create second booking: %v", err)
+	}
+	second.RequirePayment()
+	second, err = rig.bookings.Create(context.Background(), second)
+	if err != nil {
+		t.Fatalf("store second pending booking: %v", err)
+	}
+
+	firstCheckout := initialize(t, rig, firstID, first.ID)
+	secondCheckout := initialize(t, rig, identity.Identity{UserID: secondUser.ID, Role: identity.RoleClient}, second.ID)
+	if err := deliver(t, rig, chargeSuccessPayload(firstCheckout.Payment.ProviderReference)); err != nil {
+		t.Fatalf("first webhook: %v", err)
+	}
+	if err := deliver(t, rig, chargeSuccessPayload(secondCheckout.Payment.ProviderReference)); err != nil {
+		t.Fatalf("second webhook: %v", err)
+	}
+
+	losingPayment, err := rig.payments.FindByID(context.Background(), secondCheckout.Payment.ID)
+	if err != nil {
+		t.Fatalf("find losing payment: %v", err)
+	}
+	losingBooking, err := rig.bookings.FindByID(context.Background(), second.ID)
+	if err != nil {
+		t.Fatalf("find losing booking: %v", err)
+	}
+	if losingPayment.Status != payment.StatusRefunded || losingBooking.Status != booking.StatusCancelled {
+		t.Fatalf("losing checkout = payment %q, booking %q; want refunded and cancelled", losingPayment.Status, losingBooking.Status)
+	}
+	if got := rig.gateway.RefundCalls; len(got) != 1 || got[0] != secondCheckout.Payment.ProviderReference {
+		t.Fatalf("refund calls = %v, want losing Stripe reference", got)
+	}
+	if len(rig.notifier.Confirmed) != 1 || rig.notifier.Confirmed[0].BookingID != first.ID {
+		t.Fatalf("confirmations = %+v, want only the slot winner", rig.notifier.Confirmed)
 	}
 }
 

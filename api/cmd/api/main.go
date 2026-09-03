@@ -123,7 +123,7 @@ func run() error {
 			httpapi.WithCatalog(buildCatalogService(db), authService),
 			httpapi.WithScheduling(buildSchedulingService(db), authService),
 			httpapi.WithBooking(buildBookingService(db, notifier), authService),
-			httpapi.WithPayments(buildPaymentService(cfg, db), authService),
+			httpapi.WithPayments(buildPaymentService(cfg, db, notifier), authService),
 			httpapi.WithClients(buildClientService(db), authService),
 			httpapi.WithNotes(buildNoteService(db, notifier), authService),
 			httpapi.WithContent(buildContentService(db), authService),
@@ -292,7 +292,7 @@ func buildSchedulingService(db *mongo.Database) *schedulingapp.Service {
 // interface at the call site makes the interface non-nil and mounts handlers
 // whose receiver panics. Keeping the nil conversion here preserves the
 // intended 503 unavailable route.
-func buildPaymentService(cfg config.Config, db *mongo.Database) ports.PaymentService {
+func buildPaymentService(cfg config.Config, db *mongo.Database, notifier ports.Notifier) ports.PaymentService {
 	// The webhook is the only payment-confirmation path, so a missing
 	// signing secret means payments could never succeed — treat it as
 	// unconfigured, like a missing API key.
@@ -307,6 +307,7 @@ func buildPaymentService(cfg config.Config, db *mongo.Database) ports.PaymentSer
 		mongodb.NewServiceRepository(db),
 		mongodb.NewUserRepository(db),
 		gateway,
+		paymentsapp.WithNotifications(notifier),
 	)
 }
 

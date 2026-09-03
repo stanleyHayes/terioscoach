@@ -34,7 +34,7 @@ export interface AvailabilitySlots {
   slots: Slot[];
 }
 
-export type BookingStatus = "confirmed" | "cancelled" | "completed" | "no_show";
+export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "completed" | "no_show";
 
 export interface Booking {
   id: string;

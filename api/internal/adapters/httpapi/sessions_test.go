@@ -330,7 +330,7 @@ func TestTicketIsSingleUse(t *testing.T) {
 func TestSocketRefusesBadTickets(t *testing.T) {
 	rig := newSessionTestRig(t)
 	bookingID := seedSession(t, rig, 5*time.Minute, domainbooking.StatusConfirmed)
-	otherBooking := seedSession(t, rig, 5*time.Minute, domainbooking.StatusConfirmed)
+	otherBooking := seedSession(t, rig, 6*time.Minute, domainbooking.StatusConfirmed)
 	_, access := join(t, rig, bookingID, rig.clientToken)
 
 	for name, tc := range map[string]struct{ booking, ticket string }{

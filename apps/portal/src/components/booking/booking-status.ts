@@ -5,6 +5,7 @@ import type { BookingStatus } from "@/lib/bookings";
  * pairs; contract §Bookings statuses). Shared by the portal overview,
  * sessions page, and booking confirmation. */
 export const bookingStatusMeta: Record<BookingStatus, { tone: BadgeTone; label: string }> = {
+  pending_payment: { tone: "warning", label: "Payment required" },
   confirmed: { tone: "success", label: "Confirmed" },
   completed: { tone: "info", label: "Completed" },
   cancelled: { tone: "danger", label: "Cancelled" },

@@ -633,6 +633,9 @@ func (f *FakeBookingRepository) ListByPractitioner(_ context.Context, practition
 		if b.PractitionerID != practitionerID {
 			continue
 		}
+		if filter.Status == "" && !filter.IncludePendingPayment && b.Status == booking.StatusPendingPayment {
+			continue
+		}
 		if filter.From != nil && b.StartAt.Before(*filter.From) {
 			continue
 		}
@@ -1136,17 +1139,24 @@ func (f *FakeEmailRenderer) Render(job notification.Job) (ports.EmailMessage, er
 // FakeNotifier records what the other slices announced, so their tests can
 // assert on the notice without a mail provider anywhere in sight.
 type FakeNotifier struct {
-	mu          sync.Mutex
-	Confirmed   []ports.BookingNotice
-	Rescheduled []ports.BookingNotice
-	Cancelled   []ports.BookingNotice
-	Feedback    []ports.FeedbackNotice
-	Enquiries   []ports.EnquiryNotice
+	mu              sync.Mutex
+	PaymentRequired []ports.BookingNotice
+	Confirmed       []ports.BookingNotice
+	Rescheduled     []ports.BookingNotice
+	Cancelled       []ports.BookingNotice
+	Feedback        []ports.FeedbackNotice
+	Enquiries       []ports.EnquiryNotice
 }
 
 var _ ports.Notifier = (*FakeNotifier)(nil)
 
 func NewFakeNotifier() *FakeNotifier { return &FakeNotifier{} }
+
+func (f *FakeNotifier) BookingPaymentRequired(_ context.Context, notice ports.BookingNotice) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.PaymentRequired = append(f.PaymentRequired, notice)
+}
 
 func (f *FakeNotifier) BookingConfirmed(_ context.Context, notice ports.BookingNotice) {
 	f.mu.Lock()
