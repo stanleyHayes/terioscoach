@@ -373,8 +373,7 @@
   .terios-record-card:hover { transform: translate3d(0,-3px,0); border-color: var(--eucalyptus-200); box-shadow: 0 20px 60px rgba(31,41,34,.08); }
 }
 @media (max-width: 639px) {
-  .terios-choice-card { border-radius: 1.35rem 2.2rem 1.35rem 1.35rem; grid-template-columns: 3.25rem minmax(0,1fr); }
-  .terios-choice-index { grid-row: 1; padding: 1.25rem .5rem; }
+  .terios-choice-card { border-radius: 1.35rem 2.2rem 1.35rem 1.35rem; grid-template-columns: minmax(0,1fr); }
   .terios-choice-card > :last-child { grid-column: 1 / -1; }
 }
 .terios-route-stage main a:not([class*="rounded"]):not([class*="bg-"]):not(.terios-button) {

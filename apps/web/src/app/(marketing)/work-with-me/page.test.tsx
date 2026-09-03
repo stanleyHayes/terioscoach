@@ -108,6 +108,21 @@ describe("Work With Me page", () => {
     const card = marker.closest("[aria-current]");
     expect(card).not.toBeNull();
     expect(within(card as HTMLElement).getByText("Nursing consultation")).toBeTruthy();
+    const choose = within(card as HTMLElement).getByRole("link", { name: /choose/i });
+    expect(choose.className).toContain("!bg-sand-0");
+    expect(choose.className).toContain("!text-eucalyptus-950");
+    expect(card?.querySelector("img")?.parentElement?.className).toContain("aspect-[16/10]");
+    expect(card?.className).toContain("lg:grid-cols-");
+  });
+
+  it("keeps breathing room between the page introduction and portrait", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: services }));
+
+    await renderPage(Promise.resolve({}));
+
+    const portrait = screen.getByAltText(/founder of terios wellness/i);
+    const sectionContainer = portrait.closest("section")?.firstElementChild;
+    expect(sectionContainer?.className).toContain("pt-8");
   });
 
   it("highlights nothing when ?service= is absent or unknown", async () => {

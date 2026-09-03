@@ -322,14 +322,14 @@ function BookingFlow() {
                 aria-checked={item.id === serviceId}
                 onClick={() => chooseService(item)}
                 className={cn(
-                  "terios-choice-card group relative grid w-full overflow-hidden border text-left sm:grid-cols-[8rem_minmax(0,1fr)_auto]",
+                  "terios-choice-card group relative grid w-full overflow-hidden border text-left lg:grid-cols-[14rem_minmax(0,1fr)_auto]",
                   item.id === serviceId
                     ? "is-selected border-eucalyptus-800 bg-eucalyptus-900 text-sand-0"
                     : "border-border/80 bg-surface-raised text-ink",
                 )}
               >
-                <span className="relative min-h-32 overflow-hidden bg-eucalyptus-50" aria-hidden="true">
-                  {item.imageUrl ? <Image src={item.imageUrl} alt="" fill unoptimized={item.imageUrl.startsWith("http")} sizes="128px" className="object-cover" /> : null}
+                <span className="relative aspect-[16/10] overflow-hidden bg-eucalyptus-50 lg:aspect-auto lg:min-h-52" aria-hidden="true">
+                  {item.imageUrl ? <Image src={item.imageUrl} alt="" fill unoptimized={item.imageUrl.startsWith("http")} sizes="(min-width: 1024px) 224px, 94vw" className="object-cover object-center" /> : null}
                   <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-950/70 px-2 py-1 font-mono text-[10px] text-sand-0">{String(index + 1).padStart(2, "0")}</span>
                 </span>
                 <span className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
@@ -350,7 +350,7 @@ function BookingFlow() {
                     {formatDuration(item.durationMinutes)}
                   </span>
                 </span>
-                <span className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:border-l sm:px-6 sm:py-7 group-[.is-selected]:border-white/15">
+                <span className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 lg:flex-col lg:items-end lg:justify-between lg:border-t-0 lg:border-l lg:px-6 lg:py-7 group-[.is-selected]:border-white/15">
                   <span className="font-display text-xl font-medium tabular-nums">
                     {formatMoney(item.priceKobo, item.currency)}
                   </span>
