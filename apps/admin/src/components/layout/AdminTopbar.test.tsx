@@ -6,6 +6,7 @@ const pathname = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ usePathname: pathname }));
 vi.mock("./AdminNotificationCenter", () => ({ AdminNotificationCenter: () => <button>Notifications</button> }));
+vi.mock("./PracticeSearch", () => ({ PracticeSearch: () => <button>Find clients and records</button> }));
 
 describe("AdminTopbar", () => {
   beforeEach(() => {

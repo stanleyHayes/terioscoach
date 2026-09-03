@@ -10,7 +10,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { PageHelpDialog } from "@/components/help/PageHelpDialog";
 import { adminHelpForPath } from "@/lib/help";
 import { AdminNotificationCenter } from "./AdminNotificationCenter";
+import { PracticeSearch } from "./PracticeSearch";
 
 export function AdminTopbar({
   userName,
@@ -91,16 +91,7 @@ export function AdminTopbar({
           </div>
         </div>
         <div className="hidden max-w-md flex-1 px-8 md:block">
-          <Link
-            href="/clients"
-            className="flex h-10 items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 text-sm text-ink-muted hover:border-border-strong"
-          >
-            <Search size={16} />
-            <span className="flex-1">Find clients and records</span>
-            <kbd className="rounded border border-border bg-surface-raised px-1.5 py-0.5 text-[10px]">
-              ⌘K
-            </kbd>
-          </Link>
+          <PracticeSearch />
         </div>
         <div className="flex items-center gap-1">
           <AdminNotificationCenter />
