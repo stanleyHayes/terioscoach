@@ -183,6 +183,55 @@ export const notesApi = {
   },
 };
 
+export interface SessionRecording {
+  id: string;
+  bookingId: string;
+  clientId: string;
+  practitionerId: string;
+  contentType: string;
+  url: string;
+  bytes: number;
+  durationSec: number;
+  storageLocation: string;
+  retainUntil: string;
+  createdAt: string;
+}
+
+export const recordingsApi = {
+  async list(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    bookingId: string,
+  ): Promise<SessionRecording[]> {
+    const { items } = await authedRequest<{ items: SessionRecording[] }>(
+      `/v1/bookings/${bookingId}/recordings`,
+      session,
+      callbacks,
+    );
+    return items;
+  },
+
+  async create(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    bookingId: string,
+    input: {
+      contentType: string;
+      dataUrl: string;
+      bytes: number;
+      durationSec: number;
+    },
+  ): Promise<SessionRecording> {
+    const { recording } = await authedRequest<{ recording: SessionRecording }>(
+      `/v1/bookings/${bookingId}/recordings`,
+      session,
+      callbacks,
+      { method: "POST", body: input },
+    );
+    return recording;
+  },
+};
+
 /** Splits a client's bookings for the record view: what is still ahead, and
  * what has already happened (most recent first). */
 export function splitClientBookings(bookings: ClientBooking[], now = new Date()) {

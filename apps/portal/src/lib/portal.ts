@@ -279,6 +279,33 @@ export const notesApi = {
   },
 };
 
+export interface SessionRecording {
+  id: string;
+  bookingId: string;
+  contentType: string;
+  url: string;
+  bytes: number;
+  durationSec: number;
+  storageLocation: string;
+  retainUntil: string;
+  createdAt: string;
+}
+
+export const recordingsApi = {
+  async list(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    bookingId: string,
+  ): Promise<SessionRecording[]> {
+    const { items } = await authedRequest<{ items: SessionRecording[] }>(
+      `/v1/bookings/${bookingId}/recordings`,
+      session,
+      callbacks,
+    );
+    return items;
+  },
+};
+
 /** Human file size for a document list. */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

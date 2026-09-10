@@ -2,7 +2,7 @@
 
 import { Calendar, CircleAlert } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SessionRow } from "@/components/booking/SessionRow";
 import { SessionFeedback } from "@/components/portal/SessionFeedback";
 import { SlotPicker } from "@/components/booking/SlotPicker";
@@ -13,6 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { formatBytes, recordingsApi, type SessionRecording } from "@/lib/portal";
 import {
   cancelBooking,
   cutoffPassed,
@@ -252,6 +253,7 @@ export default function SessionsPage() {
                           </>
                         }
                       />
+                      <RecordingList bookingId={booking.id} />
                       <p className="mt-2 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
                         {locked
                           ? "Online changes close 24 hours before a session."
@@ -291,6 +293,7 @@ export default function SessionsPage() {
                         timeZone={timeZone}
                       />
                     </div>
+                    <RecordingList bookingId={booking.id} />
                     <SessionFeedback bookingId={booking.id} />
                   </li>
                 ))}
@@ -404,5 +407,52 @@ export default function SessionsPage() {
         ) : null}
       </Modal>
     </div>
+  );
+}
+
+function RecordingList({ bookingId }: { bookingId: string }) {
+  const { session, onTokensRefreshed } = useAuth();
+  const [recordings, setRecordings] = useState<SessionRecording[] | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    recordingsApi
+      .list(session, { onTokensRefreshed }, bookingId)
+      .then((items) => {
+        if (!cancelled) setRecordings(items);
+      })
+      .catch(() => {
+        if (!cancelled) setRecordings([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, onTokensRefreshed, session]);
+
+  if (!recordings || recordings.length === 0) return null;
+
+  return (
+    <section className="mt-3 rounded-[1.25rem] border border-border bg-surface-raised p-4">
+      <h3 className="text-sm font-semibold text-ink">Session recording</h3>
+      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+        Available only in your portal and your practitioner&rsquo;s dashboard.
+      </p>
+      <ul className="mt-3 flex flex-col gap-3">
+        {recordings.map((recording) => (
+          <li key={recording.id}>
+            <video
+              controls
+              src={recording.url}
+              className="aspect-video w-full rounded-lg bg-ink"
+            />
+            <p className="mt-2 text-xs text-ink-muted">
+              {formatBytes(recording.bytes)} · retained until{" "}
+              {new Date(recording.retainUntil).toLocaleDateString("en-GB")}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

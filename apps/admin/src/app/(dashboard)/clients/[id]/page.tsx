@@ -17,12 +17,15 @@ import { cn } from "@/lib/cn";
 import {
   clientsApi,
   notesApi,
+  recordingsApi,
   splitClientBookings,
   type ClientBooking,
   type ClientRecord,
+  type SessionRecording,
   type SessionNote,
 } from "@/lib/clients";
 import { formatMoney } from "@/lib/format";
+import { formatCivilDate, formatTime, PRACTICE_TIMEZONE, timezoneShortName, zonedParts } from "@/lib/schedule";
 import { useAction, useResource } from "@/lib/use-resource";
 
 /**
@@ -61,6 +64,7 @@ export default function ClientRecordPage() {
     "idle" | "loading" | "ready" | "error"
   >("idle");
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [recordings, setRecordings] = useState<SessionRecording[]>([]);
 
   const record = useResource<ClientRecord>(
     (session, callbacks) => clientsApi.get(session, callbacks, clientId),
@@ -84,6 +88,7 @@ export default function ClientRecordPage() {
     }
     setSelectedBooking(bookingId);
     setNote(null);
+    setRecordings([]);
     setNoteError(null);
     setNoteState("loading");
 
@@ -105,6 +110,11 @@ export default function ClientRecordPage() {
       return;
     }
     setNote(loaded);
+    const loadedRecordings = await action.run(
+      `recordings:${bookingId}`,
+      (session, callbacks) => recordingsApi.list(session, callbacks, bookingId),
+    );
+    if (loadedRecordings) setRecordings(loadedRecordings);
     setNoteState("ready");
   }
 
@@ -257,16 +267,10 @@ export default function ClientRecordPage() {
                         >
                           <span className="flex flex-wrap items-center gap-3">
                             <span className="text-sm font-medium tabular-nums text-ink">
-                              {new Date(booking.startAt).toLocaleString(
-                                "en-GB",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
-                              )}
+                              {formatCivilDate(zonedParts(booking.startAt, PRACTICE_TIMEZONE))} ·{" "}
+                              {formatTime(booking.startAt, PRACTICE_TIMEZONE)}–
+                              {formatTime(booking.endAt, PRACTICE_TIMEZONE)}{" "}
+                              ({timezoneShortName(PRACTICE_TIMEZONE, new Date(booking.startAt))})
                             </span>
                             <Badge variant={statusVariant[booking.status]}>
                               {statusLabel[booking.status]}
@@ -302,6 +306,9 @@ export default function ClientRecordPage() {
                               onSaved={(saved) => setNote(saved)}
                             />
                           )}
+                          {noteState === "ready" ? (
+                            <RecordingList recordings={recordings} />
+                          ) : null}
                         </div>
                       </li>
                     );
@@ -385,6 +392,39 @@ export default function ClientRecordPage() {
         </>
       )}
     </div>
+  );
+}
+
+function RecordingList({ recordings }: { recordings: SessionRecording[] }) {
+  return (
+    <section className="mt-6 rounded-lg border border-border bg-surface p-4">
+      <h3 className="text-sm font-semibold text-ink">Session recordings</h3>
+      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+        Stored in encrypted application storage and retained until the date
+        shown. Clients can only access recordings for their own sessions.
+      </p>
+      {recordings.length === 0 ? (
+        <p className="mt-3 text-sm text-ink-muted">
+          No recording has been saved for this session.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3">
+          {recordings.map((recording) => (
+            <li key={recording.id} className="rounded-md bg-surface-sunken p-3">
+              <video
+                controls
+                src={recording.url}
+                className="aspect-video w-full rounded-md bg-ink"
+              />
+              <p className="mt-2 text-xs text-ink-muted">
+                Recorded {new Date(recording.createdAt).toLocaleDateString("en-GB")} · retained until{" "}
+                {new Date(recording.retainUntil).toLocaleDateString("en-GB")}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

@@ -2,7 +2,9 @@
 
 import {
   Captions,
+  CheckCircle2,
   Circle,
+  FileText,
   Hand,
   Maximize,
   MessageSquare,
@@ -17,11 +19,14 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { Modal } from "@/components/ui/Modal";
+import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
+import { notesApi, type SessionNote } from "@/lib/clients";
 import { useVideoRoom } from "@/lib/use-video-room";
 
 /**
@@ -47,6 +52,7 @@ const REACTIONS = ["👍", "❤️", "😂", "👏", "🎉"];
 
 /** How long a reaction floats over a tile before fading. */
 const REACTION_MS = 2500;
+const NOTES_AUTOSAVE_MS = 1200;
 
 function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -94,6 +100,7 @@ function ControlButton({
 }
 
 export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
+  const { session, refreshCallbacks } = useAuth();
   const room = useVideoRoom(bookingId);
   const localVideo = useRef<HTMLVideoElement | null>(null);
   const remoteVideo = useRef<HTMLVideoElement | null>(null);
@@ -101,11 +108,22 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [note, setNote] = useState<SessionNote | null>(null);
+  const localDraftKey = useMemo(
+    () => `terios.in-call-note-draft.${bookingId}`,
+    [bookingId],
+  );
+  const [privateNotes, setPrivateNotes] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem(localDraftKey) ?? "" : "",
+  );
+  const [notesStatus, setNotesStatus] = useState<"loading" | "saved" | "saving" | "error">("loading");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [speakerId, setSpeakerId] = useState("");
+  const lastSavedPrivateRef = useRef("");
   // A reaction floats briefly, then fades. Keying the timeout on the
   // reaction itself means back-to-back reactions each get their moment.
   const [dismissedAt, setDismissedAt] = useState(0);
@@ -139,6 +157,87 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  useEffect(() => {
+    const cached =
+      typeof window !== "undefined" ? localStorage.getItem(localDraftKey) : null;
+    if (cached !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPrivateNotes(cached);
+    }
+    if (!session) return;
+    let cancelled = false;
+    setNotesStatus("loading");
+    notesApi
+      .get(session, refreshCallbacks, bookingId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setNote(loaded);
+        lastSavedPrivateRef.current = loaded.privateNotes;
+        if (cached === null) setPrivateNotes(loaded.privateNotes);
+        setNotesStatus(cached === null ? "saved" : "saving");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error instanceof ApiError && error.code === "note_not_found") {
+          lastSavedPrivateRef.current = "";
+          setNotesStatus(cached === null ? "saved" : "saving");
+          return;
+        }
+        setNotesStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, localDraftKey, refreshCallbacks, session]);
+
+  useEffect(() => {
+    if (!session || privateNotes === lastSavedPrivateRef.current) return;
+    localStorage.setItem(localDraftKey, privateNotes);
+    setNotesStatus("saving");
+    const timer = setTimeout(() => {
+      notesApi
+        .save(session, refreshCallbacks, bookingId, {
+          privateNotes,
+          sharedFeedback: note?.sharedFeedback ?? "",
+          sharedResources: note?.sharedResources ?? [],
+        })
+        .then((saved) => {
+          setNote(saved);
+          lastSavedPrivateRef.current = saved.privateNotes;
+          if (saved.privateNotes === localStorage.getItem(localDraftKey)) {
+            localStorage.removeItem(localDraftKey);
+          }
+          setNotesStatus("saved");
+        })
+        .catch(() => setNotesStatus("error"));
+    }, NOTES_AUTOSAVE_MS);
+    return () => clearTimeout(timer);
+  }, [bookingId, localDraftKey, note, privateNotes, refreshCallbacks, session]);
+
+  useEffect(() => {
+    if (
+      room.state !== "ended" ||
+      !session ||
+      privateNotes === lastSavedPrivateRef.current
+    ) {
+      return;
+    }
+    notesApi
+      .save(session, refreshCallbacks, bookingId, {
+        privateNotes,
+        sharedFeedback: note?.sharedFeedback ?? "",
+        sharedResources: note?.sharedResources ?? [],
+      })
+      .then((saved) => {
+        setNote(saved);
+        lastSavedPrivateRef.current = saved.privateNotes;
+        localStorage.removeItem(localDraftKey);
+      })
+      .catch(() => {
+        localStorage.setItem(localDraftKey, privateNotes);
+      });
+  }, [bookingId, localDraftKey, note, privateNotes, refreshCallbacks, room.state, session]);
 
   const live = room.state === "connected" || room.state === "waiting";
   const pipSupported =
@@ -443,10 +542,10 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
           title={
             room.recordingSupported
               ? room.recording
-                ? "Stop and download the recording"
+                ? "Stop and save the recording"
                 : room.recordingConsentPending
                   ? "Waiting for the other participant to consent"
-                  : "Request consent and record to this device"
+                  : "Request consent and record to both dashboards"
               : "Recording isn't supported in this browser"
           }
           onClick={room.toggleRecording}
@@ -488,6 +587,16 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
               {room.unreadCount > 9 ? "9+" : room.unreadCount}
             </span>
           ) : null}
+        </ControlButton>
+
+        <ControlButton
+          label={notesOpen ? "Hide private notes" : "Show private notes"}
+          pressed={notesOpen}
+          disabled={!live}
+          title="Private notes autosave without affecting the call"
+          onClick={() => setNotesOpen((open) => !open)}
+        >
+          <FileText size={20} aria-hidden="true" />
         </ControlButton>
 
         <ControlButton
@@ -625,6 +734,57 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         </div>
       ) : null}
 
+      {notesOpen ? (
+        <aside
+          aria-label="Private in-call notes"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">
+                Private session notes
+              </h2>
+              <p className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
+                Practitioner-only notes for this session and client. Typing
+                here does not touch your microphone, camera, or connection.
+              </p>
+            </div>
+            <span
+              role={notesStatus === "error" ? "alert" : "status"}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+                notesStatus === "error"
+                  ? "bg-danger-bg text-danger-ink"
+                  : "bg-surface-sunken text-ink-muted",
+              )}
+            >
+              {notesStatus === "saved" ? (
+                <CheckCircle2 size={13} aria-hidden="true" />
+              ) : null}
+              {notesStatus === "loading"
+                ? "Loading"
+                : notesStatus === "saving"
+                  ? "Autosaving"
+                  : notesStatus === "saved"
+                    ? "Saved"
+                    : "Draft kept locally"}
+            </span>
+          </div>
+          <textarea
+            value={privateNotes}
+            onChange={(event) => setPrivateNotes(event.target.value)}
+            rows={8}
+            maxLength={10000}
+            placeholder="Write observations while the session continues..."
+            className="min-h-48 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink outline-none transition-[border-color,box-shadow] placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs leading-relaxed text-ink-muted">
+            Draft recovery is kept in this browser until the API confirms the
+            note is saved to the client&rsquo;s session record.
+          </p>
+        </aside>
+      ) : null}
+
       <Modal
         open={room.admissionRequested}
         onClose={room.denyClient}
@@ -644,7 +804,7 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         open={room.recordingConsentRequested}
         onClose={() => room.respondToRecordingRequest(false)}
         title="Allow this session to be recorded?"
-        description="The recording will be saved only on the other participant's device."
+        description="The recording will be saved to both dashboards under this session if you allow it."
         footer={
           <>
             <Button variant="secondary" onClick={() => room.respondToRecordingRequest(false)}>Decline</Button>
@@ -652,7 +812,10 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
           </>
         }
       >
-        <p className="text-sm leading-relaxed text-ink-muted">Nothing is recorded unless you explicitly allow it. A red recording indicator remains visible for the entire recording.</p>
+        <p className="text-sm leading-relaxed text-ink-muted">
+          Nothing is recorded unless you explicitly allow it. A red recording
+          indicator remains visible for the entire recording.
+        </p>
       </Modal>
 
       <Modal

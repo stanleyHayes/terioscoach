@@ -60,6 +60,14 @@ export function SiteFooter() {
               <span className="font-display text-3xl font-semibold tracking-[-0.04em]">Terios <span className="font-medium text-eucalyptus-300">Wellness</span></span>
             </Link>
             <p className="mt-6 max-w-[39ch] text-base leading-[1.75] text-eucalyptus-200">Registered nursing and wellness coaching, held in one private, video-first practice.</p>
+            <address className="mt-5 flex flex-col gap-2 text-sm not-italic text-eucalyptus-100">
+              <a href="mailto:Hello@terioscoach.com" className="transition-colors hover:text-sand-0">
+                Hello@terioscoach.com
+              </a>
+              <a href="tel:+19293748914" className="transition-colors hover:text-sand-0">
+                +1 (929) 374-8914
+              </a>
+            </address>
             <ul aria-label="Practice qualities" className="mt-8 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-eucalyptus-200">
               {['Nurse-led', 'Worldwide', 'Private by design'].map((item) => <li key={item} className="rounded-full border border-sand-0/14 px-3 py-2">{item}</li>)}
             </ul>

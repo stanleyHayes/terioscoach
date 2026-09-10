@@ -7,6 +7,7 @@ import {
   formatTimeOfDay,
   formatTimeRange,
   gmtOffsetLabel,
+  supportedTimeZoneOptions,
 } from "./format";
 
 describe("formatMoney", () => {
@@ -107,5 +108,31 @@ describe("gmtOffsetLabel", () => {
 describe("browserTimeZone", () => {
   it("returns an IANA name", () => {
     expect(browserTimeZone()).toMatch(/^[A-Za-z_]+\/[A-Za-z_]+|UTC$/);
+  });
+
+  describe("supportedTimeZoneOptions", () => {
+    it("includes US and common international zones with visible offsets", () => {
+      const values = supportedTimeZoneOptions("America/New_York").map((option) => option.value);
+
+      expect(values).toEqual(
+        expect.arrayContaining([
+          "America/New_York",
+          "America/Chicago",
+          "America/Denver",
+          "America/Los_Angeles",
+          "America/Anchorage",
+          "Pacific/Honolulu",
+          "UTC",
+          "Africa/Lagos",
+        ]),
+      );
+      expect(supportedTimeZoneOptions("America/New_York")[0].label).toMatch(/GMT/);
+    });
+
+    it("keeps a detected zone that is not in the curated list", () => {
+      expect(supportedTimeZoneOptions("Australia/Sydney")[0]).toMatchObject({
+        value: "Australia/Sydney",
+      });
+    });
   });
 });

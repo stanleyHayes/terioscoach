@@ -104,6 +104,16 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
 		},
 
+		// Session recordings are scoped through their booking. Client and
+		// practitioner indexes back the two dashboards without exposing
+		// cross-client media.
+		"session_recordings": {
+			{Keys: bson.D{{Key: "bookingId", Value: 1}, {Key: "createdAt", Value: -1}}},
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
+			{Keys: bson.D{{Key: "practitionerId", Value: 1}, {Key: "createdAt", Value: -1}}},
+			{Keys: bson.D{{Key: "retainUntil", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
+		},
+
 		// Practice-side client profiles (contact detail, tags, private
 		// summary). One profile per client account — upserted by userId.
 		"client_profiles": {

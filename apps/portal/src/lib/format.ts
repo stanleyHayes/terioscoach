@@ -83,3 +83,32 @@ export function gmtOffsetLabel(timeZone: string, at: Date = new Date()): string 
 export function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+
+export const SUPPORTED_TIME_ZONES = [
+  { value: "America/New_York", label: "Eastern Time" },
+  { value: "America/Chicago", label: "Central Time" },
+  { value: "America/Denver", label: "Mountain Time" },
+  { value: "America/Los_Angeles", label: "Pacific Time" },
+  { value: "America/Anchorage", label: "Alaska Time" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time" },
+  { value: "UTC", label: "GMT / UTC" },
+  { value: "Africa/Lagos", label: "West Africa Time" },
+  { value: "Africa/Accra", label: "Greenwich Mean Time (Accra)" },
+  { value: "Europe/London", label: "London" },
+] as const;
+
+export function supportedTimeZoneOptions(current: string) {
+  const options = SUPPORTED_TIME_ZONES.map((zone) => ({
+    value: zone.value,
+    label: `${zone.label} · ${gmtOffsetLabel(zone.value)} (${zone.value})`,
+  }));
+  return options.some((option) => option.value === current)
+    ? options
+    : [
+        {
+          value: current,
+          label: `Detected timezone · ${gmtOffsetLabel(current)} (${current})`,
+        },
+        ...options,
+      ];
+}

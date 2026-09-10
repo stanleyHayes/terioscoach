@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, Mail, MessageCircle } from "lucide-react";
+import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import { EnquiryForm } from "@/components/content/EnquiryForm";
 import { Section } from "@/components/marketing/Section";
 import { PageIntro } from "@/components/marketing/PageIntro";
@@ -35,6 +35,27 @@ export default function ContactPage() {
           <aside className="flex flex-col gap-8 lg:pt-2">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100">
               <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-009.webp" alt="Theresa Yirerong, the person who reads every enquiry" fill sizes="(min-width: 1024px) 320px, 94vw" className="object-cover" />
+            </div>
+            <div className="rounded-[1.5rem] border border-border bg-surface-raised p-5 shadow-soft">
+              <h2 className="font-display text-xl font-semibold tracking-[-0.02em] text-ink">
+                Contact Terios Wellness
+              </h2>
+              <div className="mt-4 flex flex-col gap-3">
+                <a
+                  href="mailto:Hello@terioscoach.com"
+                  className="group flex items-center gap-3 rounded-xl bg-surface-sunken px-4 py-3 text-sm font-semibold text-ink transition-colors hover:text-primary"
+                >
+                  <Mail size={17} aria-hidden="true" className="text-primary" />
+                  Hello@terioscoach.com
+                </a>
+                <a
+                  href="tel:+19293748914"
+                  className="group flex items-center gap-3 rounded-xl bg-surface-sunken px-4 py-3 text-sm font-semibold text-ink transition-colors hover:text-primary"
+                >
+                  <Phone size={17} aria-hidden="true" className="text-primary" />
+                  +1 (929) 374-8914
+                </a>
+              </div>
             </div>
             <div className="flex gap-4">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken">

@@ -6,6 +6,7 @@ import {
   formsApi,
   notesApi,
   paymentsApi,
+  recordingsApi,
   reviewableBookings,
   reviewsApi,
   type ClientReview,
@@ -171,6 +172,17 @@ describe("notesApi", () => {
     // the client's projection has no field that could carry them.
     expect(note).not.toHaveProperty("privateNotes");
     expect(lastCall()[0]).toBe("/v1/bookings/bk-1/notes");
+  });
+});
+
+describe("recordingsApi", () => {
+  it("lists only recordings the caller may access through the booking", async () => {
+    authedRequestMock.mockResolvedValue({ items: [{ id: "rec-1", bookingId: "bk-1" }] });
+
+    const recordings = await recordingsApi.list(session, callbacks, "bk-1");
+
+    expect(recordings).toEqual([{ id: "rec-1", bookingId: "bk-1" }]);
+    expect(lastCall()[0]).toBe("/v1/bookings/bk-1/recordings");
   });
 });
 

@@ -10,6 +10,7 @@ import { bookingStatusMeta } from "@/components/booking/booking-status";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError, listServices, type ServiceSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -22,6 +23,7 @@ import {
   formatSessionDate,
   formatTimeRange,
   gmtOffsetLabel,
+  supportedTimeZoneOptions,
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -65,7 +67,8 @@ function BookingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, session, onTokensRefreshed } = useAuth();
-  const tz = useMemo(() => browserTimeZone(), []);
+  const [tz, setTz] = useState(() => searchParams.get("tz") || browserTimeZone());
+  const timeZoneOptions = useMemo(() => supportedTimeZoneOptions(tz), [tz]);
 
   const [services, setServices] = useState<ServiceSummary[] | null>(null);
   const [servicesError, setServicesError] = useState(false);
@@ -145,7 +148,7 @@ function BookingFlow() {
     // Confirming requires an account — park the choice in the URL and send
     // the guest through sign-in; ?next= brings them back to this review step.
     if (status !== "authenticated" || !session) {
-      const next = `/portal/book?service=${service.id}&slot=${encodeURIComponent(slot.startAt)}`;
+      const next = `/portal/book?service=${service.id}&slot=${encodeURIComponent(slot.startAt)}&tz=${encodeURIComponent(tz)}`;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
@@ -375,6 +378,16 @@ function BookingFlow() {
             </span>
             {formatDuration(service.durationMinutes)}
           </p>
+          <BrandedSelect
+            label="Show available times in"
+            value={tz}
+            onChange={(next) => {
+              setTz(next);
+              setSlot(null);
+              setConflictStartAt(null);
+            }}
+            options={timeZoneOptions}
+          />
           <SlotPicker
             serviceId={service.id}
             selectedSlot={slot}

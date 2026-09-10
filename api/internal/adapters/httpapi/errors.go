@@ -15,6 +15,7 @@ import (
 	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/domain/note"
 	"github.com/xcreativs/terios/api/internal/domain/payment"
+	"github.com/xcreativs/terios/api/internal/domain/recording"
 	"github.com/xcreativs/terios/api/internal/domain/review"
 	"github.com/xcreativs/terios/api/internal/domain/scheduling"
 	domainsignaling "github.com/xcreativs/terios/api/internal/domain/signaling"
@@ -67,6 +68,7 @@ var errorMappers = []func(error) (apiError, bool){
 	mapPaymentError,
 	mapClientError,
 	mapNoteError,
+	mapRecordingError,
 	mapCMSError,
 	mapEnquiryError,
 	mapReviewError,
@@ -235,6 +237,18 @@ func mapNoteError(err error) (apiError, bool) {
 		errors.Is(err, note.ErrTooManyResources),
 		errors.Is(err, note.ErrResourceTooLong):
 		return validationError(err)
+	}
+	return apiError{}, false
+}
+
+func mapRecordingError(err error) (apiError, bool) {
+	switch {
+	case errors.Is(err, recording.ErrRecordingNotFound):
+		return apiError{http.StatusNotFound, "recording_not_found", "session recording not found"}, true
+	case errors.Is(err, recording.ErrRecordingExists):
+		return apiError{http.StatusConflict, "recording_exists", "a session recording already exists for this booking"}, true
+	case errors.Is(err, recording.ErrInvalidRecording):
+		return apiError{http.StatusBadRequest, "validation_error", "recording data is required and must be under 25 MB"}, true
 	}
 	return apiError{}, false
 }

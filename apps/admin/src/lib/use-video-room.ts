@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { useAuth } from "./auth";
+import { recordingsApi } from "./clients";
 import {
   CHAT_MAX_LEN,
   explainJoinFailure,
@@ -198,6 +199,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
   const recordChunksRef = useRef<Blob[]>([]);
   const recordContextRef = useRef<AudioContext | null>(null);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingSecondsRef = useRef(0);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   // Refs mirrored from state, so stable callbacks read current values
@@ -992,17 +994,22 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       };
       recorder.onstop = () => {
         const chunks = recordChunksRef.current;
+        const seconds = recordingSecondsRef.current;
         recordChunksRef.current = [];
         if (chunks.length === 0) return;
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `terios-session-${bookingId}-${new Date()
-          .toISOString()
-          .replace(/[:.]/g, "-")}.webm`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+        const currentSession = sessionRef.current;
+        if (!currentSession || accessRef.current?.role !== "practitioner") return;
+        void readBlobAsDataURL(blob)
+          .then((dataUrl) =>
+            recordingsApi.create(currentSession, refreshCallbacks, bookingId, {
+              contentType: blob.type || "video/webm",
+              dataUrl,
+              bytes: blob.size,
+              durationSec: seconds,
+            }),
+          )
+          .catch(() => setError("The recording finished, but it could not be saved to the dashboards."));
       };
       recorder.start(1000);
       recorderRef.current = recorder;
@@ -1010,15 +1017,21 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       recordingRef.current = true;
       setRecording(true);
       setRecordingSeconds(0);
+      recordingSecondsRef.current = 0;
       recordTimerRef.current = setInterval(
-        () => setRecordingSeconds((seconds) => seconds + 1),
+        () =>
+          setRecordingSeconds((seconds) => {
+            const next = seconds + 1;
+            recordingSecondsRef.current = next;
+            return next;
+          }),
         1000,
       );
       emitState();
     } catch {
       setError("Recording couldn't start in this browser.");
     }
-  }, [bookingId, emitState, recordingSupported]);
+  }, [bookingId, emitState, recordingSupported, refreshCallbacks]);
 
   useEffect(() => {
     startRecordingRef.current = startRecording;
@@ -1182,4 +1195,16 @@ interface SpeechRecognitionLike {
 interface SpeechRecognitionResultEventLike {
   resultIndex: number;
   results: ArrayLike<{ isFinal: boolean; 0?: { transcript: string } }>;
+}
+
+function readBlobAsDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("recording read failed"));
+    reader.onerror = () => reject(reader.error ?? new Error("recording read failed"));
+    reader.readAsDataURL(blob);
+  });
 }

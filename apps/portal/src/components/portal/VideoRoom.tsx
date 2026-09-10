@@ -643,7 +643,7 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
         open={room.recordingConsentRequested}
         onClose={() => room.respondToRecordingRequest(false)}
         title="Allow this session to be recorded?"
-        description="The recording will be saved only on the other participant's device."
+        description="The recording will be saved to both dashboards under this session if you allow it."
         footer={
           <>
             <Button variant="secondary" onClick={() => room.respondToRecordingRequest(false)}>Decline</Button>

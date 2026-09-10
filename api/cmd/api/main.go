@@ -37,6 +37,7 @@ import (
 	notesapp "github.com/xcreativs/terios/api/internal/app/notes"
 	notificationsapp "github.com/xcreativs/terios/api/internal/app/notifications"
 	paymentsapp "github.com/xcreativs/terios/api/internal/app/payments"
+	recordingsapp "github.com/xcreativs/terios/api/internal/app/recordings"
 	reportsapp "github.com/xcreativs/terios/api/internal/app/reports"
 	reviewsapp "github.com/xcreativs/terios/api/internal/app/reviews"
 	schedulingapp "github.com/xcreativs/terios/api/internal/app/scheduling"
@@ -126,6 +127,7 @@ func run() error {
 			httpapi.WithPayments(buildPaymentService(cfg, db, notifier), authService),
 			httpapi.WithClients(buildClientService(db), authService),
 			httpapi.WithNotes(buildNoteService(db, notifier), authService),
+			httpapi.WithRecordings(buildRecordingService(db), authService),
 			httpapi.WithContent(buildContentService(db), authService),
 			httpapi.WithEnquiries(buildEnquiryService(db, notifier), authService),
 			httpapi.WithReviews(buildReviewService(db), authService),
@@ -167,6 +169,7 @@ func run() error {
 			httpapi.WithPayments(nil, nil),
 			httpapi.WithClients(nil, nil),
 			httpapi.WithNotes(nil, nil),
+			httpapi.WithRecordings(nil, nil),
 			httpapi.WithContent(nil, nil),
 			httpapi.WithEnquiries(nil, nil),
 			httpapi.WithReviews(nil, nil),
@@ -533,5 +536,12 @@ func buildNoteService(db *mongo.Database, notifier *notificationsapp.Service) *n
 		mongodb.NewSessionNoteRepository(db),
 		mongodb.NewBookingRepository(db),
 		notesapp.WithNotifications(notifier, mongodb.NewUserRepository(db), mongodb.NewServiceRepository(db)),
+	)
+}
+
+func buildRecordingService(db *mongo.Database) *recordingsapp.Service {
+	return recordingsapp.NewService(
+		mongodb.NewRecordingRepository(db),
+		mongodb.NewBookingRepository(db),
 	)
 }

@@ -3,6 +3,7 @@ import type { RefreshCallbacks, Session } from "@/lib/api";
 import {
   clientsApi,
   notesApi,
+  recordingsApi,
   splitClientBookings,
   type ClientBooking,
   type ClientRecord,
@@ -136,6 +137,41 @@ describe("notesApi", () => {
     // A save cannot share by accident, because sharing is a different URL.
     expect(path).toBe("/v1/bookings/bk-1/notes/share");
     expect(options).toMatchObject({ method: "POST" });
+  });
+});
+
+describe("recordingsApi", () => {
+  it("lists recordings for a specific booking", async () => {
+    authedRequestMock.mockResolvedValue({ items: [{ id: "rec-1", bookingId: "bk-1" }] });
+
+    await expect(recordingsApi.list(session, callbacks, "bk-1")).resolves.toEqual([
+      { id: "rec-1", bookingId: "bk-1" },
+    ]);
+
+    expect(lastCall()[0]).toBe("/v1/bookings/bk-1/recordings");
+  });
+
+  it("creates a recording with the captured media payload", async () => {
+    authedRequestMock.mockResolvedValue({ recording: { id: "rec-1" } });
+
+    await recordingsApi.create(session, callbacks, "bk-1", {
+      contentType: "video/webm",
+      dataUrl: "data:video/webm;base64,AAA",
+      bytes: 3,
+      durationSec: 12,
+    });
+
+    const [path, , , options] = lastCall();
+    expect(path).toBe("/v1/bookings/bk-1/recordings");
+    expect(options).toMatchObject({
+      method: "POST",
+      body: {
+        contentType: "video/webm",
+        dataUrl: "data:video/webm;base64,AAA",
+        bytes: 3,
+        durationSec: 12,
+      },
+    });
   });
 });
 

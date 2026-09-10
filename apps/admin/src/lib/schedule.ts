@@ -25,6 +25,19 @@ import { authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
 /** Practice wall clock; mirrors the contract's `tz` default. */
 export const PRACTICE_TIMEZONE = "Africa/Accra";
 
+export const SUPPORTED_TIME_ZONES = [
+  { value: "America/New_York", label: "Eastern Time" },
+  { value: "America/Chicago", label: "Central Time" },
+  { value: "America/Denver", label: "Mountain Time" },
+  { value: "America/Los_Angeles", label: "Pacific Time" },
+  { value: "America/Anchorage", label: "Alaska Time" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time" },
+  { value: "UTC", label: "GMT / UTC" },
+  { value: "Africa/Lagos", label: "West Africa Time" },
+  { value: "Africa/Accra", label: "Greenwich Mean Time (Accra)" },
+  { value: "Europe/London", label: "London" },
+] as const;
+
 /* ---------- contract shapes ---------- */
 
 export interface AvailabilityWindow {
