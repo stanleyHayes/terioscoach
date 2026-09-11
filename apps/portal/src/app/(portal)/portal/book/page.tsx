@@ -26,6 +26,8 @@ import {
   supportedTimeZoneOptions,
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { agreementsApi, type AgreementStatus } from "@/lib/agreements";
+import { AgreementStep } from "@/components/portal/AgreementStep";
 
 /**
  * Booking flow (WEB-09) — portal-side, guest-friendly.
@@ -38,19 +40,25 @@ import { cn } from "@/lib/cn";
  * webhook. Free services are confirmed immediately without opening Stripe.
  */
 
-type Step = "service" | "time" | "review" | "done";
+type Step = "service" | "time" | "agreement" | "review" | "done";
 
 const stepTitles: Record<Exclude<Step, "done">, string> = {
   service: "Choose your service",
   time: "Pick a time",
+  agreement: "Read and sign",
   review: "Review your booking",
 };
 
-const stepNumbers: Record<Exclude<Step, "done">, number> = {
-  service: 1,
-  time: 2,
-  review: 3,
-};
+/**
+ * The agreement is a conditional step, so the numbering is computed rather
+ * than fixed: a client booking a service that needs no agreement should see
+ * "Step 3 of 3" on review, not "Step 4 of 4" with one silently skipped.
+ */
+function stepSequence(needsAgreement: boolean): Exclude<Step, "done">[] {
+  return needsAgreement
+    ? ["service", "time", "agreement", "review"]
+    : ["service", "time", "review"];
+}
 
 /** Brand-voice copy for create-booking failures (say what happened, no blame). */
 function confirmErrorMessage(error: unknown): string {
@@ -66,7 +74,7 @@ function confirmErrorMessage(error: unknown): string {
 function BookingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status, session, onTokensRefreshed } = useAuth();
+  const { status, session, user, onTokensRefreshed } = useAuth();
   const [tz, setTz] = useState(() => searchParams.get("tz") || browserTimeZone());
   const timeZoneOptions = useMemo(() => supportedTimeZoneOptions(tz), [tz]);
 
@@ -76,6 +84,7 @@ function BookingFlow() {
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [conflictStartAt, setConflictStartAt] = useState<string | null>(null);
+  const [agreement, setAgreement] = useState<AgreementStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -138,7 +147,44 @@ function BookingFlow() {
     setSlot(null);
     setConflictStartAt(null);
     setSubmitError(null);
+    setAgreement(null);
     setStep("time");
+  }
+
+  // Whether an agreement stands in the way is asked as soon as a service and
+  // a session exist, so the step can be shown before the client commits to
+  // anything — and the same question is asked again by the API when the
+  // booking is created, which is the check that actually decides.
+  useEffect(() => {
+    if (!serviceId || status !== "authenticated" || !session) return;
+    let cancelled = false;
+    agreementsApi
+      .forService(session, { onTokensRefreshed }, serviceId)
+      .then((value) => {
+        if (!cancelled) setAgreement(value);
+      })
+      .catch(() => {
+        // A failure here must not block the flow: the API refuses the
+        // booking anyway if an agreement is outstanding.
+        if (!cancelled) setAgreement(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, session, status, onTokensRefreshed]);
+
+  const needsAgreement = Boolean(agreement?.required && !agreement.signed);
+
+  async function signAgreement(signedName: string) {
+    if (!agreement?.agreement || !session) return;
+    const signature = await agreementsApi.sign(
+      session,
+      { onTokensRefreshed },
+      agreement.agreement.id,
+      signedName,
+    );
+    setAgreement({ ...agreement, signed: true, signature });
+    setStep("review");
   }
 
   async function handleConfirm() {
@@ -182,7 +228,30 @@ function BookingFlow() {
         }
       }
     } catch (error) {
-      if (error instanceof ApiError && error.code === "slot_unavailable") {
+      // The API holds the real gate. If it refuses for want of a signature
+      // — a stale status, or a second tab — send the client to the step
+      // rather than showing them an error they cannot act on.
+      if (error instanceof ApiError && error.code === "agreement_required") {
+        if (session) {
+          try {
+            const status = await agreementsApi.forService(
+              session,
+              { onTokensRefreshed },
+              service.id,
+            );
+            setAgreement(status);
+            if (status.agreement && !status.signed) {
+              setStep("agreement");
+              return;
+            }
+          } catch {
+            // Fall through to the message below.
+          }
+        }
+        setSubmitError(
+          "This service needs a signed agreement before it can be booked.",
+        );
+      } else if (error instanceof ApiError && error.code === "slot_unavailable") {
         // Lost the race — back to the picker, which flags the taken chip and
         // refreshes its slots.
         setConflictStartAt(slot.startAt);
@@ -286,12 +355,14 @@ function BookingFlow() {
   }
 
   const currentStep = step as Exclude<Step, "done">;
+  const sequence = stepSequence(needsAgreement);
+  const stepNumber = Math.max(1, sequence.indexOf(currentStep) + 1);
 
   return (
     <div data-portal-page="booking" className="animate-fade-in flex flex-col gap-8">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
-          Book a session · Step {stepNumbers[currentStep]} of 3
+          Book a session · Step {stepNumber} of {sequence.length}
         </p>
         <h1 className="mt-3 font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink">
           {stepTitles[currentStep]}
@@ -400,10 +471,24 @@ function BookingFlow() {
               <ArrowLeft size={16} aria-hidden="true" />
               Back to services
             </Button>
-            <Button disabled={!slot} onClick={() => setStep("review")}>
+            <Button
+              disabled={!slot}
+              onClick={() => setStep(needsAgreement ? "agreement" : "review")}
+            >
               Continue
             </Button>
           </div>
+        </div>
+      ) : null}
+
+      {step === "agreement" && agreement?.agreement ? (
+        <div className="mx-auto w-full max-w-[720px]">
+          <AgreementStep
+            agreement={agreement.agreement}
+            clientName={user?.name ?? ""}
+            onSigned={signAgreement}
+            onBack={() => setStep("time")}
+          />
         </div>
       ) : null}
 
