@@ -26,6 +26,7 @@ import (
 	"github.com/xcreativs/terios/api/internal/adapters/security"
 	"github.com/xcreativs/terios/api/internal/adapters/stripe"
 	"github.com/xcreativs/terios/api/internal/adapters/wsapi"
+	agreementsapp "github.com/xcreativs/terios/api/internal/app/agreements"
 	"github.com/xcreativs/terios/api/internal/app/auth"
 	bookingapp "github.com/xcreativs/terios/api/internal/app/booking"
 	"github.com/xcreativs/terios/api/internal/app/catalog"
@@ -45,6 +46,7 @@ import (
 	teamapp "github.com/xcreativs/terios/api/internal/app/team"
 	"github.com/xcreativs/terios/api/internal/config"
 	domainbooking "github.com/xcreativs/terios/api/internal/domain/booking"
+	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/domain/notification"
 	"github.com/xcreativs/terios/api/internal/domain/ops"
 	"github.com/xcreativs/terios/api/internal/ports"
@@ -111,6 +113,11 @@ func run() error {
 		// records everything that would have gone out — the gap is then
 		// visible in the collection rather than silently lost.
 		notifier := buildNotificationService(cfg, db)
+		// Agreements are built before bookings: booking creation holds the
+		// gate, so the slice has to exist first.
+		documentService := buildDocumentService(cfg, db)
+		agreementService := buildAgreementService(db, notifier, documentService)
+		seedAgreements(agreementService, userRepository)
 		stopDispatcher := startDispatcher(notifier, cfg.NotificationPollInterval)
 		defer stopDispatcher()
 
@@ -123,7 +130,8 @@ func run() error {
 			httpapi.WithTeam(teamService, authService),
 			httpapi.WithCatalog(buildCatalogService(db), authService),
 			httpapi.WithScheduling(buildSchedulingService(db), authService),
-			httpapi.WithBooking(buildBookingService(db, notifier), authService),
+			httpapi.WithBooking(buildBookingService(db, notifier, agreementService), authService),
+			httpapi.WithAgreements(agreementService, authService),
 			httpapi.WithPayments(buildPaymentService(cfg, db, notifier), authService),
 			httpapi.WithClients(buildClientService(db), authService),
 			httpapi.WithNotes(buildNoteService(db, notifier), authService),
@@ -132,7 +140,7 @@ func run() error {
 			httpapi.WithEnquiries(buildEnquiryService(db, notifier), authService),
 			httpapi.WithReviews(buildReviewService(db), authService),
 			httpapi.WithForms(buildFormService(db), authService),
-			httpapi.WithDocuments(buildDocumentService(cfg, db), authService),
+			httpapi.WithDocuments(documentService, authService),
 			httpapi.WithReports(buildReportService(db), authService),
 			// Operational health (LCH-09): what an uptime monitor polls to
 			// learn that mail is backing up or accounts are being locked en
@@ -166,6 +174,7 @@ func run() error {
 			httpapi.WithCatalog(nil, nil),
 			httpapi.WithScheduling(nil, nil),
 			httpapi.WithBooking(nil, nil),
+			httpapi.WithAgreements(nil, nil),
 			httpapi.WithPayments(nil, nil),
 			httpapi.WithClients(nil, nil),
 			httpapi.WithNotes(nil, nil),
@@ -319,7 +328,7 @@ func buildPaymentService(cfg config.Config, db *mongo.Database, notifier ports.N
 // booking is only accepted when the slot engine would have offered the
 // slot; the platform-default 24h modification cutoff applies. Confirmations
 // and reminders are queued through the notifier.
-func buildBookingService(db *mongo.Database, notifier *notificationsapp.Service) *bookingapp.Service {
+func buildBookingService(db *mongo.Database, notifier *notificationsapp.Service, agreements *agreementsapp.Service) *bookingapp.Service {
 	return bookingapp.NewService(
 		mongodb.NewBookingRepository(db),
 		mongodb.NewServiceRepository(db),
@@ -327,6 +336,59 @@ func buildBookingService(db *mongo.Database, notifier *notificationsapp.Service)
 		mongodb.NewBusyIntervalReader(db),
 		domainbooking.DefaultPolicy(),
 		bookingapp.WithNotifications(notifier, mongodb.NewUserRepository(db)),
+		bookingapp.WithAgreementGate(agreements),
+	)
+}
+
+// seedAgreements gives a fresh practice its two starting contracts.
+//
+// It runs on every boot and creates only what is missing, so a deploy can
+// never restore the original wording over an agreement the practitioner has
+// since edited. A failure here is logged and moves on: a practice that
+// cannot seed its starting text is a setup problem, not a reason to refuse
+// to serve every other route.
+func seedAgreements(svc *agreementsapp.Service, users ports.UserRepository) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	practitioner, err := users.FindFirstByRole(ctx, identity.RolePractitioner)
+	if err != nil {
+		slog.Warn("service agreements not seeded: no practitioner account yet", "error", err)
+		return
+	}
+	created, err := svc.Seed(ctx, practitioner.ID)
+	if err != nil {
+		slog.Error("seed service agreements", "error", err)
+		return
+	}
+	for _, a := range created {
+		slog.Info("seeded service agreement", "key", a.Key, "title", a.Title)
+	}
+}
+
+// buildAgreementService wires the service-agreements slice (BE-14). The
+// notifier sends the practice its copy of every signature; the client's own
+// copy is the PDF the slice renders on demand.
+func buildAgreementService(
+	db *mongo.Database,
+	notifier *notificationsapp.Service,
+	documents ports.DocumentService,
+) *agreementsapp.Service {
+	// Without a media store configured there is nowhere to file the PDF.
+	// The signature and the on-demand copy are unaffected, so the archive
+	// is simply left out rather than failing every signature.
+	var archivist ports.AgreementArchivist
+	if documents != nil {
+		archivist = agreementsapp.NewDocumentArchivist(documents, slog.Default())
+	}
+	return agreementsapp.NewService(
+		mongodb.NewAgreementRepository(db),
+		mongodb.NewServiceRepository(db),
+		agreementsapp.Options{
+			Users:     mongodb.NewUserRepository(db),
+			Notifier:  notifier,
+			Archivist: archivist,
+		},
 	)
 }
 
@@ -474,9 +536,14 @@ func buildFormService(db *mongo.Database) *formsapp.Service {
 // document routes answer 503 — the same explicit gap as the other
 // unconfigured providers, rather than routes that appear to work and then
 // hand out URLs nothing can serve.
-func buildDocumentService(cfg config.Config, db *mongo.Database) *documentsapp.Service {
+// Returns the port interface, not *documents.Service, for the same reason
+// buildPaymentService does: with no Cloudinary credentials this returns nil,
+// and converting a typed nil pointer to the interface at the call site would
+// make the interface non-nil — mounting handlers over a nil receiver instead
+// of the intended 503.
+func buildDocumentService(cfg config.Config, db *mongo.Database) ports.DocumentService {
 	if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
-		slog.Warn("Cloudinary credentials not set; document routes return 503")
+		slog.Warn("Cloudinary credentials not set; document routes return 503 and signed agreements are not filed")
 		return nil
 	}
 	return documentsapp.NewService(

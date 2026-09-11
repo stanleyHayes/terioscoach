@@ -24,11 +24,17 @@ const (
 // soft-delete marker: set when bookings exist and the record must be
 // retained for history; soft-deleted services are invisible to every list.
 type Service struct {
-	ID              string
-	PractitionerID  string
-	Name            string
-	Description     string
-	ImageURL        string
+	ID             string
+	PractitionerID string
+	Name           string
+	Description    string
+	ImageURL       string
+	/** AgreementID names the service agreement a client must have signed
+	 * before this service can be booked. Empty means the service is open to
+	 * anyone — an introductory conversation needs no contract. Several
+	 * services point at the same agreement; a client signs it once and every
+	 * one of them is then covered. */
+	AgreementID     string
 	DurationMinutes int
 	PriceKobo       int64
 	Currency        string

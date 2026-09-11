@@ -174,6 +174,25 @@ func (s *Service) EnquiryReceived(ctx context.Context, notice ports.EnquiryNotic
 	}, s.now())
 }
 
+// AgreementSigned tells the practice a client has accepted a service
+// agreement. Like the enquiry alert, this one goes to the practice inbox:
+// the client already has their own copy on their portal, and this message
+// exists so the practitioner has the signature in writing without having to
+// go looking for it.
+func (s *Service) AgreementSigned(ctx context.Context, notice ports.AgreementSignedNotice) {
+	if s.practiceEmail == "" {
+		s.report(fmt.Errorf("agreement signature for %s not queued: no practice inbox configured", notice.ClientID))
+		return
+	}
+	s.queue(ctx, notification.KindAgreementSigned, s.practiceEmail, notice.ClientID, map[string]string{
+		"clientName":     notice.ClientName,
+		"clientEmail":    notice.ClientEmail,
+		"agreementTitle": notice.AgreementTitle,
+		"signedName":     notice.SignedName,
+		"signedAt":       notice.SignedAt,
+	}, s.now())
+}
+
 // DispatchDue delivers up to limit due jobs. It is safe to run on a timer
 // and safe to run in more than one process: ClaimDue hands each job to
 // exactly one caller.

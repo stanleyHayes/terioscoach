@@ -54,6 +54,7 @@ func (s *Service) CreateService(ctx context.Context, practitionerID string, in p
 		return domain.Service{}, err
 	}
 	svc.ImageURL = imageURL
+	svc.AgreementID = strings.TrimSpace(in.AgreementID)
 	return s.services.Create(ctx, svc)
 }
 
@@ -81,6 +82,11 @@ func (s *Service) UpdateService(ctx context.Context, practitionerID, id string, 
 			return domain.Service{}, err
 		}
 		svc.ImageURL = imageURL
+	}
+	if patch.AgreementID != nil {
+		// Empty clears the requirement, which is how a service is opened up
+		// again; the existing signatures stay on file either way.
+		svc.AgreementID = strings.TrimSpace(*patch.AgreementID)
 	}
 	if patch.DurationMinutes != nil {
 		if err := domain.ValidateDuration(*patch.DurationMinutes); err != nil {

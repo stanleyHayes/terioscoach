@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	reportsapp "github.com/xcreativs/terios/api/internal/app/reports"
+	"github.com/xcreativs/terios/api/internal/domain/agreement"
 	"github.com/xcreativs/terios/api/internal/domain/booking"
 	"github.com/xcreativs/terios/api/internal/domain/catalog"
 	"github.com/xcreativs/terios/api/internal/domain/client"
@@ -69,6 +70,7 @@ var errorMappers = []func(error) (apiError, bool){
 	mapClientError,
 	mapNoteError,
 	mapRecordingError,
+	mapAgreementError,
 	mapCMSError,
 	mapEnquiryError,
 	mapReviewError,
@@ -249,6 +251,27 @@ func mapRecordingError(err error) (apiError, bool) {
 		return apiError{http.StatusConflict, "recording_exists", "a session recording already exists for this booking"}, true
 	case errors.Is(err, recording.ErrInvalidRecording):
 		return apiError{http.StatusBadRequest, "validation_error", "recording data is required and must be under 25 MB"}, true
+	}
+	return apiError{}, false
+}
+
+func mapAgreementError(err error) (apiError, bool) {
+	switch {
+	case errors.Is(err, agreement.ErrAgreementRequired):
+		// 409, not 403: nothing is forbidden to this client — a step is
+		// outstanding, and the message names which agreement it is so the
+		// portal can send them straight to it.
+		return apiError{http.StatusConflict, "agreement_required", err.Error()}, true
+	case errors.Is(err, agreement.ErrAgreementNotFound):
+		return apiError{http.StatusNotFound, "agreement_not_found", "agreement not found"}, true
+	case errors.Is(err, agreement.ErrAgreementInactive):
+		return apiError{http.StatusConflict, "agreement_inactive", "this agreement is no longer in use"}, true
+	case errors.Is(err, agreement.ErrInvalidSignedName), errors.Is(err, agreement.ErrSignedNameTooLong):
+		return apiError{http.StatusBadRequest, "validation_error", err.Error()}, true
+	case errors.Is(err, agreement.ErrInvalidTitle), errors.Is(err, agreement.ErrTitleTooLong),
+		errors.Is(err, agreement.ErrInvalidBody), errors.Is(err, agreement.ErrBodyTooLong),
+		errors.Is(err, agreement.ErrInvalidAgreement), errors.Is(err, agreement.ErrInvalidClient):
+		return apiError{http.StatusBadRequest, "validation_error", err.Error()}, true
 	}
 	return apiError{}, false
 }

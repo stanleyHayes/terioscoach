@@ -26,13 +26,14 @@ const (
 	KindBookingCancelled       Kind = "booking_cancelled"
 	KindFeedbackShared         Kind = "feedback_shared"
 	KindEnquiryReceived        Kind = "enquiry_received"
+	KindAgreementSigned        Kind = "agreement_signed"
 )
 
 // Valid reports whether k is a known kind.
 func (k Kind) Valid() bool {
 	switch k {
 	case KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
-		KindBookingCancelled, KindFeedbackShared, KindEnquiryReceived:
+		KindBookingCancelled, KindFeedbackShared, KindEnquiryReceived, KindAgreementSigned:
 		return true
 	}
 	return false

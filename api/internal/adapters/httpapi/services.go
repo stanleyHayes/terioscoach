@@ -49,6 +49,7 @@ type serviceBody struct {
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
 	ImageURL        string    `json:"imageUrl"`
+	AgreementID     string    `json:"agreementId,omitempty"`
 	DurationMinutes int       `json:"durationMinutes"`
 	PriceKobo       int64     `json:"priceKobo"`
 	Currency        string    `json:"currency"`
@@ -65,6 +66,7 @@ func newServiceBody(s catalog.Service) serviceBody {
 		Name:            s.Name,
 		Description:     s.Description,
 		ImageURL:        s.ImageURL,
+		AgreementID:     s.AgreementID,
 		DurationMinutes: s.DurationMinutes,
 		PriceKobo:       s.PriceKobo,
 		Currency:        s.Currency,
@@ -120,6 +122,7 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 		Name            string `json:"name"`
 		Description     string `json:"description"`
 		ImageURL        string `json:"imageUrl"`
+		AgreementID     string `json:"agreementId"`
 		DurationMinutes int    `json:"durationMinutes"`
 		PriceKobo       int64  `json:"priceKobo"`
 		Currency        string `json:"currency"`
@@ -132,6 +135,7 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 		Name:            req.Name,
 		Description:     req.Description,
 		ImageURL:        req.ImageURL,
+		AgreementID:     req.AgreementID,
 		DurationMinutes: req.DurationMinutes,
 		PriceKobo:       req.PriceKobo,
 		Currency:        req.Currency,
@@ -156,6 +160,7 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 		Name            *string `json:"name"`
 		Description     *string `json:"description"`
 		ImageURL        *string `json:"imageUrl"`
+		AgreementID     *string `json:"agreementId"`
 		DurationMinutes *int    `json:"durationMinutes"`
 		PriceKobo       *int64  `json:"priceKobo"`
 		Currency        *string `json:"currency"`
@@ -169,6 +174,7 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 		Name:            req.Name,
 		Description:     req.Description,
 		ImageURL:        req.ImageURL,
+		AgreementID:     req.AgreementID,
 		DurationMinutes: req.DurationMinutes,
 		PriceKobo:       req.PriceKobo,
 		Currency:        req.Currency,

@@ -23,6 +23,7 @@ type Service struct {
 	policy       booking.ReschedulePolicy
 	notifier     ports.Notifier
 	users        ports.UserRepository
+	agreements   ports.AgreementGate
 	now          func() time.Time
 }
 
@@ -46,6 +47,17 @@ func WithNotifications(notifier ports.Notifier, users ports.UserRepository) Opti
 		s.notifier = notifier
 		s.users = users
 	}
+}
+
+// WithAgreementGate refuses a booking for a service whose agreement the
+// client has not signed (BE-14).
+//
+// The gate lives here, on the write path, and not only in the portal's
+// booking wizard: a step a browser can skip is not a contract requirement.
+// The portal asks the same question first so the client is shown the
+// agreement rather than an error, but this is the check that decides.
+func WithAgreementGate(gate ports.AgreementGate) Option {
+	return func(s *Service) { s.agreements = gate }
 }
 
 // NewService wires the use cases to their outbound ports. The scheduling
@@ -117,6 +129,14 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 		// Inactive services are not bookable — report as missing rather
 		// than leaking that the id exists (mirrors GetSlots).
 		return booking.Booking{}, catalog.ErrServiceNotFound
+	}
+	if s.agreements != nil {
+		// Checked before the slot is taken and long before payment: a
+		// client must never be charged for a session the practice would
+		// then have to refuse for want of a signed agreement.
+		if err := s.agreements.RequireSigned(ctx, clientID, serviceID); err != nil {
+			return booking.Booking{}, err
+		}
 	}
 	if err := s.assertSlotGeneratable(ctx, svc.PractitionerID, svc.DurationMinutes, startAt, loc, ""); err != nil {
 		return booking.Booking{}, err
