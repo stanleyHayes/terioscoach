@@ -18,14 +18,17 @@ import {
   Square,
   Video,
   VideoOff,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { BrandedSelect } from "@/components/ui/ChoiceControls";
+import { IconButton } from "@/components/ui/IconButton";
 import { Modal } from "@/components/ui/Modal";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
+import { ClientFilePanel } from "@/components/schedule/ClientFilePanel";
 import { notesApi, type SessionNote } from "@/lib/clients";
 import { useVideoRoom } from "@/lib/use-video-room";
 
@@ -45,8 +48,23 @@ export interface VideoRoomProps {
   bookingId: string;
   /** Shown on the remote tile before the other person arrives. */
   peerLabel: string;
+  /** Enables the in-call client file tab. Omitted when the id is unknown. */
+  clientId?: string;
   onLeave?: () => void;
 }
+
+/**
+ * Which side panel is showing. One at a time, like Meet: the panel sits
+ * beside the video on a wide screen rather than under it, so opening chat
+ * or notes never shoves the other person off the top of the page.
+ */
+type RoomPanel = "chat" | "notes" | "client" | null;
+
+const PANEL_TABS = [
+  { key: "chat", label: "Chat" },
+  { key: "notes", label: "Notes" },
+  { key: "client", label: "Client file" },
+] as const satisfies readonly { key: Exclude<RoomPanel, null>; label: string }[];
 
 const REACTIONS = ["👍", "❤️", "😂", "👏", "🎉"];
 
@@ -99,16 +117,17 @@ function ControlButton({
   );
 }
 
-export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
+export function VideoRoom({ bookingId, peerLabel, clientId, onLeave }: VideoRoomProps) {
   const { session, refreshCallbacks } = useAuth();
   const room = useVideoRoom(bookingId);
   const localVideo = useRef<HTMLVideoElement | null>(null);
   const remoteVideo = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const [chatOpen, setChatOpen] = useState(false);
+  const [panel, setPanel] = useState<RoomPanel>(null);
+  const chatOpen = panel === "chat";
+  const notesOpen = panel === "notes";
   const [chatDraft, setChatDraft] = useState("");
-  const [notesOpen, setNotesOpen] = useState(false);
   const [note, setNote] = useState<SessionNote | null>(null);
   const localDraftKey = useMemo(
     () => `terios.in-call-note-draft.${bookingId}`,
@@ -333,455 +352,498 @@ export function VideoRoom({ bookingId, peerLabel, onLeave }: VideoRoomProps) {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-4 bg-surface">
-      <div className="relative overflow-hidden rounded-xl border border-border bg-ink">
-        {/* Remote tile. */}
-        <video
-          ref={remoteVideo}
-          autoPlay
-          playsInline
-          aria-label={`${peerLabel}'s camera`}
-          className={cn(
-            "aspect-video w-full bg-ink object-cover",
-            !room.remoteStream && "opacity-0",
-          )}
-        />
-
-        {!room.remoteStream ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-            <p role="status" className="text-base font-medium text-surface">
-              {room.reconnecting
-                ? "Reconnecting…"
-                : room.waitingForAdmission
-                  ? "Waiting for your practitioner to admit you"
-                : room.state === "connecting" ||
-                    room.state === "requesting-media"
-                  ? "Connecting…"
-                  : `Waiting for ${peerLabel} to join`}
-            </p>
-            <p className="max-w-[40ch] text-sm text-surface/70">
-              {room.reconnecting
-                ? "The connection dropped. Getting it back — no need to rejoin."
-                : "They will appear here as soon as they arrive."}
-            </p>
-          </div>
-        ) : null}
-
-        {/* The peer's presence, top-left: mute, raised hand, their recording. */}
-        <div className="absolute left-4 top-4 flex items-center gap-2">
-          {!room.peerState.micOn && room.remoteStream ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
-              <MicOff size={13} aria-hidden="true" /> Muted
-            </span>
-          ) : null}
-          {room.peerState.handRaised ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
-              <Hand size={13} aria-hidden="true" /> Hand raised
-            </span>
-          ) : null}
-          {room.peerState.recording ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-danger px-3 py-1 text-xs font-medium text-on-primary">
-              ● Rec
-            </span>
-          ) : null}
-        </div>
-
-        {/* Connection quality, top-right. */}
-        {room.quality ? (
-          <span
-            role="img"
-            aria-label={`Connection quality: ${room.quality}`}
-            title={`Connection: ${room.quality}`}
-            className="absolute right-4 top-4 flex items-end gap-0.5 rounded-full bg-ink/70 px-2.5 py-1.5"
-          >
-            {[1, 2, 3].map((bar) => (
-              <span
-                key={bar}
-                className={cn(
-                  "w-1 rounded-sm",
-                  bar === 1 && "h-1.5",
-                  bar === 2 && "h-2.5",
-                  bar === 3 && "h-3.5",
-                  (room.quality === "good"
-                    ? 3
-                    : room.quality === "fair"
-                      ? 2
-                      : 1) >= bar
-                    ? room.quality === "poor"
-                      ? "bg-danger"
-                      : room.quality === "fair"
-                        ? "bg-amber-400"
-                        : "bg-emerald-400"
-                    : "bg-surface/30",
-                )}
-              />
-            ))}
-          </span>
-        ) : null}
-
-        {/* Own recording pill, bottom-left, with elapsed time. */}
-        {room.recording ? (
-          <span className="absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full bg-danger px-3 py-1 text-xs font-medium text-on-primary">
-            ● Rec {formatClock(room.recordingSeconds)}
-          </span>
-        ) : null}
-
-        {/* Own screen-share pill. */}
-        {room.sharingScreen ? (
-          <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
-            You are sharing your screen
-          </span>
-        ) : null}
-
-        {/* Reactions float over the relevant tile. */}
-        {visibleReaction ? (
-          <span
-            key={visibleReaction.at}
-            aria-hidden="true"
+    <div
+      ref={containerRef}
+      className="flex flex-col gap-4 bg-surface lg:flex-row lg:items-start"
+    >
+      {/* Stage column — keeps its width when a panel opens. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-ink">
+          {/* Remote tile. */}
+          <video
+            ref={remoteVideo}
+            autoPlay
+            playsInline
+            aria-label={`${peerLabel}'s camera`}
             className={cn(
-              "absolute z-10 animate-bounce text-4xl",
-              visibleReaction.from === "peer"
-                ? "left-6 top-1/3"
-                : "bottom-20 right-6",
+              "aspect-video w-full bg-ink object-cover",
+              !room.remoteStream && "opacity-0",
             )}
-          >
-            {visibleReaction.emoji}
-          </span>
-        ) : null}
+          />
 
-        {/* Own tile, inset. Muted so a client does not hear themselves. */}
-        <video
-          ref={localVideo}
-          autoPlay
-          playsInline
-          muted
-          aria-label="Your camera"
-          className={cn(
-            "absolute bottom-4 right-4 aspect-video w-32 rounded-lg border border-surface/20 bg-ink object-cover sm:w-44",
-            !room.cameraOn && "opacity-40",
-          )}
-        />
-
-        {/* The peer's captions, along the bottom of their tile. */}
-        {room.peerCaption ? (
-          <p
-            aria-live="polite"
-            className={cn(
-              "absolute inset-x-4 bottom-4 line-clamp-2 rounded-lg bg-ink/70 px-3 py-1.5 text-center text-sm text-surface",
-              !room.peerCaption.final && "opacity-60",
-            )}
-          >
-            {room.peerCaption.text}
-          </p>
-        ) : null}
-      </div>
-
-      {room.error ? (
-        <p role="alert" className="text-sm text-danger-ink">
-          {room.error}
-        </p>
-      ) : null}
-
-      {/* Device settings. */}
-      {settingsOpen ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row">
-          <div className="flex-1"><BrandedSelect compact label="Microphone" value={room.selectedMicId ?? ""} placeholder="Default microphone" onChange={room.selectMic} options={room.mics.map((device)=>({value:device.deviceId,label:device.label||"Microphone"}))}/></div>
-          <div className="flex-1"><BrandedSelect compact label="Camera" value={room.selectedCameraId ?? ""} placeholder="Default camera" onChange={room.selectCamera} options={room.cameras.map((device)=>({value:device.deviceId,label:device.label||"Camera"}))}/></div>
-          {room.speakers.length > 0 ? <div className="flex-1"><BrandedSelect compact label="Speaker" value={speakerId} placeholder="Default speaker" onChange={selectSpeaker} options={room.speakers.map((device)=>({value:device.deviceId,label:device.label||"Speaker"}))}/></div> : null}
-        </div>
-      ) : null}
-
-      {/* Call controls — built, not borrowed. */}
-      <div className="relative flex flex-wrap items-center justify-center gap-3">
-        <ControlButton
-          label={room.micOn ? "Mute your microphone" : "Unmute your microphone"}
-          pressed={!room.micOn}
-          danger={!room.micOn}
-          disabled={!live}
-          onClick={room.toggleMic}
-        >
-          {room.micOn ? (
-            <Mic size={20} aria-hidden="true" />
-          ) : (
-            <MicOff size={20} aria-hidden="true" />
-          )}
-        </ControlButton>
-
-        <ControlButton
-          label={room.cameraOn ? "Turn your camera off" : "Turn your camera on"}
-          pressed={!room.cameraOn}
-          danger={!room.cameraOn}
-          disabled={!live}
-          onClick={room.toggleCamera}
-        >
-          {room.cameraOn ? (
-            <Video size={20} aria-hidden="true" />
-          ) : (
-            <VideoOff size={20} aria-hidden="true" />
-          )}
-        </ControlButton>
-
-        <ControlButton
-          label={
-            room.sharingScreen
-              ? "Stop sharing your screen"
-              : "Share your screen"
-          }
-          pressed={room.sharingScreen}
-          disabled={!live}
-          onClick={room.toggleScreenShare}
-        >
-          <MonitorUp size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label={room.recording ? "Stop recording" : "Record this session"}
-          pressed={room.recording}
-          danger={room.recording}
-          disabled={!live || !room.recordingSupported || room.recordingConsentPending}
-          title={
-            room.recordingSupported
-              ? room.recording
-                ? "Stop and save the recording"
-                : room.recordingConsentPending
-                  ? "Waiting for the other participant to consent"
-                  : "Request consent and record to both dashboards"
-              : "Recording isn't supported in this browser"
-          }
-          onClick={room.toggleRecording}
-        >
-          {room.recording ? (
-            <Square size={18} aria-hidden="true" />
-          ) : (
-            <Circle size={18} aria-hidden="true" />
-          )}
-        </ControlButton>
-
-        <ControlButton
-          label={room.handRaised ? "Lower your hand" : "Raise your hand"}
-          pressed={room.handRaised}
-          disabled={!live}
-          onClick={room.toggleHand}
-        >
-          <Hand size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label="Reactions"
-          pressed={reactionsOpen}
-          disabled={!live}
-          onClick={() => setReactionsOpen((open) => !open)}
-        >
-          <Smile size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label={chatOpen ? "Hide chat" : "Show chat"}
-          pressed={chatOpen}
-          disabled={!live}
-          onClick={() => setChatOpen((open) => !open)}
-        >
-          <MessageSquare size={20} aria-hidden="true" />
-          {room.unreadCount > 0 && !chatOpen ? (
-            <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-danger text-[0.65rem] font-medium text-on-primary">
-              {room.unreadCount > 9 ? "9+" : room.unreadCount}
-            </span>
-          ) : null}
-        </ControlButton>
-
-        <ControlButton
-          label={notesOpen ? "Hide private notes" : "Show private notes"}
-          pressed={notesOpen}
-          disabled={!live}
-          title="Private notes autosave without affecting the call"
-          onClick={() => setNotesOpen((open) => !open)}
-        >
-          <FileText size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label={
-            room.captionsSupported
-              ? "Toggle captions"
-              : "Captions (Chrome only)"
-          }
-          pressed={room.captionsEnabled}
-          disabled={!live || !room.captionsSupported}
-          title={
-            room.captionsSupported
-              ? "Caption this call — your side is transcribed and shared (Chrome only)"
-              : "Captions need Chrome's speech recognition"
-          }
-          onClick={room.toggleCaptions}
-        >
-          <Captions size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label="Camera and microphone devices"
-          pressed={settingsOpen}
-          disabled={!live}
-          onClick={() => setSettingsOpen((open) => !open)}
-        >
-          <Settings2 size={20} aria-hidden="true" />
-        </ControlButton>
-
-        <ControlButton
-          label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-          onClick={toggleFullscreen}
-        >
-          <Maximize size={20} aria-hidden="true" />
-        </ControlButton>
-
-        {pipSupported ? (
-          <ControlButton
-            label="Picture in picture"
-            disabled={!room.remoteStream}
-            onClick={togglePictureInPicture}
-          >
-            <PictureInPicture2 size={20} aria-hidden="true" />
-          </ControlButton>
-        ) : null}
-
-        <ControlButton
-          label="Leave the session"
-          danger
-          onClick={() => setLeaveOpen(true)}
-        >
-          <PhoneOff size={20} aria-hidden="true" />
-        </ControlButton>
-
-        {/* The reaction picker pops above the control bar. */}
-        {reactionsOpen ? (
-          <div className="absolute -top-14 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-surface-raised px-2 py-1.5 shadow-sm">
-            {REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={`React with ${emoji}`}
-                onClick={() => {
-                  room.sendReaction(emoji);
-                  setReactionsOpen(false);
-                }}
-                className="rounded-full px-1.5 text-xl transition-transform duration-instant hover:scale-125"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Chat panel. */}
-      {chatOpen ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-raised p-3">
-          <div
-            aria-live="polite"
-            className="flex max-h-56 flex-col gap-1.5 overflow-y-auto px-1"
-          >
-            {room.messages.length === 0 ? (
-              <div className="flex flex-col items-center px-4 py-5 text-center">
-                <span
-                  aria-hidden="true"
-                  className="terios-empty-icon flex size-9 items-center justify-center rounded-full bg-surface-sunken text-ink-faint"
-                >
-                  <MessageSquare size={17} />
-                </span>
-                <p className="mt-3 text-sm font-semibold text-ink">
-                  No messages yet
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                  Messages stay between the two of you and disappear when the
-                  session ends.
-                </p>
-              </div>
-            ) : (
-              room.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-3 py-1.5 text-sm leading-[1.45]",
-                    message.from === "me"
-                      ? "self-end bg-primary text-on-primary"
-                      : "self-start bg-surface-sunken text-ink",
-                  )}
-                >
-                  {message.text}
-                </div>
-              ))
-            )}
-          </div>
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitChat();
-            }}
-          >
-            <input
-              type="text"
-              value={chatDraft}
-              onChange={(event) => setChatDraft(event.target.value)}
-              placeholder="Write a message…"
-              aria-label="Write a message"
-              maxLength={500}
-              className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
-            />
-            <Button type="submit" disabled={!chatDraft.trim()}>
-              Send
-            </Button>
-          </form>
-        </div>
-      ) : null}
-
-      {notesOpen ? (
-        <aside
-          aria-label="Private in-call notes"
-          className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-ink">
-                Private session notes
-              </h2>
-              <p className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
-                Practitioner-only notes for this session and client. Typing
-                here does not touch your microphone, camera, or connection.
+          {!room.remoteStream ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+              <p role="status" className="text-base font-medium text-surface">
+                {room.reconnecting
+                  ? "Reconnecting…"
+                  : room.waitingForAdmission
+                    ? "Waiting for your practitioner to admit you"
+                  : room.state === "connecting" ||
+                      room.state === "requesting-media"
+                    ? "Connecting…"
+                    : `Waiting for ${peerLabel} to join`}
+              </p>
+              <p className="max-w-[40ch] text-sm text-surface/70">
+                {room.reconnecting
+                  ? "The connection dropped. Getting it back — no need to rejoin."
+                  : "They will appear here as soon as they arrive."}
               </p>
             </div>
+          ) : null}
+
+          {/* The peer's presence, top-left: mute, raised hand, their recording. */}
+          <div className="absolute left-4 top-4 flex items-center gap-2">
+            {!room.peerState.micOn && room.remoteStream ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
+                <MicOff size={13} aria-hidden="true" /> Muted
+              </span>
+            ) : null}
+            {room.peerState.handRaised ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
+                <Hand size={13} aria-hidden="true" /> Hand raised
+              </span>
+            ) : null}
+            {room.peerState.recording ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-danger px-3 py-1 text-xs font-medium text-on-primary">
+                ● Rec
+              </span>
+            ) : null}
+          </div>
+
+          {/* Connection quality, top-right. */}
+          {room.quality ? (
             <span
-              role={notesStatus === "error" ? "alert" : "status"}
+              role="img"
+              aria-label={`Connection quality: ${room.quality}`}
+              title={`Connection: ${room.quality}`}
+              className="absolute right-4 top-4 flex items-end gap-0.5 rounded-full bg-ink/70 px-2.5 py-1.5"
+            >
+              {[1, 2, 3].map((bar) => (
+                <span
+                  key={bar}
+                  className={cn(
+                    "w-1 rounded-sm",
+                    bar === 1 && "h-1.5",
+                    bar === 2 && "h-2.5",
+                    bar === 3 && "h-3.5",
+                    (room.quality === "good"
+                      ? 3
+                      : room.quality === "fair"
+                        ? 2
+                        : 1) >= bar
+                      ? room.quality === "poor"
+                        ? "bg-danger"
+                        : room.quality === "fair"
+                          ? "bg-amber-400"
+                          : "bg-emerald-400"
+                      : "bg-surface/30",
+                  )}
+                />
+              ))}
+            </span>
+          ) : null}
+
+          {/* Own recording pill, bottom-left, with elapsed time. */}
+          {room.recording ? (
+            <span className="absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full bg-danger px-3 py-1 text-xs font-medium text-on-primary">
+              ● Rec {formatClock(room.recordingSeconds)}
+            </span>
+          ) : null}
+
+          {/* Own screen-share pill. */}
+          {room.sharingScreen ? (
+            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-ink/70 px-3 py-1 text-xs text-surface">
+              You are sharing your screen
+            </span>
+          ) : null}
+
+          {/* Reactions float over the relevant tile. */}
+          {visibleReaction ? (
+            <span
+              key={visibleReaction.at}
+              aria-hidden="true"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-                notesStatus === "error"
-                  ? "bg-danger-bg text-danger-ink"
-                  : "bg-surface-sunken text-ink-muted",
+                "absolute z-10 animate-bounce text-4xl",
+                visibleReaction.from === "peer"
+                  ? "left-6 top-1/3"
+                  : "bottom-20 right-6",
               )}
             >
-              {notesStatus === "saved" ? (
-                <CheckCircle2 size={13} aria-hidden="true" />
-              ) : null}
-              {notesStatus === "loading"
-                ? "Loading"
-                : notesStatus === "saving"
-                  ? "Autosaving"
-                  : notesStatus === "saved"
-                    ? "Saved"
-                    : "Draft kept locally"}
+              {visibleReaction.emoji}
             </span>
-          </div>
-          <textarea
-            value={privateNotes}
-            onChange={(event) => setPrivateNotes(event.target.value)}
-            rows={8}
-            maxLength={10000}
-            placeholder="Write observations while the session continues..."
-            className="min-h-48 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink outline-none transition-[border-color,box-shadow] placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+          ) : null}
+
+          {/* Own tile, inset. Muted so a client does not hear themselves. */}
+          <video
+            ref={localVideo}
+            autoPlay
+            playsInline
+            muted
+            aria-label="Your camera"
+            className={cn(
+              "absolute bottom-4 right-4 aspect-video w-32 rounded-lg border border-surface/20 bg-ink object-cover sm:w-44",
+              !room.cameraOn && "opacity-40",
+            )}
           />
-          <p className="text-xs leading-relaxed text-ink-muted">
-            Draft recovery is kept in this browser until the API confirms the
-            note is saved to the client&rsquo;s session record.
+
+          {/* The peer's captions, along the bottom of their tile. */}
+          {room.peerCaption ? (
+            <p
+              aria-live="polite"
+              className={cn(
+                "absolute inset-x-4 bottom-4 line-clamp-2 rounded-lg bg-ink/70 px-3 py-1.5 text-center text-sm text-surface",
+                !room.peerCaption.final && "opacity-60",
+              )}
+            >
+              {room.peerCaption.text}
+            </p>
+          ) : null}
+        </div>
+
+        {room.error ? (
+          <p role="alert" className="text-sm text-danger-ink">
+            {room.error}
           </p>
+        ) : null}
+
+        {/* Device settings. */}
+        {settingsOpen ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row">
+            <div className="flex-1"><BrandedSelect compact label="Microphone" value={room.selectedMicId ?? ""} placeholder="Default microphone" onChange={room.selectMic} options={room.mics.map((device)=>({value:device.deviceId,label:device.label||"Microphone"}))}/></div>
+            <div className="flex-1"><BrandedSelect compact label="Camera" value={room.selectedCameraId ?? ""} placeholder="Default camera" onChange={room.selectCamera} options={room.cameras.map((device)=>({value:device.deviceId,label:device.label||"Camera"}))}/></div>
+            {room.speakers.length > 0 ? <div className="flex-1"><BrandedSelect compact label="Speaker" value={speakerId} placeholder="Default speaker" onChange={selectSpeaker} options={room.speakers.map((device)=>({value:device.deviceId,label:device.label||"Speaker"}))}/></div> : null}
+          </div>
+        ) : null}
+
+        {/* Call controls — built, not borrowed. */}
+        <div className="relative flex flex-wrap items-center justify-center gap-3">
+          <ControlButton
+            label={room.micOn ? "Mute your microphone" : "Unmute your microphone"}
+            pressed={!room.micOn}
+            danger={!room.micOn}
+            disabled={!live}
+            onClick={room.toggleMic}
+          >
+            {room.micOn ? (
+              <Mic size={20} aria-hidden="true" />
+            ) : (
+              <MicOff size={20} aria-hidden="true" />
+            )}
+          </ControlButton>
+
+          <ControlButton
+            label={room.cameraOn ? "Turn your camera off" : "Turn your camera on"}
+            pressed={!room.cameraOn}
+            danger={!room.cameraOn}
+            disabled={!live}
+            onClick={room.toggleCamera}
+          >
+            {room.cameraOn ? (
+              <Video size={20} aria-hidden="true" />
+            ) : (
+              <VideoOff size={20} aria-hidden="true" />
+            )}
+          </ControlButton>
+
+          <ControlButton
+            label={
+              room.sharingScreen
+                ? "Stop sharing your screen"
+                : "Share your screen"
+            }
+            pressed={room.sharingScreen}
+            disabled={!live}
+            onClick={room.toggleScreenShare}
+          >
+            <MonitorUp size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label={room.recording ? "Stop recording" : "Record this session"}
+            pressed={room.recording}
+            danger={room.recording}
+            disabled={!live || !room.recordingSupported || room.recordingConsentPending}
+            title={
+              room.recordingSupported
+                ? room.recording
+                  ? "Stop and save the recording"
+                  : room.recordingConsentPending
+                    ? "Waiting for the other participant to consent"
+                    : "Request consent and record to both dashboards"
+                : "Recording isn't supported in this browser"
+            }
+            onClick={room.toggleRecording}
+          >
+            {room.recording ? (
+              <Square size={18} aria-hidden="true" />
+            ) : (
+              <Circle size={18} aria-hidden="true" />
+            )}
+          </ControlButton>
+
+          <ControlButton
+            label={room.handRaised ? "Lower your hand" : "Raise your hand"}
+            pressed={room.handRaised}
+            disabled={!live}
+            onClick={room.toggleHand}
+          >
+            <Hand size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label="Reactions"
+            pressed={reactionsOpen}
+            disabled={!live}
+            onClick={() => setReactionsOpen((open) => !open)}
+          >
+            <Smile size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label={chatOpen ? "Hide chat" : "Show chat"}
+            pressed={chatOpen}
+            disabled={!live}
+            onClick={() => setPanel((open) => (open === "chat" ? null : "chat"))}
+          >
+            <MessageSquare size={20} aria-hidden="true" />
+            {room.unreadCount > 0 && !chatOpen ? (
+              <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-danger text-[0.65rem] font-medium text-on-primary">
+                {room.unreadCount > 9 ? "9+" : room.unreadCount}
+              </span>
+            ) : null}
+          </ControlButton>
+
+          <ControlButton
+            label={notesOpen ? "Hide private notes" : "Show private notes"}
+            pressed={notesOpen}
+            disabled={!live}
+            title="Private notes autosave without affecting the call"
+            onClick={() => setPanel((open) => (open === "notes" ? null : "notes"))}
+          >
+            <FileText size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label={
+              room.captionsSupported
+                ? "Toggle captions"
+                : "Captions (Chrome only)"
+            }
+            pressed={room.captionsEnabled}
+            disabled={!live || !room.captionsSupported}
+            title={
+              room.captionsSupported
+                ? "Caption this call — your side is transcribed and shared (Chrome only)"
+                : "Captions need Chrome's speech recognition"
+            }
+            onClick={room.toggleCaptions}
+          >
+            <Captions size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label="Camera and microphone devices"
+            pressed={settingsOpen}
+            disabled={!live}
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            <Settings2 size={20} aria-hidden="true" />
+          </ControlButton>
+
+          <ControlButton
+            label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            onClick={toggleFullscreen}
+          >
+            <Maximize size={20} aria-hidden="true" />
+          </ControlButton>
+
+          {pipSupported ? (
+            <ControlButton
+              label="Picture in picture"
+              disabled={!room.remoteStream}
+              onClick={togglePictureInPicture}
+            >
+              <PictureInPicture2 size={20} aria-hidden="true" />
+            </ControlButton>
+          ) : null}
+
+          <ControlButton
+            label="Leave the session"
+            danger
+            onClick={() => setLeaveOpen(true)}
+          >
+            <PhoneOff size={20} aria-hidden="true" />
+          </ControlButton>
+
+          {/* The reaction picker pops above the control bar. */}
+          {reactionsOpen ? (
+            <div className="absolute -top-14 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-surface-raised px-2 py-1.5 shadow-sm">
+              {REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  aria-label={`React with ${emoji}`}
+                  onClick={() => {
+                    room.sendReaction(emoji);
+                    setReactionsOpen(false);
+                  }}
+                  className="rounded-full px-1.5 text-xl transition-transform duration-instant hover:scale-125"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Side panel — beside the video on a wide screen, below it on a phone.
+          Chat, notes and the client file share one column, so opening any of
+          them never pushes the other person off the top of the page. */}
+      {panel ? (
+        <aside
+          aria-label="Session panel"
+          className="flex w-full flex-col overflow-hidden rounded-xl border border-border bg-surface-raised lg:sticky lg:top-4 lg:max-h-[calc(100dvh-8rem)] lg:w-[22rem] lg:shrink-0"
+        >
+          <div className="flex items-center gap-1 border-b border-border p-2">
+            {PANEL_TABS.filter((tab) => tab.key !== "client" || clientId).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                aria-pressed={panel === tab.key}
+                onClick={() => setPanel(tab.key)}
+                className={cn(
+                  "flex-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors duration-instant",
+                  panel === tab.key
+                    ? "bg-surface-sunken text-ink"
+                    : "text-ink-muted hover:text-ink",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+            <IconButton
+              aria-label="Close the panel"
+              size="sm"
+              onClick={() => setPanel(null)}
+            >
+              <X aria-hidden="true" />
+            </IconButton>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {panel === "chat" ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-raised p-3">
+              <div
+                aria-live="polite"
+                className="flex max-h-56 flex-col gap-1.5 overflow-y-auto px-1"
+              >
+                {room.messages.length === 0 ? (
+                  <div className="flex flex-col items-center px-4 py-5 text-center">
+                    <span
+                      aria-hidden="true"
+                      className="terios-empty-icon flex size-9 items-center justify-center rounded-full bg-surface-sunken text-ink-faint"
+                    >
+                      <MessageSquare size={17} />
+                    </span>
+                    <p className="mt-3 text-sm font-semibold text-ink">
+                      No messages yet
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                      Messages stay between the two of you and disappear when the
+                      session ends.
+                    </p>
+                  </div>
+                ) : (
+                  room.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "max-w-[80%] rounded-2xl px-3 py-1.5 text-sm leading-[1.45]",
+                        message.from === "me"
+                          ? "self-end bg-primary text-on-primary"
+                          : "self-start bg-surface-sunken text-ink",
+                      )}
+                    >
+                      {message.text}
+                    </div>
+                  ))
+                )}
+              </div>
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitChat();
+                }}
+              >
+                <input
+                  type="text"
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  placeholder="Write a message…"
+                  aria-label="Write a message"
+                  maxLength={500}
+                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
+                />
+                <Button type="submit" disabled={!chatDraft.trim()}>
+                  Send
+                </Button>
+              </form>
+            </div>
+            ) : panel === "notes" ? (
+            <aside
+              aria-label="Private in-call notes"
+              className="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-ink">
+                    Private session notes
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
+                    Practitioner-only notes for this session and client. Typing
+                    here does not touch your microphone, camera, or connection.
+                  </p>
+                </div>
+                <span
+                  role={notesStatus === "error" ? "alert" : "status"}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+                    notesStatus === "error"
+                      ? "bg-danger-bg text-danger-ink"
+                      : "bg-surface-sunken text-ink-muted",
+                  )}
+                >
+                  {notesStatus === "saved" ? (
+                    <CheckCircle2 size={13} aria-hidden="true" />
+                  ) : null}
+                  {notesStatus === "loading"
+                    ? "Loading"
+                    : notesStatus === "saving"
+                      ? "Autosaving"
+                      : notesStatus === "saved"
+                        ? "Saved"
+                        : "Draft kept locally"}
+                </span>
+              </div>
+              <textarea
+                value={privateNotes}
+                onChange={(event) => setPrivateNotes(event.target.value)}
+                rows={8}
+                maxLength={10000}
+                placeholder="Write observations while the session continues..."
+                className="min-h-48 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink outline-none transition-[border-color,box-shadow] placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-xs leading-relaxed text-ink-muted">
+                Draft recovery is kept in this browser until the API confirms the
+                note is saved to the client&rsquo;s session record.
+              </p>
+            </aside>
+            ) : clientId ? (
+              <ClientFilePanel clientId={clientId} />
+            ) : null}
+          </div>
         </aside>
       ) : null}
 

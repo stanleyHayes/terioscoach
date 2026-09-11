@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { VideoRoom } from "@/components/schedule/VideoRoom";
 
 /**
  * The practitioner's video room for one session (CX-06).
  *
  * The API decides who may be here and when; this page renders the result.
- * A link back to the client's file is offered alongside, because notes are
- * usually written the moment a session ends and hunting for the client
- * afterwards is the friction that stops that happening.
+ * The client's file is reachable two ways, and neither ends the call: the
+ * "Client file" tab in the room's side panel reads the record in place, and
+ * the header link opens the editable file in a new tab.
  */
 export default function SessionRoomPage() {
   const params = useParams<{ id: string }>();
@@ -30,12 +30,18 @@ export default function SessionRoomPage() {
           Back to the calendar
         </Link>
 
+        {/* New tab, always: navigating in place unmounts the room and drops
+            the call. The file is also readable inside the room itself, from
+            the "Client file" tab in the side panel. */}
         {clientId ? (
           <Link
             href={`/clients/${clientId}`}
-            className="text-sm font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
           >
             Open the client file
+            <ExternalLink size={14} aria-hidden="true" />
           </Link>
         ) : null}
       </div>
@@ -44,7 +50,11 @@ export default function SessionRoomPage() {
         Session room
       </h1>
 
-      <VideoRoom bookingId={params.id} peerLabel={clientName} />
+      <VideoRoom
+        bookingId={params.id}
+        peerLabel={clientName}
+        clientId={clientId ?? undefined}
+      />
     </div>
   );
 }
