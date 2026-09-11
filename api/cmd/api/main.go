@@ -116,6 +116,9 @@ func run() error {
 		// Agreements are built before bookings: booking creation holds the
 		// gate, so the slice has to exist first.
 		documentService := buildDocumentService(cfg, db)
+		recordingService := buildRecordingService(cfg, db)
+		stopPurge := startRecordingPurge(recordingService)
+		defer stopPurge()
 		agreementService := buildAgreementService(db, notifier, documentService)
 		seedAgreements(agreementService, userRepository)
 		stopDispatcher := startDispatcher(notifier, cfg.NotificationPollInterval)
@@ -135,7 +138,7 @@ func run() error {
 			httpapi.WithPayments(buildPaymentService(cfg, db, notifier), authService),
 			httpapi.WithClients(buildClientService(db), authService),
 			httpapi.WithNotes(buildNoteService(db, notifier), authService),
-			httpapi.WithRecordings(buildRecordingService(db), authService),
+			httpapi.WithRecordings(recordingService, authService),
 			httpapi.WithContent(buildContentService(db), authService),
 			httpapi.WithEnquiries(buildEnquiryService(db, notifier), authService),
 			httpapi.WithReviews(buildReviewService(db), authService),
@@ -438,6 +441,59 @@ func (unconfiguredMailer) Send(context.Context, ports.EmailMessage) error {
 // startDispatcher runs the notification outbox on a timer and returns a
 // function that stops it and waits for the in-flight pass to finish, so
 // shutdown never cuts a send in half.
+// recordingPurgeInterval is how often retention is enforced. Retention is
+// measured in weeks, so this only has to be frequent enough that a
+// recording does not noticeably outlive its date — not frequent enough to
+// matter to anything else.
+const recordingPurgeInterval = time.Hour
+
+// startRecordingPurge deletes recordings past their retention date, stored
+// bytes first.
+//
+// This is what replaced the TTL index Mongo used to apply to the collection:
+// with the file in the media store, expiring the row on its own would leave
+// the recording sitting there with nothing pointing at it. A sweep runs at
+// boot too, so a deploy after an outage catches up rather than waiting out
+// the first interval.
+func startRecordingPurge(svc ports.RecordingService) func() {
+	if svc == nil {
+		return func() {}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+
+	purge := func() {
+		result, err := svc.PurgeExpired(ctx, 0)
+		if err != nil {
+			slog.Error("purge expired recordings", "error", err)
+			return
+		}
+		if result.Deleted > 0 || result.Failed > 0 {
+			slog.Info("expired recordings purged", "deleted", result.Deleted, "failed", result.Failed)
+		}
+	}
+
+	go func() {
+		defer close(done)
+		purge()
+		ticker := time.NewTicker(recordingPurgeInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				purge()
+			}
+		}
+	}()
+
+	return func() {
+		cancel()
+		<-done
+	}
+}
+
 func startDispatcher(dispatcher ports.Dispatcher, interval time.Duration) func() {
 	if interval <= 0 {
 		interval = time.Minute
@@ -606,9 +662,18 @@ func buildNoteService(db *mongo.Database, notifier *notificationsapp.Service) *n
 	)
 }
 
-func buildRecordingService(db *mongo.Database) *recordingsapp.Service {
+// Returns the port interface, not *recordings.Service: without a media
+// store there is nowhere to put a recording, so this returns nil and the
+// routes answer 503 — the same shape as documents and payments.
+func buildRecordingService(cfg config.Config, db *mongo.Database) ports.RecordingService {
+	if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
+		slog.Warn("Cloudinary credentials not set; session recording routes return 503")
+		return nil
+	}
 	return recordingsapp.NewService(
 		mongodb.NewRecordingRepository(db),
 		mongodb.NewBookingRepository(db),
+		cloudinary.NewClient(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
+		recordingsapp.Options{DeliveryTTL: cfg.DocumentURLTTL},
 	)
 }

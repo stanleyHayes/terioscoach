@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/recording"
 	"github.com/xcreativs/terios/api/internal/ports"
@@ -27,11 +28,15 @@ type recordingDoc struct {
 	ClientID       bson.ObjectID `bson:"clientId"`
 	PractitionerID bson.ObjectID `bson:"practitionerId"`
 	ContentType    string        `bson:"contentType"`
-	DataURL        string        `bson:"dataUrl"`
-	Bytes          int64         `bson:"bytes"`
-	DurationSec    int           `bson:"durationSec"`
-	CreatedAt      bson.DateTime `bson:"createdAt"`
-	RetainUntil    bson.DateTime `bson:"retainUntil"`
+	// publicId is the media store reference. dataUrl is the inline copy
+	// kept by recordings made before the move; both are optional so the two
+	// generations decode from the same document.
+	PublicID    string        `bson:"publicId,omitempty"`
+	DataURL     string        `bson:"dataUrl,omitempty"`
+	Bytes       int64         `bson:"bytes"`
+	DurationSec int           `bson:"durationSec"`
+	CreatedAt   bson.DateTime `bson:"createdAt"`
+	RetainUntil bson.DateTime `bson:"retainUntil"`
 }
 
 func (r *RecordingRepository) Create(ctx context.Context, rec recording.SessionRecording) (recording.SessionRecording, error) {
@@ -73,6 +78,40 @@ func (r *RecordingRepository) ListByBookingID(ctx context.Context, bookingID str
 	return out, cursor.Err()
 }
 
+// ListExpired returns recordings past their retention date, oldest first,
+// so a neglected backlog is worked through in bounded batches rather than
+// in one sweep.
+func (r *RecordingRepository) ListExpired(ctx context.Context, now time.Time, limit int) ([]recording.SessionRecording, error) {
+	cursor, err := r.coll.Find(ctx,
+		bson.M{"retainUntil": bson.M{"$lte": bson.NewDateTimeFromTime(now.UTC())}},
+		options.Find().SetSort(bson.D{{Key: "retainUntil", Value: 1}}).SetLimit(int64(limit)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list expired recordings: %w", err)
+	}
+	defer func() { _ = cursor.Close(ctx) }()
+	var out []recording.SessionRecording
+	for cursor.Next(ctx) {
+		var doc recordingDoc
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, fmt.Errorf("decode session recording: %w", err)
+		}
+		out = append(out, recordingFromDoc(doc))
+	}
+	return out, cursor.Err()
+}
+
+func (r *RecordingRepository) Delete(ctx context.Context, id string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil
+	}
+	if _, err := r.coll.DeleteOne(ctx, bson.M{"_id": oid}); err != nil {
+		return fmt.Errorf("delete session recording: %w", err)
+	}
+	return nil
+}
+
 func newRecordingDoc(rec recording.SessionRecording) (recordingDoc, error) {
 	bookingOID, err := bson.ObjectIDFromHex(rec.BookingID)
 	if err != nil {
@@ -91,6 +130,7 @@ func newRecordingDoc(rec recording.SessionRecording) (recordingDoc, error) {
 		ClientID:       clientOID,
 		PractitionerID: practitionerOID,
 		ContentType:    rec.ContentType,
+		PublicID:       rec.PublicID,
 		DataURL:        rec.DataURL,
 		Bytes:          rec.Bytes,
 		DurationSec:    rec.DurationSec,
@@ -114,6 +154,7 @@ func recordingFromDoc(doc recordingDoc) recording.SessionRecording {
 		ClientID:       doc.ClientID.Hex(),
 		PractitionerID: doc.PractitionerID.Hex(),
 		ContentType:    doc.ContentType,
+		PublicID:       doc.PublicID,
 		DataURL:        doc.DataURL,
 		Bytes:          doc.Bytes,
 		DurationSec:    doc.DurationSec,

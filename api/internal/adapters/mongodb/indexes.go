@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -107,11 +108,17 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		// Session recordings are scoped through their booking. Client and
 		// practitioner indexes back the two dashboards without exposing
 		// cross-client media.
+		//
+		// retainUntil is a plain index, not a TTL one. The bytes live in the
+		// media store now, and letting Mongo expire the row on its own would
+		// strand the file there with nothing left pointing at it. The
+		// recordings slice sweeps instead: asset first, then the row. See
+		// dropRetiredIndexes for the removal of the TTL index that was here.
 		"session_recordings": {
 			{Keys: bson.D{{Key: "bookingId", Value: 1}, {Key: "createdAt", Value: -1}}},
 			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
 			{Keys: bson.D{{Key: "practitionerId", Value: 1}, {Key: "createdAt", Value: -1}}},
-			{Keys: bson.D{{Key: "retainUntil", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
+			{Keys: bson.D{{Key: "retainUntil", Value: 1}}},
 		},
 
 		// Service agreements. One agreement per key per practitioner, so a
@@ -202,10 +209,71 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 	}
 
+	if err := dropRetiredIndexes(ctx, db); err != nil {
+		return err
+	}
+
 	for collection, models := range indexes {
 		if _, err := db.Collection(collection).Indexes().CreateMany(ctx, models); err != nil {
 			return fmt.Errorf("ensure indexes for %s: %w", collection, err)
 		}
 	}
 	return nil
+}
+
+// retiredIndexes are indexes a previous version created whose definition
+// has since changed. Mongo will not redefine an index in place — creating
+// one with the same keys and different options fails with
+// IndexOptionsConflict — so the old one has to go first, or every boot
+// against an existing database fails here.
+var retiredIndexes = map[string][]string{
+	// Was a TTL index expiring the row 30 days out. The recordings slice
+	// now sweeps explicitly so the stored bytes are deleted first.
+	"session_recordings": {"retainUntil_1"},
+}
+
+func dropRetiredIndexes(ctx context.Context, db *mongo.Database) error {
+	for collection, names := range retiredIndexes {
+		for _, name := range names {
+			stale, err := indexIsStale(ctx, db, collection, name)
+			if err != nil {
+				return err
+			}
+			if !stale {
+				continue
+			}
+			if err := db.Collection(collection).Indexes().DropOne(ctx, name); err != nil {
+				// A concurrent boot may have dropped it already.
+				if !strings.Contains(err.Error(), "index not found") {
+					return fmt.Errorf("drop retired index %s.%s: %w", collection, name, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// indexIsStale reports whether the named index exists and still carries the
+// options this version no longer wants. Only a TTL index qualifies today;
+// anything else with that name is already the shape we are about to create.
+func indexIsStale(ctx context.Context, db *mongo.Database, collection, name string) (bool, error) {
+	cursor, err := db.Collection(collection).Indexes().List(ctx)
+	if err != nil {
+		return false, fmt.Errorf("list indexes for %s: %w", collection, err)
+	}
+	defer func() { _ = cursor.Close(ctx) }()
+
+	for cursor.Next(ctx) {
+		var spec struct {
+			Name               string `bson:"name"`
+			ExpireAfterSeconds *int32 `bson:"expireAfterSeconds"`
+		}
+		if err := cursor.Decode(&spec); err != nil {
+			return false, fmt.Errorf("decode index spec for %s: %w", collection, err)
+		}
+		if spec.Name == name {
+			return spec.ExpireAfterSeconds != nil, nil
+		}
+	}
+	return false, cursor.Err()
 }

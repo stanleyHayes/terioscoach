@@ -1005,18 +1005,26 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         recordChunksRef.current = [];
         if (chunks.length === 0) return;
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+        const contentType = blob.type || "video/webm";
         const currentSession = sessionRef.current;
         if (!currentSession || accessRef.current?.role !== "practitioner") return;
-        void readBlobAsDataURL(blob)
-          .then((dataUrl) =>
-            recordingsApi.create(currentSession, refreshCallbacks, bookingId, {
-              contentType: blob.type || "video/webm",
-              dataUrl,
-              bytes: blob.size,
-              durationSec: seconds,
-            }),
-          )
-          .catch(() => setError("The recording finished, but it could not be saved to the dashboards."));
+
+        // Straight from here to the media store — the file never passes
+        // through the API. If that fails the recording is not lost: it is
+        // handed to this device as a download, which is the only copy that
+        // exists at that point.
+        void recordingsApi
+          .upload(currentSession, refreshCallbacks, bookingId, blob, {
+            contentType,
+            durationSec: seconds,
+            filename: recordingFilename(bookingId, contentType),
+          })
+          .catch(() => {
+            downloadBlob(blob, recordingFilename(bookingId, contentType));
+            setError(
+              "The recording finished, but it could not be saved to the dashboards. It has been downloaded to this device.",
+            );
+          });
       };
       recorder.start(1000);
       recorderRef.current = recorder;
@@ -1204,14 +1212,21 @@ interface SpeechRecognitionResultEventLike {
   results: ArrayLike<{ isFinal: boolean; 0?: { transcript: string } }>;
 }
 
-function readBlobAsDataURL(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === "string"
-        ? resolve(reader.result)
-        : reject(new Error("recording read failed"));
-    reader.onerror = () => reject(reader.error ?? new Error("recording read failed"));
-    reader.readAsDataURL(blob);
-  });
+/** Names a recording after its session and the container it was muxed in —
+ * the store keys delivery off the extension. */
+function recordingFilename(bookingId: string, contentType: string): string {
+  const extension = contentType.includes("mp4") ? "mp4" : "webm";
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `terios-session-${bookingId}-${stamp}.${extension}`;
+}
+
+/** Last resort when the upload fails: the practitioner keeps the only copy
+ * rather than the recording being lost with the page. */
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

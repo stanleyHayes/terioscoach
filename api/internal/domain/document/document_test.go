@@ -214,7 +214,18 @@ func TestKindPrivacy(t *testing.T) {
 	if !KindClientDocument.Valid() || Kind("secret").Valid() {
 		t.Error("Kind.Valid does not match the known set")
 	}
-	if !ResourceImage.Valid() || ResourceType("video").Valid() {
+	if !ResourceImage.Valid() || !ResourceRaw.Valid() || ResourceType("audio").Valid() {
 		t.Error("ResourceType.Valid accepted a type outside the policy")
+	}
+	// Video is a valid media-store type — session recordings are stored
+	// through the same store — but it must stay unreachable from a document
+	// upload, which is decided by the extension table, not by this enum.
+	if !ResourceVideo.Valid() {
+		t.Error("ResourceVideo should be a valid media-store type")
+	}
+	for _, name := range []string{"clip.webm", "clip.mp4", "clip.mov", "clip.mp3"} {
+		if _, _, err := ClassifyFilename(name); !errors.Is(err, ErrUnsupportedFileType) {
+			t.Errorf("ClassifyFilename(%q) = %v, want it refused as a document", name, err)
+		}
 	}
 }

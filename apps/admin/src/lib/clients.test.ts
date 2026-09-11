@@ -151,27 +151,79 @@ describe("recordingsApi", () => {
     expect(lastCall()[0]).toBe("/v1/bookings/bk-1/recordings");
   });
 
-  it("creates a recording with the captured media payload", async () => {
-    authedRequestMock.mockResolvedValue({ recording: { id: "rec-1" } });
+  // The file goes to the media store, not through the API: a half-hour
+  // consultation as base64 in a JSON body was a 7 MB request.
+  it("uploads the file to the store and registers only the reference", async () => {
+    authedRequestMock
+      .mockResolvedValueOnce({
+        url: "https://upload.test/video",
+        fields: { folder: "terios/clients/c-1/recordings", signature: "sig" },
+        expiresAt: "2026-08-11T12:10:00.000Z",
+      })
+      .mockResolvedValueOnce({ recording: { id: "rec-1" } });
 
-    await recordingsApi.create(session, callbacks, "bk-1", {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ public_id: "terios/clients/c-1/recordings/abc", bytes: 2048 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const blob = new Blob(["xx"], { type: "video/webm" });
+    await recordingsApi.upload(session, callbacks, "bk-1", blob, {
       contentType: "video/webm",
-      dataUrl: "data:video/webm;base64,AAA",
-      bytes: 3,
       durationSec: 12,
+      filename: "session.webm",
     });
 
+    // 1. Ask the API to sign one upload.
+    expect(authedRequestMock.mock.calls[0]![0]).toBe("/v1/bookings/bk-1/recordings/sign-upload");
+
+    // 2. Send the bytes straight to the store, with the signed fields.
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[0]!;
+    expect(uploadUrl).toBe("https://upload.test/video");
+    expect((uploadInit as RequestInit).body).toBeInstanceOf(FormData);
+    const form = (uploadInit as RequestInit).body as FormData;
+    expect(form.get("signature")).toBe("sig");
+    expect(form.get("file")).toBeInstanceOf(Blob);
+
+    // 3. Tell the API what landed — a reference, never the file.
     const [path, , , options] = lastCall();
     expect(path).toBe("/v1/bookings/bk-1/recordings");
     expect(options).toMatchObject({
       method: "POST",
       body: {
         contentType: "video/webm",
-        dataUrl: "data:video/webm;base64,AAA",
-        bytes: 3,
+        publicId: "terios/clients/c-1/recordings/abc",
+        bytes: 2048,
         durationSec: 12,
       },
     });
+    expect(JSON.stringify(options)).not.toContain("dataUrl");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a rejected upload instead of recording a file that is not there", async () => {
+    authedRequestMock.mockResolvedValueOnce({
+      url: "https://upload.test/video",
+      fields: {},
+      expiresAt: "2026-08-11T12:10:00.000Z",
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401 }));
+
+    const blob = new Blob(["xx"], { type: "video/webm" });
+    await expect(
+      recordingsApi.upload(session, callbacks, "bk-1", blob, {
+        contentType: "video/webm",
+        durationSec: 12,
+        filename: "session.webm",
+      }),
+    ).rejects.toThrow();
+
+    // Nothing was registered — a record pointing at an upload that failed
+    // would be a recording the practice cannot play.
+    expect(authedRequestMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });
 

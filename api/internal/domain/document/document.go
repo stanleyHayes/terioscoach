@@ -55,19 +55,23 @@ func (k Kind) Private() bool {
 	return k == KindClientDocument || k == KindSignedForm
 }
 
-// ResourceType mirrors the media store's own split. Only images and raw
-// files (PDFs) are accepted; video and audio are out of scope for v1 and
-// are rejected rather than silently stored.
+// ResourceType mirrors the media store's own split.
+//
+// Documents accept only images and raw files (PDFs) — ClassifyFilename's
+// extension table is what enforces that, and it lists no others. Video is
+// valid here because session recordings are stored through the same media
+// store; it is not reachable through any document upload.
 type ResourceType string
 
 const (
 	ResourceImage ResourceType = "image"
 	ResourceRaw   ResourceType = "raw"
+	ResourceVideo ResourceType = "video"
 )
 
 // Valid reports whether t is an accepted resource type.
 func (t ResourceType) Valid() bool {
-	return t == ResourceImage || t == ResourceRaw
+	return t == ResourceImage || t == ResourceRaw || t == ResourceVideo
 }
 
 // allowedExtensions is the accepted file types per the media policy.

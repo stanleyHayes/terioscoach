@@ -47,9 +47,14 @@ export function RecordingPlayer({
         {contentType.includes("webm") ? ", which Safari does not support" : ""}.
         Download it and open it in another player.
       </p>
+      {/* The file is delivered from the media store, so `download` is
+          ignored cross-origin — it opens in a new tab rather than taking the
+          page with it. */}
       <a
         href={url}
         download={fileName}
+        target="_blank"
+        rel="noopener"
         className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
       >
         <Download size={16} aria-hidden="true" />

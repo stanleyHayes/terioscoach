@@ -12,7 +12,7 @@
  * All calls go through authedRequest (single 401 → refresh → retry).
  */
 
-import { authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
+import { ApiError, authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
 
 export interface ClientSummary {
   id: string;
@@ -197,6 +197,17 @@ export interface SessionRecording {
   createdAt: string;
 }
 
+interface SignedRecordingUpload {
+  url: string;
+  fields: Record<string, string>;
+  expiresAt: string;
+}
+
+interface StoreUpload {
+  public_id: string;
+  bytes: number;
+}
+
 export const recordingsApi = {
   async list(
     session: Session,
@@ -211,22 +222,58 @@ export const recordingsApi = {
     return items;
   },
 
-  async create(
+  /**
+   * Uploads a finished recording and registers it.
+   *
+   * The file goes straight from this browser to the media store under a
+   * signature the API mints, the same path documents take. It used to be
+   * read into a base64 data URL and posted to the API as JSON, which meant
+   * a 7 MB request body for a half-hour consultation and the same weight
+   * again on every read.
+   */
+  async upload(
     session: Session,
     callbacks: RefreshCallbacks,
     bookingId: string,
-    input: {
-      contentType: string;
-      dataUrl: string;
-      bytes: number;
-      durationSec: number;
-    },
+    blob: Blob,
+    input: { contentType: string; durationSec: number; filename: string },
   ): Promise<SessionRecording> {
+    const signed = await authedRequest<SignedRecordingUpload>(
+      `/v1/bookings/${bookingId}/recordings/sign-upload`,
+      session,
+      callbacks,
+      { method: "POST", body: { contentType: input.contentType } },
+    );
+
+    const form = new FormData();
+    for (const [name, value] of Object.entries(signed.fields)) {
+      form.append(name, value);
+    }
+    form.append("file", blob, input.filename);
+
+    const response = await fetch(signed.url, { method: "POST", body: form });
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        "upload_failed",
+        "The recording could not be uploaded. It has been downloaded to this device instead.",
+      );
+    }
+    const uploaded = (await response.json()) as StoreUpload;
+
     const { recording } = await authedRequest<{ recording: SessionRecording }>(
       `/v1/bookings/${bookingId}/recordings`,
       session,
       callbacks,
-      { method: "POST", body: input },
+      {
+        method: "POST",
+        body: {
+          contentType: input.contentType,
+          publicId: uploaded.public_id,
+          bytes: uploaded.bytes || blob.size,
+          durationSec: input.durationSec,
+        },
+      },
     );
     return recording;
   },

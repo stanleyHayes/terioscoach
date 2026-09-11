@@ -18,7 +18,10 @@ func WithRecordings(svc ports.RecordingService, auth ports.AuthService) Option {
 		}
 		h := &recordingHandler{svc: svc}
 		s.Router.With(RequireAuth(auth)).Get("/v1/bookings/{id}/recordings", h.list)
-		s.Router.With(RequireAuth(auth), RequireRole(identity.RolePractitioner)).Post("/v1/bookings/{id}/recordings", h.create)
+		s.Router.With(RequireAuth(auth), RequireRole(identity.RolePractitioner)).
+			Post("/v1/bookings/{id}/recordings/sign-upload", h.signUpload)
+		s.Router.With(RequireAuth(auth), RequireRole(identity.RolePractitioner)).
+			Post("/v1/bookings/{id}/recordings", h.create)
 	}
 }
 
@@ -44,14 +47,15 @@ type recordingBody struct {
 	CreatedAt       time.Time `json:"createdAt"`
 }
 
-func newRecordingBody(rec recording.SessionRecording) recordingBody {
+func newRecordingBody(item ports.PlayableRecording) recordingBody {
+	rec := item.Recording
 	return recordingBody{
 		ID:              rec.ID,
 		BookingID:       rec.BookingID,
 		ClientID:        rec.ClientID,
 		PractitionerID:  rec.PractitionerID,
 		ContentType:     rec.ContentType,
-		URL:             rec.DataURL,
+		URL:             item.URL,
 		Bytes:           rec.Bytes,
 		DurationSec:     rec.DurationSec,
 		StorageLocation: recording.StorageLocation,
@@ -84,7 +88,7 @@ func (h *recordingHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		ContentType string `json:"contentType"`
-		DataURL     string `json:"dataUrl"`
+		PublicID    string `json:"publicId"`
 		Bytes       int64  `json:"bytes"`
 		DurationSec int    `json:"durationSec"`
 	}
@@ -93,7 +97,7 @@ func (h *recordingHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	rec, err := h.svc.CreateRecording(r.Context(), id.UserID, chi.URLParam(r, "id"), ports.RecordingUpload{
 		ContentType: req.ContentType,
-		DataURL:     req.DataURL,
+		PublicID:    req.PublicID,
 		Bytes:       req.Bytes,
 		DurationSec: req.DurationSec,
 	})
@@ -101,5 +105,35 @@ func (h *recordingHandler) create(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]recordingBody{"recording": newRecordingBody(rec)})
+	// No delivery URL on the create response: the practitioner who just
+	// uploaded it has the file, and the list endpoint mints one when it is
+	// actually needed.
+	writeJSON(w, http.StatusCreated, map[string]recordingBody{
+		"recording": newRecordingBody(ports.PlayableRecording{Recording: rec}),
+	})
+}
+
+// signUpload authorizes one direct upload of a recording, so the bytes go
+// to the media store rather than through this process.
+func (h *recordingHandler) signUpload(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		ContentType string `json:"contentType"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	signed, err := h.svc.SignUpload(r.Context(), id.UserID, chi.URLParam(r, "id"), req.ContentType)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"url":       signed.URL,
+		"fields":    signed.Fields,
+		"expiresAt": signed.ExpiresAt.UTC(),
+	})
 }
