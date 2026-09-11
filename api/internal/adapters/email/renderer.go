@@ -31,6 +31,7 @@ var templateFiles = map[notification.Kind]string{
 	notification.KindBookingCancelled:       "templates/booking-cancelled.html",
 	notification.KindFeedbackShared:         "templates/feedback-shared.html",
 	notification.KindEnquiryReceived:        "templates/enquiry-notification.html",
+	notification.KindAgreementSigned:        "templates/agreement-signed.html",
 }
 
 // subjects are the subject lines, in the brand voice. The reminder's is
@@ -43,6 +44,21 @@ var subjects = map[notification.Kind]string{
 	notification.KindBookingCancelled:       "Your session has been cancelled",
 	notification.KindFeedbackShared:         "Notes and resources from your session",
 	notification.KindEnquiryReceived:        "New enquiry from your website",
+	notification.KindAgreementSigned:        "A client signed a service agreement",
+}
+
+// ctaLinks names the data key each template's call-to-action points at, so
+// the plain-text alternative carries the same destination as the button.
+// A mail client that refuses to render our HTML still has a usable link.
+var ctaLinks = map[notification.Kind]string{
+	notification.KindBookingPaymentRequired: "paymentUrl",
+	notification.KindBookingConfirmation:    "manageUrl",
+	notification.KindSessionReminder:        "joinUrl",
+	notification.KindBookingRescheduled:     "manageUrl",
+	notification.KindBookingCancelled:       "bookUrl",
+	notification.KindFeedbackShared:         "portalUrl",
+	notification.KindEnquiryReceived:        "dashboardUrl",
+	notification.KindAgreementSigned:        "dashboardUrl",
 }
 
 // Renderer produces brand messages from jobs.
@@ -128,6 +144,11 @@ func subject(job notification.Job, data map[string]string) string {
 			return "New enquiry from " + name
 		}
 	}
+	if job.Kind == notification.KindAgreementSigned {
+		if name := data["clientName"]; name != "" {
+			return name + " signed the " + data["agreementTitle"]
+		}
+	}
 	if line, ok := subjects[job.Kind]; ok {
 		return line
 	}
@@ -161,7 +182,7 @@ func plainText(job notification.Job, data map[string]string) string {
 	if message := data["message"]; message != "" {
 		fmt.Fprintf(&b, "\n%s\n", message)
 	}
-	if link := data["manageUrl"]; link != "" && job.Kind != notification.KindEnquiryReceived {
+	if link := data[ctaLinks[job.Kind]]; link != "" && link != data["paymentUrl"] {
 		fmt.Fprintf(&b, "\n%s\n", link)
 	}
 	b.WriteString("\nTerios Wellness Spa")
