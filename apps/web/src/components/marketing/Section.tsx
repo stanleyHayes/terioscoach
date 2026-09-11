@@ -21,6 +21,13 @@ export interface SectionProps {
   background?: SectionBackground;
   className?: string;
   containerClassName?: string;
+  /**
+   * Decorative layer painted behind the container and edge to edge, rather
+   * than inside the 1200px measure. Heroes use it for background artwork
+   * that should bleed past the content column. Never put content here — it
+   * sits outside the reveal animation and is not announced.
+   */
+  overlay?: ReactNode;
   children: ReactNode;
 }
 
@@ -33,6 +40,7 @@ export function Section({
   background = "surface",
   className,
   containerClassName,
+  overlay,
   children,
 }: SectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -62,6 +70,7 @@ export function Section({
       aria-labelledby={ariaLabelledby}
       className={cn("terios-section-reveal", backgroundClasses[background], className)}
     >
+      {overlay}
       <div
         className={cn(
           "mx-auto max-w-[1200px] px-6 py-12 lg:px-12 lg:py-20",

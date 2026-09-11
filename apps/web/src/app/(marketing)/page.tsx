@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Globe, HeartPulse, ShieldCheck, Video } from "lucide-react";
 import { Testimonials } from "@/components/content/Testimonials";
+import { HeroWatermark } from "@/components/marketing/HeroWatermark";
 import { Section } from "@/components/marketing/Section";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { buttonClasses } from "@/components/ui/Button";
@@ -67,7 +68,7 @@ export default async function Home() {
     <>
       {/* Hero — design-system §2: min-height 88vh, content vertically centered.
           Type: display-xl headline, body-lg lead (brand.md §4). */}
-      <Section background="night" className="terios-grain overflow-hidden" containerClassName="grid min-h-[calc(100dvh-72px)] items-center gap-14 py-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-20">
+      <Section background="night" className="terios-grain relative overflow-hidden" containerClassName="relative grid min-h-[calc(100dvh-72px)] items-center gap-14 py-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-20" overlay={<HeroWatermark />}>
         <div className="max-w-[68ch]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">
             Nursing &amp; wellness coaching

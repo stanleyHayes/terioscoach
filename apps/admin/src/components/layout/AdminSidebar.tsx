@@ -18,6 +18,7 @@ import {
   UserRound,
   X,
   type LucideIcon,
+  FileSignature,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -43,6 +44,7 @@ export const NAV_GROUPS = [
       { label: "Availability", href: "/availability", icon: CalendarClock },
       { label: "Clients", href: "/clients", icon: Users },
       { label: "Services", href: "/services", icon: Sparkles },
+      { label: "Agreements", href: "/agreements", icon: FileSignature },
     ],
   },
   {
@@ -107,6 +109,7 @@ const NAV_PERMISSION: Record<string, string> = {
   "/availability": "schedule.manage",
   "/clients": "clients.manage",
   "/services": "services.manage",
+  "/agreements": "services.manage",
   "/content": "content.manage",
   "/forms": "forms.manage",
   "/enquiries": "enquiries.manage",
@@ -311,6 +314,16 @@ export function AdminSidebar({
             </div>
           ) : null}
         </div>
+        {/* Platform attribution — the practice's own brand stays the loud one. */}
+        {!compact ? (
+          <p className="px-4 pb-3 text-[10px] font-semibold tracking-[0.14em] text-eucalyptus-300/80 uppercase">
+            Powered by XHI
+          </p>
+        ) : (
+          <p className="pb-3 text-center text-[10px] font-semibold tracking-[0.08em] text-eucalyptus-300/80 uppercase">
+            XHI
+          </p>
+        )}
       </aside>
     </>
   );

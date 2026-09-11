@@ -164,6 +164,16 @@ export function PortalSidebar({
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-clay-300 text-xs font-semibold text-eucalyptus-900">{initials(userName)}</span>
           {!compact ? <div className="min-w-0"><p className="truncate text-sm text-sand-0">{userName}</p><p className="truncate text-xs text-eucalyptus-300">{userEmail ?? "Client"}</p></div> : null}
         </div>
+        {/* Platform attribution — the practice's own brand stays the loud one. */}
+        {!compact ? (
+          <p className="px-4 pb-3 text-[10px] font-semibold tracking-[0.14em] text-eucalyptus-300/80 uppercase">
+            Powered by XHI
+          </p>
+        ) : (
+          <p className="pb-3 text-center text-[10px] font-semibold tracking-[0.08em] text-eucalyptus-300/80 uppercase">
+            XHI
+          </p>
+        )}
       </aside>
     </>
   );
