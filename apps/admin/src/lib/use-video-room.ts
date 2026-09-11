@@ -111,7 +111,7 @@ export interface VideoRoom {
   selectCamera: (deviceId: string) => void;
   /** Connection quality from getStats, refreshed while connected. */
   quality: ConnectionQuality | null;
-  /** Local recording (MediaRecorder → .webm download on stop). */
+  /** Local recording (MediaRecorder → saved to both dashboards on stop). */
   recordingSupported: boolean;
   recording: boolean;
   recordingSeconds: number;
@@ -984,9 +984,16 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         ...(remoteRef.current?.getVideoTracks() ?? []),
         ...destination.stream.getAudioTracks(),
       ]);
-      const mimeType = ["video/webm;codecs=vp9,opus", "video/webm"].find((candidate) =>
-        MediaRecorder.isTypeSupported(candidate),
-      );
+      // MP4/H.264 first: a WebM/VP9 file is unplayable in Safari, so a
+      // recording made in Chrome used to reach the client as a dead black
+      // player on iPhone. WebM stays as the fallback for browsers that
+      // cannot mux MP4.
+      const mimeType = [
+        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+        "video/mp4",
+        "video/webm;codecs=vp9,opus",
+        "video/webm",
+      ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
       const recorder = new MediaRecorder(combined, mimeType ? { mimeType } : undefined);
       recordChunksRef.current = [];
       recorder.ondataavailable = (event) => {

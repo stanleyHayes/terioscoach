@@ -4,6 +4,7 @@ import { Calendar, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SessionRow } from "@/components/booking/SessionRow";
+import { RecordingPlayer } from "@/components/portal/RecordingPlayer";
 import { SessionFeedback } from "@/components/portal/SessionFeedback";
 import { SlotPicker } from "@/components/booking/SlotPicker";
 import { useMyBookings } from "@/components/booking/use-my-bookings";
@@ -441,9 +442,12 @@ function RecordingList({ bookingId }: { bookingId: string }) {
       <ul className="mt-3 flex flex-col gap-3">
         {recordings.map((recording) => (
           <li key={recording.id}>
-            <video
-              controls
-              src={recording.url}
+            <RecordingPlayer
+              url={recording.url}
+              contentType={recording.contentType}
+              fileName={`terios-session-${recording.bookingId}.${
+                recording.contentType.includes("mp4") ? "mp4" : "webm"
+              }`}
               className="aspect-video w-full rounded-lg bg-ink"
             />
             <p className="mt-2 text-xs text-ink-muted">

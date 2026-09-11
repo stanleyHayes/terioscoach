@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CircleAlert, FileText, FolderOpen } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   NotesComposer,
   isMissingNote,
 } from "@/components/clients/NotesComposer";
 import { EmptyState } from "@/components/content/states";
+import { ClientAgreements } from "@/components/clients/ClientAgreements";
+import { ClientDocuments } from "@/components/clients/ClientDocuments";
+import { RecordingPlayer } from "@/components/schedule/RecordingPlayer";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
@@ -65,6 +68,9 @@ export default function ClientRecordPage() {
   >("idle");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<SessionRecording[]>([]);
+  // Which session's notes are open right now, readable from an async
+  // continuation that started before the practitioner moved on.
+  const openBookingRef = useRef<string | null>(null);
 
   const record = useResource<ClientRecord>(
     (session, callbacks) => clientsApi.get(session, callbacks, clientId),
@@ -84,9 +90,11 @@ export default function ClientRecordPage() {
   async function openNotes(bookingId: string) {
     if (selectedBooking === bookingId) {
       setSelectedBooking(null);
+      openBookingRef.current = null;
       return;
     }
     setSelectedBooking(bookingId);
+    openBookingRef.current = bookingId;
     setNote(null);
     setRecordings([]);
     setNoteError(null);
@@ -110,12 +118,22 @@ export default function ClientRecordPage() {
       return;
     }
     setNote(loaded);
-    const loadedRecordings = await action.run(
-      `recordings:${bookingId}`,
-      (session, callbacks) => recordingsApi.list(session, callbacks, bookingId),
-    );
-    if (loadedRecordings) setRecordings(loadedRecordings);
     setNoteState("ready");
+
+    // Recordings are returned inline as base64 data URLs, so a session with
+    // a recording is a multi-megabyte response. Awaiting it here left the
+    // notes stuck on "Loading notes…" for the whole download; the notes are
+    // ready now, and the player fills in when its payload arrives.
+    void action
+      .run(`recordings:${bookingId}`, (session, callbacks) =>
+        recordingsApi.list(session, callbacks, bookingId),
+      )
+      .then((loadedRecordings) => {
+        // A different row may have been opened while this was in flight.
+        if (loadedRecordings && openBookingRef.current === bookingId) {
+          setRecordings(loadedRecordings);
+        }
+      });
   }
 
   async function saveProfile() {
@@ -386,6 +404,19 @@ export default function ClientRecordPage() {
                     {data.formSubmissionCount === 1 ? "form" : "forms"} on file
                   </li>
                 </ul>
+
+                <div className="mt-4 border-t border-border pt-4">
+                  <ClientDocuments clientId={clientId} clientName={data.name} />
+                </div>
+
+                <div className="mt-5 border-t border-border pt-4">
+                  <h3 className="text-xs font-semibold tracking-[0.04em] text-ink-muted uppercase">
+                    Signed agreements
+                  </h3>
+                  <div className="mt-3">
+                    <ClientAgreements clientId={clientId} />
+                  </div>
+                </div>
               </section>
             </aside>
           </div>
@@ -411,9 +442,12 @@ function RecordingList({ recordings }: { recordings: SessionRecording[] }) {
         <ul className="mt-3 flex flex-col gap-3">
           {recordings.map((recording) => (
             <li key={recording.id} className="rounded-md bg-surface-sunken p-3">
-              <video
-                controls
-                src={recording.url}
+              <RecordingPlayer
+                url={recording.url}
+                contentType={recording.contentType}
+                fileName={`terios-session-${recording.bookingId}.${
+                  recording.contentType.includes("mp4") ? "mp4" : "webm"
+                }`}
                 className="aspect-video w-full rounded-md bg-ink"
               />
               <p className="mt-2 text-xs text-ink-muted">

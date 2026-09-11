@@ -109,7 +109,7 @@ export interface VideoRoom {
   selectCamera: (deviceId: string) => void;
   /** Connection quality from getStats, refreshed while connected. */
   quality: ConnectionQuality | null;
-  /** Local recording (MediaRecorder → .webm download on stop). */
+  /** Local recording (MediaRecorder → MP4/WebM download on stop). */
   recordingSupported: boolean;
   recording: boolean;
   recordingSeconds: number;
@@ -981,9 +981,16 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         ...(remoteRef.current?.getVideoTracks() ?? []),
         ...destination.stream.getAudioTracks(),
       ]);
-      const mimeType = ["video/webm;codecs=vp9,opus", "video/webm"].find((candidate) =>
-        MediaRecorder.isTypeSupported(candidate),
-      );
+      // MP4/H.264 first: a WebM/VP9 file is unplayable in Safari, so a
+      // recording made in Chrome used to reach the client as a dead black
+      // player on iPhone. WebM stays as the fallback for browsers that
+      // cannot mux MP4.
+      const mimeType = [
+        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+        "video/mp4",
+        "video/webm;codecs=vp9,opus",
+        "video/webm",
+      ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
       const recorder = new MediaRecorder(combined, mimeType ? { mimeType } : undefined);
       recordChunksRef.current = [];
       recorder.ondataavailable = (event) => {
@@ -994,12 +1001,15 @@ export function useVideoRoom(bookingId: string): VideoRoom {
         recordChunksRef.current = [];
         if (chunks.length === 0) return;
         const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+        // The extension has to follow whatever the browser actually muxed,
+        // or the file will not open on the device that downloaded it.
+        const extension = blob.type.includes("mp4") ? "mp4" : "webm";
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
         anchor.download = `terios-session-${bookingId}-${new Date()
           .toISOString()
-          .replace(/[:.]/g, "-")}.webm`;
+          .replace(/[:.]/g, "-")}.${extension}`;
         anchor.click();
         URL.revokeObjectURL(url);
       };
