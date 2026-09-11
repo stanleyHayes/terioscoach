@@ -153,19 +153,23 @@ export function BookingDetailModal({
       size="form"
       footer={
         isConfirmed && !rescheduling ? (
-          <>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             {/* Starting the session from the calendar is the one-click
                 path the practitioner actually uses; the room enforces its
                 own opening hours, so it is always offered. */}
             <Link
               href={`/sessions/${current.id}/room?client=${current.clientId}&clientName=${encodeURIComponent(clientName ?? current.clientId)}`}
-              className={buttonClasses({ size: "sm" })}
+              className={buttonClasses({
+                size: "sm",
+                className: "col-span-2 h-11 w-full sm:h-9 sm:w-auto",
+              })}
             >
               Start session
             </Link>
             <Button
               variant="danger"
               size="sm"
+              className="h-11 sm:h-9"
               loading={pending === "cancel"}
               disabled={pending !== null}
               onClick={() => void runAction("cancel")}
@@ -175,6 +179,7 @@ export function BookingDetailModal({
             <Button
               variant="secondary"
               size="sm"
+              className="h-11 sm:h-9"
               loading={pending === "no_show"}
               disabled={pending !== null}
               onClick={() => void runAction("no_show")}
@@ -184,6 +189,7 @@ export function BookingDetailModal({
             <Button
               variant="secondary"
               size="sm"
+              className="h-11 sm:h-9"
               disabled={pending !== null}
               onClick={() => {
                 setActionError(null);
@@ -194,13 +200,14 @@ export function BookingDetailModal({
             </Button>
             <Button
               size="sm"
+              className="h-11 sm:h-9"
               loading={pending === "complete"}
               disabled={pending !== null}
               onClick={() => void runAction("complete")}
             >
               Complete
             </Button>
-          </>
+          </div>
         ) : undefined
       }
     >

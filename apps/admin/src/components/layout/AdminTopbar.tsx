@@ -39,6 +39,14 @@ export function AdminTopbar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Any navigation closes the menu, including one started from somewhere
+  // else. Adjusted during render rather than in an effect: an effect would
+  // paint the new page with the old menu still over it for a frame.
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setOpen(false);
+  }
   const [helpOpen, setHelpOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const current = NAV_ITEMS.filter((item) =>
@@ -51,9 +59,17 @@ export function AdminTopbar({
     const close = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
   }, []);
+
   return (
     <header className="relative z-[40] shrink-0 border-b border-border/80 bg-surface-raised/95 backdrop-blur-xl">
       <div className="flex h-[72px] items-center justify-between gap-3 px-4 sm:px-6">
@@ -131,6 +147,7 @@ export function AdminTopbar({
                 <Link
                   role="menuitem"
                   href="/guide"
+                  onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
                 >
                   <BookOpenCheck size={16} />
@@ -139,6 +156,7 @@ export function AdminTopbar({
                 <Link
                   role="menuitem"
                   href="/settings"
+                  onClick={() => setOpen(false)}
                   className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
                 >
                   <UserRound size={16} />
@@ -147,6 +165,7 @@ export function AdminTopbar({
                 <Link
                   role="menuitem"
                   href="/security"
+                  onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
                 >
                   <ShieldCheck size={16} />
@@ -156,6 +175,7 @@ export function AdminTopbar({
                   role="menuitem"
                   href="https://terioscoach.com"
                   target="_blank"
+                  onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
                 >
                   <ExternalLink size={16} />

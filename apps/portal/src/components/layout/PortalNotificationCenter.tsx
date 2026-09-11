@@ -42,11 +42,11 @@ export function PortalNotificationCenter() {
 
   const items = resource.data ?? [];
   const count = items.length;
-  return <div className="relative" ref={rootRef}>
+  return <div className="sm:relative" ref={rootRef}>
     <button type="button" aria-label={count ? `Notifications, ${count} ${count === 1 ? "item needs" : "items need"} attention` : "Notifications"} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => !value)} className="terios-icon-button relative rounded-xl p-2.5 text-ink-muted hover:bg-surface-sunken hover:text-ink">
       <Bell size={18}/>{count ? <span className="absolute right-1 top-1 flex min-w-4 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border-2 border-surface-raised bg-clay-300 px-1 text-[9px] font-bold leading-3 text-eucalyptus-950">{count > 9 ? "9+" : count}</span> : null}
     </button>
-    {open ? <section role="dialog" aria-label="Client notifications" className="terios-popover absolute right-0 z-[55] mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-border bg-surface-raised text-ink shadow-2xl">
+    {open ? <section role="dialog" aria-label="Client notifications" className="terios-popover absolute inset-x-3 top-full z-[55] mt-2 w-auto sm:inset-x-auto sm:right-0 sm:top-auto sm:w-96 overflow-hidden rounded-3xl border border-border bg-surface-raised text-ink shadow-2xl">
       <header className="flex items-start justify-between border-b border-border px-5 py-4"><div><p className="text-sm font-semibold">Your care updates</p><p className="mt-0.5 text-xs text-ink-muted">The next useful steps in your care journey</p></div><button type="button" onClick={resource.refresh} aria-label="Refresh notifications" className="terios-icon-button rounded-lg p-2 text-ink-muted hover:bg-surface-sunken hover:text-ink"><RefreshCw size={15}/></button></header>
       <div className="max-h-[min(31rem,70vh)] overflow-y-auto p-2">
         {resource.error ? <div className="px-4 py-8 text-center"><p className="text-sm font-medium">Updates could not be refreshed</p><button type="button" onClick={resource.refresh} className="mt-2 text-xs font-semibold text-primary">Try again</button></div>

@@ -65,7 +65,7 @@ export function AdminNotificationCenter() {
   const items = resource.data ?? [];
   const count = items.length;
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="sm:relative" ref={rootRef}>
       <button
         type="button"
         aria-label={count ? `Notifications, ${count} ${count === 1 ? "item needs" : "items need"} attention` : "Notifications"}
@@ -85,7 +85,7 @@ export function AdminNotificationCenter() {
         <section
           role="dialog"
           aria-label="Practice notifications"
-          className="terios-popover absolute right-0 z-[55] mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-border bg-surface-raised text-ink shadow-2xl"
+          className="terios-popover absolute inset-x-3 top-full z-[55] mt-2 w-auto sm:inset-x-auto sm:right-0 sm:top-auto sm:w-96 overflow-hidden rounded-3xl border border-border bg-surface-raised text-ink shadow-2xl"
         >
           <header className="flex items-start justify-between border-b border-border px-5 py-4">
             <div>

@@ -164,19 +164,19 @@ export function shouldOffer(peersAlreadyPresent: number): boolean {
   return peersAlreadyPresent > 0;
 }
 
-/** Turns a join failure into something a client should read. */
+/** Turns a join failure into something the practitioner should read. */
 export function explainJoinFailure(code: string, message: string): string {
   switch (code) {
     case "room_not_open":
-      return "The room isn't open yet. You can join from ten minutes before your session starts.";
+      return "The room isn't open yet. It opens ten minutes before the session starts.";
     case "room_closed":
-      return "This session's room has closed. If you need more time, message your practitioner.";
+      return "This session's room has closed. Reschedule the booking if the client needs more time.";
     case "invalid_status":
       return "This session isn't active — it may have been cancelled or already completed.";
     case "booking_not_found":
-      return "We couldn't find that session on your account.";
+      return "We couldn't find that session on the practice calendar.";
     case "ticket_invalid":
-      return "That link has expired. Open the session again from your list.";
+      return "That link has expired. Open the session again from the calendar.";
     default:
       return message;
   }
