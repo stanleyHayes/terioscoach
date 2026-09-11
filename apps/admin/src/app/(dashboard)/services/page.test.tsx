@@ -194,7 +194,9 @@ describe("ServicesPage", () => {
       imageUrl: "",
       durationMinutes: 45,
       priceKobo: 25050,
-	  currency: "USD",
+      currency: "USD",
+      // No agreement chosen: the service is open to anyone.
+      agreementId: "",
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("Sauna session")).toBeTruthy();

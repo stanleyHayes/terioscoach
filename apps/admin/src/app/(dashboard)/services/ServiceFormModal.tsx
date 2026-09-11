@@ -3,12 +3,14 @@
 import { CircleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { ImagePicker } from "@/components/content/ImagePicker";
 import { Modal } from "@/components/ui/Modal";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextInput } from "@/components/ui/TextInput";
 import { ApiError } from "@/lib/api";
 import { minorToMajorString, parseMajorToMinor } from "@/lib/format";
+import type { Agreement } from "@/lib/agreements";
 import type { Service, ServiceDraft } from "@/lib/services";
 
 /**
@@ -28,11 +30,14 @@ interface FieldErrors {
 
 export function ServiceFormModal({
   service,
+  agreements,
   onClose,
   onSubmit,
 }: {
   /** null → create; a Service → edit (fields pre-filled). */
   service: Service | null;
+  /** The practice's agreements, for the "requires" field. */
+  agreements: Agreement[];
   onClose: () => void;
   /** Parent performs the API call and throws on failure. */
   onSubmit: (draft: ServiceDraft, service: Service | null) => Promise<void>;
@@ -44,6 +49,7 @@ export function ServiceFormModal({
     imageUrl: service?.imageUrl ?? "",
     duration: service ? String(service.durationMinutes) : "",
     price: service ? minorToMajorString(service.priceKobo) : "",
+    agreementId: service?.agreementId ?? "",
   };
 
   const [name, setName] = useState(initial.name);
@@ -51,6 +57,7 @@ export function ServiceFormModal({
   const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [duration, setDuration] = useState(initial.duration);
   const [price, setPrice] = useState(initial.price);
+  const [agreementId, setAgreementId] = useState(initial.agreementId);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +67,8 @@ export function ServiceFormModal({
     description !== initial.description ||
     imageUrl !== initial.imageUrl ||
     duration !== initial.duration ||
-    price !== initial.price;
+    price !== initial.price ||
+    agreementId !== initial.agreementId;
 
   function validate(): boolean {
     const errors: FieldErrors = {};
@@ -94,6 +102,7 @@ export function ServiceFormModal({
       priceKobo: parseMajorToMinor(price)!,
       // Currency is fixed to USD for this US-based practice.
       currency: "USD",
+      agreementId,
     };
 
     setSubmitting(true);
@@ -168,6 +177,30 @@ export function ServiceFormModal({
           disabled={submitting}
           onChange={setImageUrl}
         />
+
+        {/* One agreement covers however many services point at it: a client
+            signs it once, and every one of them is open from then on. */}
+        <div className="flex flex-col gap-1.5">
+          <BrandedSelect
+            label="Agreement the client must sign first"
+            value={agreementId}
+            placeholder="No agreement needed"
+            options={[
+              { value: "", label: "No agreement needed" },
+              ...agreements
+                .filter((item) => item.active || item.id === agreementId)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.active ? item.title : `${item.title} (retired)`,
+                })),
+            ]}
+            onChange={setAgreementId}
+          />
+          <span className="text-xs leading-relaxed text-ink-muted">
+            Clients sign this once, before their first booking of any service
+            that uses it. Later bookings never ask again.
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <TextInput
             label="Duration (minutes)"

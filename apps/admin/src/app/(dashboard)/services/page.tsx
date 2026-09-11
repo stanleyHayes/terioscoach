@@ -26,6 +26,7 @@ import {
 } from "@/lib/services";
 import { DeleteServiceModal } from "./DeleteServiceModal";
 import { ServiceFormModal } from "./ServiceFormModal";
+import { agreementsApi, type Agreement } from "@/lib/agreements";
 
 /**
  * Services & pricing manager (ADM-05).
@@ -44,6 +45,7 @@ function errorMessage(error: unknown): string {
 export default function ServicesPage() {
   const { session, refreshCallbacks, logout } = useAuth();
   const [services, setServices] = useState<Service[] | null>(null);
+  const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -61,6 +63,22 @@ export default function ServicesPage() {
     },
     [logout],
   );
+
+  // Loaded once for the form's "requires" field. A failure here leaves the
+  // field offering "no agreement needed" only, which is the safe default.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    agreementsApi
+      .list(session, refreshCallbacks)
+      .then((items) => {
+        if (!cancelled) setAgreements(items);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [session, refreshCallbacks]);
 
   const load = useCallback(() => {
     if (!session) return;
@@ -492,6 +510,7 @@ export default function ServicesPage() {
       {formOpen ? (
         <ServiceFormModal
           service={editTarget}
+          agreements={agreements}
           onClose={() => {
             setFormOpen(false);
             setEditTarget(null);
