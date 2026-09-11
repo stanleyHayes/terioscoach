@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -307,5 +309,93 @@ func TestDeleteHandlesAnUnreachableProvider(t *testing.T) {
 	err := testClient().Delete(context.Background(), ports.Asset{PublicID: "abc"})
 	if err == nil {
 		t.Fatal("Delete reported success against an unreachable provider")
+	}
+}
+
+// TestUploadPostsSignedMultipart: a file the API produced goes up under the
+// same signed parameters a browser upload would carry, into the private
+// folder the documents slice chose.
+func TestUploadPostsSignedMultipart(t *testing.T) {
+	var gotPath, gotFolder, gotType, gotSignature, gotFilename string
+	var gotFile []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if err := r.ParseMultipartForm(4 << 20); err != nil {
+			t.Errorf("parse multipart: %v", err)
+		}
+		gotFolder = r.FormValue("folder")
+		gotType = r.FormValue("type")
+		gotSignature = r.FormValue("signature")
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			t.Errorf("form file: %v", err)
+		} else {
+			defer func() { _ = file.Close() }()
+			gotFilename = header.Filename
+			gotFile, _ = io.ReadAll(file)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"public_id":"terios/clients/client-1/signed-forms/abc","bytes":9}`))
+	}))
+	defer srv.Close()
+
+	original := baseAPIURL
+	baseAPIURL = srv.URL
+	defer func() { baseAPIURL = original }()
+
+	asset, err := testClient().Upload(context.Background(),
+		ports.UploadParams{
+			Folder:       "terios/clients/client-1/signed-forms",
+			ResourceType: document.ResourceRaw,
+			Private:      true,
+		},
+		ports.UploadFile{Filename: "agreement.pdf", ContentType: "application/pdf", Data: []byte("%PDF-1.4\n")},
+	)
+	if err != nil {
+		t.Fatalf("Upload: %v", err)
+	}
+
+	if !strings.HasSuffix(gotPath, "/terios/raw/upload") {
+		t.Errorf("path = %q, want the raw upload endpoint", gotPath)
+	}
+	if gotFolder != "terios/clients/client-1/signed-forms" {
+		t.Errorf("folder = %q, want the client's signed-forms folder", gotFolder)
+	}
+	// "authenticated" is what makes the file unreachable by public URL —
+	// a signed agreement must never be guessable.
+	if gotType != "authenticated" {
+		t.Errorf("type = %q, want authenticated", gotType)
+	}
+	if gotSignature == "" {
+		t.Error("the upload should be signed")
+	}
+	if gotFilename != "agreement.pdf" || string(gotFile) != "%PDF-1.4\n" {
+		t.Errorf("file = %q/%q, want the PDF as sent", gotFilename, gotFile)
+	}
+	if asset.PublicID != "terios/clients/client-1/signed-forms/abc" || asset.Bytes != 9 {
+		t.Errorf("asset = %+v, want what the store reported", asset)
+	}
+}
+
+// TestUploadReportsAGatewayFailure: the store refusing must surface as a
+// gateway error, not a generic one, so callers can tell it apart.
+func TestUploadReportsAGatewayFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":{"message":"bad signature"}}`))
+	}))
+	defer srv.Close()
+
+	original := baseAPIURL
+	baseAPIURL = srv.URL
+	defer func() { baseAPIURL = original }()
+
+	_, err := testClient().Upload(context.Background(),
+		ports.UploadParams{Folder: "terios/cms", ResourceType: document.ResourceRaw},
+		ports.UploadFile{Filename: "a.pdf", Data: []byte("x")},
+	)
+	var gatewayErr *ports.GatewayError
+	if !errors.As(err, &gatewayErr) || gatewayErr.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("err = %v, want a GatewayError carrying 401", err)
 	}
 }

@@ -1,19 +1,26 @@
 // Package cloudinary is the outbound adapter for the Cloudinary media
 // store — a plain net/http client, no SDK. It implements ports.MediaStore.
 //
-// The bytes never pass through this process. The browser uploads directly
-// to Cloudinary using a signature this adapter mints, and downloads come
-// from a signed delivery URL with a short expiry. The API's job is to
-// decide *whether* a caller may have a URL — that decision lives in the
-// documents slice, not here.
+// Client uploads never pass through this process: the browser uploads
+// directly to Cloudinary using a signature this adapter mints, and
+// downloads come from a signed delivery URL with a short expiry. The API's
+// job is to decide *whether* a caller may have a URL — that decision lives
+// in the documents slice, not here.
+//
+// Upload is the one exception, for the few files the API produces itself
+// (a signed agreement, rendered as a PDF). There is no browser in that
+// story to hand a signature to.
 package cloudinary
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"sort"
@@ -100,6 +107,68 @@ func (c *Client) SignUpload(_ context.Context, params ports.UploadParams) (ports
 		Timestamp: timestamp,
 		ExpiresAt: c.now().Add(ports.UploadSignatureTTL),
 	}, nil
+}
+
+// Upload stores bytes this process produced, under the same signed
+// parameters a browser upload would carry.
+func (c *Client) Upload(ctx context.Context, params ports.UploadParams, file ports.UploadFile) (ports.UploadedAsset, error) {
+	signed, err := c.SignUpload(ctx, params)
+	if err != nil {
+		return ports.UploadedAsset{}, err
+	}
+
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	for key, value := range signed.Fields {
+		if err := form.WriteField(key, value); err != nil {
+			return ports.UploadedAsset{}, fmt.Errorf("build cloudinary upload: %w", err)
+		}
+	}
+	part, err := form.CreateFormFile("file", file.Filename)
+	if err != nil {
+		return ports.UploadedAsset{}, fmt.Errorf("build cloudinary upload: %w", err)
+	}
+	if _, err := part.Write(file.Data); err != nil {
+		return ports.UploadedAsset{}, fmt.Errorf("build cloudinary upload: %w", err)
+	}
+	if err := form.Close(); err != nil {
+		return ports.UploadedAsset{}, fmt.Errorf("build cloudinary upload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, signed.URL, &body)
+	if err != nil {
+		return ports.UploadedAsset{}, fmt.Errorf("build cloudinary request: %w", err)
+	}
+	req.Header.Set("Content-Type", form.FormDataContentType())
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return ports.UploadedAsset{}, &ports.GatewayError{StatusCode: 0, Message: "cloudinary is unreachable: " + err.Error()}
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	raw, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return ports.UploadedAsset{}, &ports.GatewayError{
+			StatusCode: res.StatusCode,
+			Message:    fmt.Sprintf("cloudinary rejected the upload (HTTP %d)", res.StatusCode),
+		}
+	}
+
+	var decoded struct {
+		PublicID string `json:"public_id"`
+		Bytes    int64  `json:"bytes"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return ports.UploadedAsset{}, fmt.Errorf("decode cloudinary upload: %w", err)
+	}
+	if decoded.PublicID == "" {
+		return ports.UploadedAsset{}, fmt.Errorf("cloudinary upload returned no public id")
+	}
+	if decoded.Bytes == 0 {
+		decoded.Bytes = int64(len(file.Data))
+	}
+	return ports.UploadedAsset{PublicID: decoded.PublicID, Bytes: decoded.Bytes}, nil
 }
 
 // SignedURL builds a short-lived delivery URL for a private asset.

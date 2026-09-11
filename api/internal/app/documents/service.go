@@ -86,6 +86,61 @@ func (s *Service) RecordUpload(ctx context.Context, uploadedBy string, in ports.
 	return s.documents.Create(ctx, d)
 }
 
+// StoreDocument files a document the API produced itself: it uploads the
+// bytes and records them in one step, because there is no browser in the
+// middle to come back and tell us what landed.
+//
+// The document is created with the visibility its kind implies — a signed
+// form is a practice record, not something shared back to the client — so
+// callers cannot accidentally publish one by omission.
+func (s *Service) StoreDocument(ctx context.Context, uploadedBy string, in ports.StoreDocumentInput) (document.Document, error) {
+	if !in.Kind.Valid() {
+		return document.Document{}, document.ErrInvalidKind
+	}
+	if in.Kind.Private() && in.ClientID == "" {
+		return document.Document{}, document.ErrClientRequired
+	}
+	filename := document.SanitizeFilename(in.Filename)
+	if filename == "" {
+		return document.Document{}, document.ErrInvalidFilename
+	}
+	resourceType, _, err := document.ClassifyFilename(filename)
+	if err != nil {
+		return document.Document{}, err
+	}
+	if len(in.Data) == 0 {
+		return document.Document{}, document.ErrInvalidFilename
+	}
+	if int64(len(in.Data)) > document.MaxBytes {
+		return document.Document{}, document.ErrFileTooLarge
+	}
+
+	uploaded, err := s.media.Upload(ctx,
+		ports.UploadParams{
+			Folder:       document.Folder(in.Kind, in.ClientID),
+			ResourceType: resourceType,
+			Private:      in.Kind.Private(),
+		},
+		ports.UploadFile{
+			Filename:    filename,
+			ContentType: in.ContentType,
+			Data:        in.Data,
+		},
+	)
+	if err != nil {
+		return document.Document{}, err
+	}
+
+	d, err := document.New(in.Kind, in.ClientID, uploadedBy, uploaded.PublicID, filename, uploaded.Bytes, s.now())
+	if err != nil {
+		return document.Document{}, err
+	}
+	if in.Title != "" {
+		d.Title = in.Title
+	}
+	return s.documents.Create(ctx, d)
+}
+
 // ListForClient returns every document held against a client, shared or
 // not — the practitioner's view of the file.
 func (s *Service) ListForClient(ctx context.Context, clientID string) ([]document.Document, error) {

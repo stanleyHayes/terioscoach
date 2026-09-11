@@ -1994,10 +1994,13 @@ func (f *FakeDocumentRepository) ListByKind(_ context.Context, kind document.Kin
 type FakeMediaStore struct {
 	mu        sync.Mutex
 	Uploads   []ports.UploadParams
+	Stored    []ports.UploadFile
 	Signed    []ports.Asset
 	Deleted   []ports.Asset
 	SignErr   error
+	UploadErr error
 	DeleteErr error
+	next      int
 }
 
 var _ ports.MediaStore = (*FakeMediaStore)(nil)
@@ -2019,6 +2022,21 @@ func (f *FakeMediaStore) SignUpload(_ context.Context, params ports.UploadParams
 		},
 		Signature: "fake-signature",
 		ExpiresAt: time.Now().UTC().Add(ports.UploadSignatureTTL),
+	}, nil
+}
+
+func (f *FakeMediaStore) Upload(_ context.Context, params ports.UploadParams, file ports.UploadFile) (ports.UploadedAsset, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.UploadErr != nil {
+		return ports.UploadedAsset{}, f.UploadErr
+	}
+	f.Uploads = append(f.Uploads, params)
+	f.Stored = append(f.Stored, file)
+	f.next++
+	return ports.UploadedAsset{
+		PublicID: fmt.Sprintf("%s/stored-%d", params.Folder, f.next),
+		Bytes:    int64(len(file.Data)),
 	}, nil
 }
 

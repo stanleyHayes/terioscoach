@@ -43,10 +43,28 @@ type Asset struct {
 	Private      bool
 }
 
+// UploadFile is a file the API itself produced, to be stored directly.
+type UploadFile struct {
+	Filename    string
+	ContentType string
+	Data        []byte
+}
+
+// UploadedAsset is what the store made of it.
+type UploadedAsset struct {
+	PublicID string
+	Bytes    int64
+}
+
 // MediaStore is the outbound port for the media store (Cloudinary).
 type MediaStore interface {
 	// SignUpload authorizes one direct browser upload.
 	SignUpload(ctx context.Context, params UploadParams) (SignedUpload, error)
+	// Upload stores bytes the API generated itself. Client uploads never
+	// use this path — they go straight to the store under a signature —
+	// and it exists for the few documents the API produces on its own, a
+	// signed agreement being the first.
+	Upload(ctx context.Context, params UploadParams, file UploadFile) (UploadedAsset, error)
 	// SignedURL builds a short-lived delivery URL for a private asset.
 	SignedURL(ctx context.Context, asset Asset, ttl time.Duration) (string, error)
 	// PublicURL returns the durable delivery URL for a public CMS asset.
@@ -96,12 +114,24 @@ type RecordUploadInput struct {
 	Bytes    int64
 }
 
+// StoreDocumentInput is a document the API produced itself.
+type StoreDocumentInput struct {
+	Kind        document.Kind
+	ClientID    string
+	Filename    string
+	Title       string
+	ContentType string
+	Data        []byte
+}
+
 // DocumentService is the inbound port for the documents slice (BE-11).
 type DocumentService interface {
 	// SignUpload authorizes a practitioner upload — practitioner only.
 	SignUpload(ctx context.Context, in UploadRequest) (SignedUpload, error)
 	// RecordUpload registers a finished upload — practitioner only.
 	RecordUpload(ctx context.Context, uploadedBy string, in RecordUploadInput) (document.Document, error)
+	// StoreDocument uploads and records a document the API generated.
+	StoreDocument(ctx context.Context, uploadedBy string, in StoreDocumentInput) (document.Document, error)
 	// ListForClient returns a client's documents — practitioner only.
 	ListForClient(ctx context.Context, clientID string) ([]document.Document, error)
 	// ListCMSImages returns reusable public uploads newest-first.
