@@ -114,6 +114,23 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "retainUntil", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
 		},
 
+		// Service agreements. One agreement per key per practitioner, so a
+		// seed can be re-run without ever creating a second "Holistic
+		// Coaching Agreement" for the same practice.
+		"agreements": {
+			{Keys: bson.D{{Key: "practitionerId", Value: 1}, {Key: "key", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "practitionerId", Value: 1}, {Key: "active", Value: 1}}},
+		},
+
+		// Signatures against those agreements. The unique compound index is
+		// load-bearing: it is what makes signing idempotent, so a
+		// double-submitted booking form cannot record two acceptances of the
+		// same contract. The client index backs the client file.
+		"agreement_signatures": {
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "agreementId", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "signedAt", Value: -1}}},
+		},
+
 		// Practice-side client profiles (contact detail, tags, private
 		// summary). One profile per client account — upserted by userId.
 		"client_profiles": {
