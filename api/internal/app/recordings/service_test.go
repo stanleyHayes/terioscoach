@@ -185,6 +185,11 @@ func TestListReturnsASignedURLRatherThanTheFile(t *testing.T) {
 	r := newRig(t)
 	r.store(t, "terios/clients/client-1/recordings/abc", time.Time{})
 
+	for id, rec := range r.recordings.byID {
+		rec.ContentType = "video/webm"
+		r.recordings.byID[id] = rec
+	}
+
 	items, err := r.svc.ListForBooking(context.Background(), practitioner, r.booking.ID)
 	if err != nil {
 		t.Fatalf("ListForBooking: %v", err)
@@ -195,9 +200,18 @@ func TestListReturnsASignedURLRatherThanTheFile(t *testing.T) {
 	if items[0].URL == "" || strings.HasPrefix(items[0].URL, "data:") {
 		t.Errorf("URL = %q, want a delivery URL rather than inline bytes", items[0].URL)
 	}
+	if items[0].Recording.ContentType != "video/mp4" {
+		t.Fatal("delivery MIME must describe the MP4 rendition")
+	}
 	if items[0].Recording.PublicID == "" {
 		t.Error("the record should still carry its store reference")
 	}
+	for _, rec := range r.recordings.byID {
+		if rec.ContentType != "video/webm" {
+			t.Fatal("source metadata must not be mutated")
+		}
+	}
+
 }
 
 // Recordings made before the move have no stored asset; the inline copy is

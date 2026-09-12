@@ -429,3 +429,20 @@ running production origins.
 | SERVICES-01 | Make the service catalogue fully dashboard-driven | Done locally | Service records now persist an admin-selected media-library image; create/edit, publish/retire, reorder, and delete remain practitioner-managed; homepage, services, work-with-me, portal booking, and other catalog consumers use the same active API records, with semantic image fallback only for legacy records |
 | SERVICES-02 | Repair responsive service-card presentation | Done locally | Work-with-me portrait is separated from the intro banner; selected Choose CTA has explicit high-contrast colors; service images stay full-width at phone/tablet sizes and switch to a wider 224px desktop column only at `lg`; portal booking cards share the corrected responsive behavior |
 | WEB-FOOTER-01 | Simplify FAQ imagery and add developer attribution | Done locally | Removed the decorative FAQ lake image; shared marketing footer links the all-caps Xcreativs Technologies credit to the external studio site with safe new-tab attributes |
+
+## 27. PDF website update (12 Sep 2026)
+
+Owner: Codex. Source: `Terios Website Update.pdf` (both pages, including screenshots).
+Scope: all six requests plus related marketing readability and portrait-card redesigns.
+Delivery: verified implementation prepared for publication to `main`; production deployment verification remains separate.
+
+| ID | Requirement | Status | Evidence |
+|---|---|---|---|
+| PDF-01 | Full 24-hour calendar | Done locally | 00:00–24:00 lanes, sticky weekday header, readable hour labels, midnight continuation; tests cover 03:00, 22:00, 23:50, opening the late booking, and full early-session duration |
+| PDF-02 | Private files open for practitioner and client | Done; provider verified | Replaced unsupported `exp_` delivery paths with signed Cloudinary download API URLs; raw IDs retain extensions; disposable private PDF and image downloads returned 200, expired/tampered image links returned 401; all temporary assets deleted |
+| PDF-03 | Recordings play and download correctly | Done; provider and browser verified | Stored WebM and MP4 sources delivered as H.264/AAC MP4; response MIME matches delivered file without changing stored source metadata; both CSPs allow provider media; players support inline playback, download, and retry through a fresh URL; provider conversion and Chrome/mobile-WebKit playback passed |
+| PDF-04 | Footer credit includes Ltd | Done locally | `DEVELOPED BY XCREATIVS TECHNOLOGIES LTD`, original studio URL and safe new-tab attributes preserved; footer test passed |
+| PDF-05 | Readable About card and redesigned care section | Done locally | Photo and solid eucalyptus text panel replace transparent overlay; founder attribution uses a secondary portrait; checked at 390/768/1440px |
+| PDF-06 | Homepage CTA hover contrast | Done locally | Explicit inverse button variant with dark-green-on-sand hover/focus; production computed colors verified; homepage portrait caption redesigned on solid sand and undefined eucalyptus-950 utilities replaced across marketing routes |
+
+Validation: full Go suite; all-workspace frontend suites (admin 441, portal 288, web 182 at full-suite run), plus new recording-player/CSP tests; all-workspace lint; all three production builds; `git diff --check`. Responsive homepage/About checks at 390, 768 and 1440px show no horizontal overflow. Production-build hover/focus colors are rgb(28,51,40) on rgb(253,252,250). Media fixture verified by ffprobe as H.264 video + AAC audio in MP4, duration 2.008 seconds; both Chrome and mobile WebKit advanced playback with no media error. Existing legacy inline recordings retain their original source; the MP4 conversion applies to Cloudinary-stored recordings. Physical-device and production-deployment verification are not claimed.

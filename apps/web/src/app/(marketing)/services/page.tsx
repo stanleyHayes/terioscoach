@@ -99,7 +99,7 @@ export default async function ServicesPage() {
                     sizes="(min-width: 768px) 38vw, 94vw"
                     className="object-cover transition-transform duration-page ease-out group-hover:scale-[1.025] motion-reduce:transition-none"
                   />
-                  <span className="absolute left-5 top-5 rounded-full border border-sand-0/30 bg-eucalyptus-950/75 px-3 py-1.5 font-mono text-[11px] font-medium text-sand-0 backdrop-blur-md">
+                  <span className="absolute left-5 top-5 rounded-full border border-sand-0/30 bg-eucalyptus-900/75 px-3 py-1.5 font-mono text-[11px] font-medium text-sand-0 backdrop-blur-md">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>

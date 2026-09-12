@@ -51,7 +51,7 @@ function staticDirectives(): string[] {
     // signature, so the upload endpoint is a first-class destination.
     `connect-src 'self' ${api} ${apiSocket} https://api.cloudinary.com`,
     // Video room: remote tracks arrive as blob-backed MediaStreams.
-    "media-src 'self' blob:",
+    "media-src 'self' blob: data: https://api.cloudinary.com https://res.cloudinary.com",
     "worker-src 'self' blob:",
     "object-src 'none'",
     // Without these two an injected tag could re-point every relative URL

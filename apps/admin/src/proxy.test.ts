@@ -93,6 +93,15 @@ describe("practice dashboard CSP", () => {
     expect(connect).toMatch(/wss?:\/\/\S+/);
   });
 
+  it("allows saved recordings without permitting arbitrary media hosts", () => {
+    const media = directive(run(), "media-src");
+    expect(media).toContain("https://api.cloudinary.com");
+    expect(media).toContain("https://res.cloudinary.com");
+    expect(media).toContain("blob:");
+    expect(media).toContain("data:");
+    expect(media).not.toMatch(/(?:^|\s)(?:\*|https:)(?:\s|$)/);
+  });
+
   it("carries a nonce on documents but not on static assets", () => {
     // Matching _next/static would mint a nonce for every chunk and script
     // file, which carry no HTML and cannot use one.

@@ -140,6 +140,8 @@ func (s *Service) ListForBooking(ctx context.Context, id identity.Identity, book
 				continue
 			}
 			item.URL = url
+			// Delivery is transcoded to MP4; keep the stored source metadata intact.
+			item.Recording.ContentType = "video/mp4"
 		case rec.DataURL != "":
 			// Made before the move to the media store: the inline copy is
 			// the only one there is.

@@ -89,18 +89,18 @@ describe("WeekCalendar", () => {
       }),
     ]);
 
-    // Tuesday 09:00–10:30 → top (540-360)/60*48 = 144px, height 90/60*48 = 72px.
+    // Tuesday 09:00–10:30 → top 540/60*48 = 432px, height 90/60*48 = 72px.
     const block = screen.getByRole("button", {
       name: "9:00 AM to 10:30 AM, client-1, svc-1, Confirmed",
     });
-    expect(block.style.top).toBe("144px");
+    expect(block.style.top).toBe("432px");
     expect(block.style.height).toBe("72px");
     expect(block.className).toContain("border-l-primary");
 
     const noShow = screen.getByRole("button", {
       name: "2:00 PM to 3:00 PM, client-2, svc-1, No-show",
     });
-    expect(noShow.style.top).toBe("384px"); // (840-360)/60*48
+    expect(noShow.style.top).toBe("672px"); // 840/60*48
     expect(noShow.style.height).toBe("48px");
     expect(noShow.className).toContain("border-l-warning");
 
@@ -108,12 +108,12 @@ describe("WeekCalendar", () => {
     const cancelled = screen.getByRole("button", {
       name: "6:00 AM to 6:15 AM, client-3, svc-1, Cancelled",
     });
-    expect(cancelled.style.top).toBe("0px");
+    expect(cancelled.style.top).toBe("288px");
     expect(cancelled.style.height).toBe("24px");
     expect(cancelled.className).toContain("line-through");
   });
 
-  it("clamps bookings that fall outside the 06:00–20:00 lanes", () => {
+  it("shows the full duration of early-morning bookings", () => {
     renderCalendar([
       booking({
         startAt: "2026-08-11T04:00:00.000Z",
@@ -121,12 +121,28 @@ describe("WeekCalendar", () => {
       }),
     ]);
 
-    // Starts before the lanes: top clamps to 0, height counts from 06:00.
+    // 04:00 remains visible, including its complete three-hour duration.
     const block = screen.getByRole("button", {
       name: "4:00 AM to 7:00 AM, client-1, svc-1, Confirmed",
     });
-    expect(block.style.top).toBe("0px");
-    expect(block.style.height).toBe("48px");
+    expect(block.style.top).toBe("192px");
+    expect(block.style.height).toBe("144px");
+  });
+
+  it("keeps 03:00, 22:00 and 23:50 bookings visible and actionable", () => {
+    renderCalendar([
+      booking({ id: "early", startAt: "2026-08-11T03:00:00Z", endAt: "2026-08-11T03:30:00Z" }),
+      booking({ id: "late", startAt: "2026-08-11T22:00:00Z", endAt: "2026-08-11T23:00:00Z" }),
+      booking({ id: "last", startAt: "2026-08-11T23:50:00Z", endAt: "2026-08-12T00:20:00Z" }),
+    ]);
+    expect(screen.getByRole("button", { name: /3:00 AM to 3:30 AM/ }).style.top).toBe("144px");
+    expect(screen.getByRole("button", { name: /10:00 PM to 11:00 PM/ }).style.top).toBe("1056px");
+    const parts = screen.getAllByRole("button", { name: /11:50 PM to 12:20 AM/ });
+    expect(parts).toHaveLength(2);
+    expect(parts[0]!.style.top).toBe("1128px");
+    expect(parts[1]!.style.top).toBe("0px");
+    fireEvent.click(parts[0]!);
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("week nav buttons call the range-change handlers", () => {

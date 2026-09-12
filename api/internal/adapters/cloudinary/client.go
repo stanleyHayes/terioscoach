@@ -171,11 +171,9 @@ func (c *Client) Upload(ctx context.Context, params ports.UploadParams, file por
 	return ports.UploadedAsset{PublicID: decoded.PublicID, Bytes: decoded.Bytes}, nil
 }
 
-// SignedURL builds a short-lived delivery URL for a private asset.
-//
-// Cloudinary's signed delivery puts the expiry inside the signed component,
-// so the link stops working on its own — a URL that leaked out of an inbox
-// is not a permanent handle on someone's medical history.
+// SignedURL uses Cloudinary's authenticated download API. Unlike a signed
+// CDN path, this endpoint enforces expires_at without a premium auth token.
+// Raw public IDs retain their extension; image downloads preserve the source.
 func (c *Client) SignedURL(_ context.Context, asset ports.Asset, ttl time.Duration) (string, error) {
 	if asset.PublicID == "" {
 		return "", fmt.Errorf("cloudinary: public id is required")
@@ -183,8 +181,6 @@ func (c *Client) SignedURL(_ context.Context, asset ports.Asset, ttl time.Durati
 	if ttl <= 0 {
 		ttl = ports.DefaultDeliveryTTL
 	}
-	expiresAt := c.now().Add(ttl).Unix()
-
 	resourceType := string(asset.ResourceType)
 	if resourceType == "" {
 		resourceType = "image"
@@ -193,15 +189,25 @@ func (c *Client) SignedURL(_ context.Context, asset ports.Asset, ttl time.Durati
 	if asset.Private {
 		deliveryType = "authenticated"
 	}
-
-	// Cloudinary signs "<transformations>/<public_id>" for delivery URLs;
-	// the expiry rides as its own transformation component.
-	target := fmt.Sprintf("exp_%d/%s", expiresAt, asset.PublicID)
-	signature := signDelivery(target, c.apiSecret)
-
-	return fmt.Sprintf("%s/%s/%s/%s/s--%s--/exp_%d/%s",
-		baseDeliveryURL, c.cloudName, resourceType, deliveryType,
-		signature, expiresAt, asset.PublicID), nil
+	params := map[string]string{
+		"public_id":  asset.PublicID,
+		"type":       deliveryType,
+		"timestamp":  strconv.FormatInt(c.now().Unix(), 10),
+		"expires_at": strconv.FormatInt(c.now().Add(ttl).Unix(), 10),
+	}
+	if resourceType == "video" {
+		// Convert existing WebM recordings as well as new uploads. H.264/AAC
+		// in MP4 is playable on iPhone, Android and desktop media players.
+		params["format"] = "mp4"
+		params["transformation"] = "vc_h264,ac_aac"
+	}
+	query := url.Values{}
+	for key, value := range params {
+		query.Set(key, value)
+	}
+	query.Set("api_key", c.apiKey)
+	query.Set("signature", c.sign(params))
+	return fmt.Sprintf("%s/%s/%s/download?%s", baseAPIURL, c.cloudName, resourceType, query.Encode()), nil
 }
 
 // PublicURL builds the stable delivery URL for public CMS imagery. Unlike a
@@ -282,38 +288,4 @@ func (c *Client) sign(params map[string]string) string {
 	}
 	sum := sha1.Sum([]byte(strings.Join(parts, "&") + c.apiSecret))
 	return hex.EncodeToString(sum[:])
-}
-
-// signDelivery builds the signature component of a signed delivery URL:
-// SHA-1 over the target plus the secret, base64url-encoded and truncated,
-// which is the form Cloudinary expects between the `s--` markers.
-func signDelivery(target, secret string) string {
-	sum := sha1.Sum([]byte(target + secret))
-	return base64URL(sum[:])[:8]
-}
-
-// base64URL encodes without padding, matching Cloudinary's URL component.
-func base64URL(raw []byte) string {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-	var b strings.Builder
-	for i := 0; i < len(raw); i += 3 {
-		var chunk uint32
-		remaining := len(raw) - i
-		chunk |= uint32(raw[i]) << 16
-		if remaining > 1 {
-			chunk |= uint32(raw[i+1]) << 8
-		}
-		if remaining > 2 {
-			chunk |= uint32(raw[i+2])
-		}
-		b.WriteByte(alphabet[(chunk>>18)&0x3f])
-		b.WriteByte(alphabet[(chunk>>12)&0x3f])
-		if remaining > 1 {
-			b.WriteByte(alphabet[(chunk>>6)&0x3f])
-		}
-		if remaining > 2 {
-			b.WriteByte(alphabet[chunk&0x3f])
-		}
-	}
-	return b.String()
 }

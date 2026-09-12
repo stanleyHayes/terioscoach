@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "inverse" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 /* Design-system §3.1. All state changes animate duration-fast ease-out;
@@ -20,6 +20,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     "terios-button-primary bg-primary text-on-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_22%,transparent)] hover:bg-primary-hover hover:shadow-[0_12px_30px_color-mix(in_srgb,var(--primary)_26%,transparent)] active:bg-primary-active",
   secondary:
     "terios-button-secondary border border-border-strong bg-transparent text-ink hover:bg-surface-sunken hover:border-primary active:bg-eucalyptus-100",
+  inverse: "border border-sand-0/40 bg-transparent text-sand-0 hover:border-sand-0 hover:bg-sand-0 hover:text-eucalyptus-900 focus-visible:bg-sand-0 focus-visible:text-eucalyptus-900 active:bg-eucalyptus-100 active:text-eucalyptus-900",
   ghost: "terios-button-ghost bg-transparent text-primary hover:bg-eucalyptus-50 active:bg-eucalyptus-100",
   danger: cn(
     "bg-danger text-on-primary hover:bg-danger-hover",

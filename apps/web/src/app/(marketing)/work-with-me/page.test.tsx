@@ -110,7 +110,7 @@ describe("Work With Me page", () => {
     expect(within(card as HTMLElement).getByText("Nursing consultation")).toBeTruthy();
     const choose = within(card as HTMLElement).getByRole("link", { name: /choose/i });
     expect(choose.className).toContain("!bg-sand-0");
-    expect(choose.className).toContain("!text-eucalyptus-950");
+    expect(choose.className).toContain("!text-eucalyptus-900");
     expect(card?.querySelector("img")?.parentElement?.className).toContain("aspect-[16/10]");
     expect(card?.className).toContain("lg:grid-cols-");
   });

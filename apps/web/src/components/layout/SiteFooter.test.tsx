@@ -17,7 +17,7 @@ describe("SiteFooter", () => {
     expect(
       screen.getByText(`© ${new Date().getFullYear()} Terios Wellness Spa`),
     ).toBeTruthy();
-    const credit = screen.getByRole("link", { name: "DEVELOPED BY XCREATIVS TECHNOLOGIES" });
+    const credit = screen.getByRole("link", { name: "DEVELOPED BY XCREATIVS TECHNOLOGIES LTD" });
     expect(credit.getAttribute("href")).toBe("https://xcreativs.com");
     expect(credit.getAttribute("rel")).toContain("noopener");
   });

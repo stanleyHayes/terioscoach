@@ -149,7 +149,7 @@ export default async function WorkWithMePage({
                   >
                     <span className="relative aspect-[16/10] overflow-hidden bg-eucalyptus-50 lg:aspect-auto lg:min-h-52" aria-hidden="true">
                       <Image src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill unoptimized={Boolean(service.imageUrl?.startsWith("http"))} sizes="(min-width: 1024px) 224px, 94vw" className="object-cover object-center" />
-                      <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-950/70 px-2 py-1 font-mono text-[10px] text-sand-0">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-900/70 px-2 py-1 font-mono text-[10px] text-sand-0">{String(index + 1).padStart(2, "0")}</span>
                     </span>
                     <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
                       <div className="flex flex-wrap items-center gap-3">
@@ -183,7 +183,7 @@ export default async function WorkWithMePage({
                             variant: selected ? "secondary" : "primary",
                             size: "sm",
                           }),
-                          selected && "!border-sand-0 !bg-sand-0 !text-eucalyptus-950 hover:!bg-sand-100",
+                          selected && "!border-sand-0 !bg-sand-0 !text-eucalyptus-900 hover:!bg-sand-100",
                         )}
                       >
                         Choose <ArrowUpRight size={15} aria-hidden="true" />

@@ -84,7 +84,7 @@ export function SiteFooter() {
           <nav aria-label="Legal" className="flex items-center gap-5"><Link href="/privacy" className="transition-colors hover:text-sand-0">Privacy</Link><Link href="/terms" className="transition-colors hover:text-sand-0">Terms</Link></nav>
           <div className="flex flex-col gap-2 sm:items-end sm:text-right">
             <p>Clinical calm, wherever you are. <span aria-hidden="true" className="ml-2 text-clay-300">❦</span></p>
-            <a href="https://xcreativs.com" target="_blank" rel="noopener noreferrer" className="font-semibold uppercase tracking-[0.1em] text-eucalyptus-200 transition-colors hover:text-sand-0">DEVELOPED BY XCREATIVS TECHNOLOGIES</a>
+            <a href="https://xcreativs.com" target="_blank" rel="noopener noreferrer" className="font-semibold uppercase tracking-[0.1em] text-eucalyptus-200 transition-colors hover:text-sand-0">DEVELOPED BY XCREATIVS TECHNOLOGIES LTD</a>
             <p className="font-semibold uppercase tracking-[0.14em] text-eucalyptus-300">Powered by XHI</p>
           </div>
         </div>

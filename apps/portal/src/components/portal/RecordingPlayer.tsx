@@ -3,18 +3,7 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 
-/**
- * RecordingPlayer — a saved session recording, with an honest fallback.
- *
- * Recordings are muxed by whichever browser the practitioner ran the call
- * in. A Chrome recording is WebM/VP9, which Safari — every iPhone — cannot
- * decode: the client used to get a black player with a struck-through play
- * button and no explanation.
- *
- * The element is asked rather than guessed at: it is rendered, and its own
- * `error` event swaps in the download. That catches every reason a file
- * will not play, not just a MIME type the browser declines up front.
- */
+/** Plays the delivered rendition and offers a download without leaving the session. */
 export function RecordingPlayer({
   url,
   contentType,
@@ -26,36 +15,33 @@ export function RecordingPlayer({
   fileName: string;
   className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
-
-  if (!failed) {
-    return (
-      <video
-        controls
-        preload="metadata"
-        src={url}
-        className={className}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
+  const [failedURL, setFailedURL] = useState<string | null>(null);
+  const failed = failedURL === url;
 
   return (
-    <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface-sunken p-4">
-      <p className="text-sm leading-relaxed text-ink-muted">
-        This recording was saved in a format this browser cannot play
-        {contentType.includes("webm") ? ", which Safari does not support" : ""}.
-        Download it and open it in another player.
-      </p>
-      {/* The file is delivered from the media store, so `download` is
-          ignored cross-origin — it opens in a new tab rather than taking the
-          page with it. */}
+    <div className="space-y-3">
+      {failed ? (
+        <div role="status" className="rounded-lg border border-border bg-surface-sunken p-4 text-sm leading-relaxed text-ink-muted">
+          This recording could not be loaded. Refresh the page to get a new private link, or try downloading it.
+        </div>
+      ) : (
+        <video
+          key={url}
+          src={url}
+          controls
+          playsInline
+          preload="metadata"
+          className={className}
+          onError={() => setFailedURL(url)}
+          aria-label={`Session recording (${contentType.includes("mp4") ? "MP4" : "WebM"})`}
+        />
+      )}
       <a
         href={url}
         download={fileName}
         target="_blank"
-        rel="noopener"
-        className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border-strong px-4 text-sm font-semibold text-primary transition-colors hover:bg-eucalyptus-100"
       >
         <Download size={16} aria-hidden="true" />
         Download recording

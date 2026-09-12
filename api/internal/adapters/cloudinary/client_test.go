@@ -131,18 +131,17 @@ func TestSignedURLExpires(t *testing.T) {
 	if parsed.Host == "" {
 		t.Fatalf("url = %q, want an absolute delivery url", link)
 	}
-	if !strings.Contains(link, "/authenticated/") {
-		t.Errorf("url = %q, want authenticated delivery for a private asset", link)
-	}
-	if !strings.Contains(link, "s--") {
-		t.Errorf("url = %q, want a signature component", link)
+	query := parsed.Query()
+	if parsed.Path != "/v1_1/terios/raw/download" || query.Get("type") != "authenticated" {
+		t.Fatalf("unexpected private download endpoint: %s", link)
 	}
 	expiry := strconv.FormatInt(testNow.Add(time.Hour).Unix(), 10)
-	if !strings.Contains(link, "exp_"+expiry) {
-		t.Errorf("url = %q, want the expiry %s embedded", link, expiry)
+	if query.Get("expires_at") != expiry || query.Get("public_id") != "terios/clients/client-1/documents/abc" {
+		t.Fatalf("missing expiry or asset identity: %s", link)
 	}
-	if !strings.Contains(link, "terios/clients/client-1/documents/abc") {
-		t.Errorf("url = %q, want the asset id", link)
+	want := sha1.Sum([]byte("expires_at=" + expiry + "&public_id=terios/clients/client-1/documents/abc&timestamp=" + strconv.FormatInt(testNow.Unix(), 10) + "&type=authenticatedtest-secret"))
+	if query.Get("signature") != hex.EncodeToString(want[:]) {
+		t.Error("download parameters are not signed using Cloudinary's API contract")
 	}
 }
 
@@ -167,9 +166,11 @@ func TestSignedURLDiffersPerAssetAndExpiry(t *testing.T) {
 	}
 
 	signature := func(link string) string {
-		start := strings.Index(link, "s--")
-		end := strings.Index(link[start+3:], "--")
-		return link[start : start+3+end]
+		parsed, err := url.Parse(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return parsed.Query().Get("signature")
 	}
 	if signature(first) == signature(second) {
 		t.Error("two assets share a delivery signature — one link could be edited into the other")
@@ -196,7 +197,8 @@ func TestSignedURLDefaultsTheTTL(t *testing.T) {
 		t.Fatalf("SignedURL: %v", err)
 	}
 	expiry := strconv.FormatInt(testNow.Add(ports.DefaultDeliveryTTL).Unix(), 10)
-	if !strings.Contains(link, "exp_"+expiry) {
+	parsed, _ := url.Parse(link)
+	if parsed.Query().Get("expires_at") != expiry {
 		t.Errorf("url = %q, want the default ttl applied", link)
 	}
 }
@@ -397,5 +399,39 @@ func TestUploadReportsAGatewayFailure(t *testing.T) {
 	var gatewayErr *ports.GatewayError
 	if !errors.As(err, &gatewayErr) || gatewayErr.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("err = %v, want a GatewayError carrying 401", err)
+	}
+}
+
+func TestSignedVideoDownloadConvertsToCompatibleMP4(t *testing.T) {
+	link, err := testClient().SignedURL(context.Background(), ports.Asset{PublicID: "clients/a/video", ResourceType: document.ResourceVideo, Private: true}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, _ := url.Parse(link)
+	q := parsed.Query()
+	if q.Get("format") != "mp4" || q.Get("transformation") != "vc_h264,ac_aac" || q.Get("type") != "authenticated" {
+		t.Fatalf("unexpected video parameters: %v", q)
+	}
+	signature := q.Get("signature")
+	q.Del("signature")
+	q.Del("api_key")
+	params := map[string]string{}
+	for key := range q {
+		params[key] = q.Get(key)
+	}
+	if signature != testClient().sign(params) {
+		t.Fatal("conversion must be signed")
+	}
+}
+
+func TestSignedRawDownloadPreservesExtensionAndEscapesID(t *testing.T) {
+	id := "clients/a/document with spaces.pdf"
+	link, err := testClient().SignedURL(context.Background(), ports.Asset{PublicID: id, ResourceType: document.ResourceRaw, Private: true}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, _ := url.Parse(link)
+	if parsed.Query().Get("public_id") != id || parsed.Query().Get("format") != "" {
+		t.Fatal("raw file identity must remain unchanged")
 	}
 }

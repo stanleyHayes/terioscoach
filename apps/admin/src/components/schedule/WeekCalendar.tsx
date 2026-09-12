@@ -25,7 +25,7 @@ import { BookingDetailModal, type BookingActionHandler, type RescheduleHandler }
 
 /**
  * WeekCalendar — design-system §3.12 week view (admin).
- * Seven day columns over hour lanes (06:00–20:00 default, 48px rows); bookings
+ * Seven day columns over hour lanes (00:00–24:00, 48px rows); bookings
  * are absolute blocks positioned from their UTC startAt/endAt converted into
  * the practice wall clock, status-colored per the spec (confirmed primary,
  * completed muted, cancelled struck danger, no-show warning). Header chrome:
@@ -37,9 +37,9 @@ import { BookingDetailModal, type BookingActionHandler, type RescheduleHandler }
  * booking; bookings themselves are buttons that open the detail modal.
  */
 
-/** Default lane range, minutes since local midnight (06:00–20:00 per spec). */
-export const DAY_START_MIN = 6 * 60;
-export const DAY_END_MIN = 20 * 60;
+/** Full-day lane range, minutes since local midnight. */
+export const DAY_START_MIN = 0;
+export const DAY_END_MIN = 24 * 60;
 /** Hour row height (design-system §3.12: 48px). */
 export const HOUR_PX = 48;
 /** 15-minute minimum visual height is 24px per spec. */
@@ -71,18 +71,18 @@ interface PositionedBooking {
   height: number;
 }
 
-function positionBooking(booking: Booking, timeZone: string): PositionedBooking | null {
+function positionBooking(booking: Booking, day: CivilDate, timeZone: string): PositionedBooking | null {
   const start = zonedParts(booking.startAt, timeZone);
   const end = zonedParts(booking.endAt, timeZone);
-  const startMin = Math.max(start.minutesSinceMidnight, DAY_START_MIN);
-  const endMin = Math.min(
-    dateKey(end) === dateKey(start) ? end.minutesSinceMidnight : DAY_END_MIN,
-    DAY_END_MIN,
-  );
-  if (endMin <= startMin) return null; // entirely outside the lane range
-  const top = ((startMin - DAY_START_MIN) / 60) * HOUR_PX;
+  const key = dateKey(day);
+  if (dateKey(start) > key || dateKey(end) < key || Date.parse(booking.endAt) <= Date.parse(booking.startAt)) return null;
+  const startMin = dateKey(start) === key ? start.minutesSinceMidnight : DAY_START_MIN;
+  const endMin = dateKey(end) === key ? end.minutesSinceMidnight : DAY_END_MIN;
+  if (endMin <= startMin) return null;
+  const top = (startMin / 60) * HOUR_PX;
   const height = Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_PX);
-  return { booking, top, height };
+  // Keep a short booking at 23:50 fully clickable inside the final lane.
+  return { booking, top: Math.min(top, GRID_HEIGHT_PX - height), height };
 }
 
 export interface WeekCalendarProps {
@@ -131,13 +131,12 @@ export function WeekCalendar({
   const zoneLabel = timezoneShortName(timeZone, now);
 
   const byDay = new Map<string, PositionedBooking[]>();
-  for (const booking of bookings) {
-    const key = dateKey(zonedParts(booking.startAt, timeZone));
-    const positioned = positionBooking(booking, timeZone);
-    if (!positioned) continue;
-    const list = byDay.get(key) ?? [];
-    list.push(positioned);
-    byDay.set(key, list);
+  for (const day of days) {
+    const key = dateKey(day);
+    byDay.set(key, bookings.flatMap((booking) => {
+      const positioned = positionBooking(booking, day, timeZone);
+      return positioned ? [positioned] : [];
+    }));
   }
 
   const nowParts = zonedParts(now, timeZone);
@@ -183,7 +182,7 @@ export function WeekCalendar({
             {formatWeekRange(weekStart)}
           </h2>
           {/* timezone is always shown on scheduling surfaces (brand voice rule) */}
-          <p className="mt-1 flex items-center gap-1.5 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
+          <p className="mt-1 flex items-center gap-1.5 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-muted">
             <Globe size={14} aria-hidden="true" />
             Times in {zoneLabel}
           </p>
@@ -201,10 +200,10 @@ export function WeekCalendar({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface-raised">
+      <div className="max-h-[75vh] overflow-auto rounded-lg border border-border bg-surface-raised">
         <div className="min-w-[720px]">
           {/* weekday header row: micro ink-faint, hairline below (§3.12) */}
-          <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border">
+          <div className="sticky top-0 z-10 grid grid-cols-[56px_repeat(7,1fr)] bg-surface-raised border-b border-border">
             <div aria-hidden="true" />
             {days.map((day) => {
               const key = dateKey(day);
@@ -217,7 +216,7 @@ export function WeekCalendar({
                   key={key}
                   className="border-l border-border px-2 py-2 text-center"
                 >
-                  <p className="text-[11px] leading-[1.3] font-semibold tracking-[0.08em] uppercase text-ink-faint">
+                  <p className="text-[11px] leading-[1.3] font-semibold tracking-[0.08em] uppercase text-ink-muted">
                     {weekdayShortName(weekday)}
                   </p>
                   <p
@@ -245,7 +244,7 @@ export function WeekCalendar({
             <div aria-hidden="true" className="w-14 shrink-0">
               {HOURS.map((min) => (
                 <div key={min} className="h-12 pr-2 text-right">
-                  <span className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] tabular-nums text-ink-faint">
+                  <span className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] tabular-nums text-ink-muted">
                     {formatTime(
                       wallClockAnchor(weekStart, min, timeZone),
                       timeZone,

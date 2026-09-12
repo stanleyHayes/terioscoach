@@ -88,7 +88,7 @@ export default async function Home() {
             </Link>
             <Link
               href="/services"
-              className={buttonClasses({ variant: "secondary", size: "lg", className: "border-sand-0/25 text-sand-0 hover:border-sand-0/40 hover:bg-sand-0/8" })}
+              className={buttonClasses({ variant: "inverse", size: "lg" })}
             >
               Explore services
             </Link>
@@ -97,9 +97,8 @@ export default async function Home() {
             <span>Registered nurse-led</span><span>Private by design</span><span>Available worldwide</span>
           </div>
         </div>
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-[480px] lg:mr-0">
-          <div className="absolute inset-5 rotate-3 rounded-[3rem_1.5rem_3rem_1.5rem] bg-eucalyptus-100" />
-          <div className="absolute inset-0 -rotate-2 overflow-hidden rounded-[2rem_4.5rem_2rem_4.5rem] border border-eucalyptus-200 bg-eucalyptus-900 shadow-[0_35px_90px_rgba(28,51,40,.22)]">
+        <div className="mx-auto w-full max-w-[480px] overflow-hidden rounded-[2rem_4rem_2rem_2rem] border border-eucalyptus-300/40 bg-sand-0 text-eucalyptus-900 lg:mr-0">
+          <div className="relative aspect-[5/4]">
             <Image
               src={homePage?.coverImage || "/images/brand/theresa-yirerong-clinical.webp"}
               alt="Theresa Yirerong, registered nurse and wellness coach"
@@ -107,16 +106,17 @@ export default async function Home() {
               priority
               unoptimized={Boolean(homePage?.coverImage?.startsWith("http"))}
               sizes="(min-width: 1024px) 480px, 90vw"
-              className="object-cover"
+              className="object-cover object-top"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-eucalyptus-950/75 via-transparent to-transparent" />
-            <div className="absolute inset-x-8 bottom-8 rounded-[1.5rem] border border-sand-0/15 bg-sand-0/10 p-6 text-sand-0 backdrop-blur-md">
-              <HeartPulse className="size-6 text-eucalyptus-300" aria-hidden="true" />
-              <p className="mt-8 font-display text-3xl leading-tight">Clinical confidence.<br />Human warmth.</p>
-              <p className="mt-3 text-sm leading-relaxed text-sand-0/70">One practitioner. Unhurried attention. Care shaped around you.</p>
-            </div>
+            <span className="absolute left-5 top-5 rounded-full bg-sand-0 px-3 py-2 text-xs font-semibold text-eucalyptus-900">Video-first care</span>
           </div>
-          <div className="absolute -left-5 top-14 rounded-full border border-border bg-surface-raised px-4 py-2 text-xs font-semibold text-primary shadow-md">Video-first care</div>
+          <div className="p-6 sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <p className="font-display text-2xl leading-tight sm:text-3xl">Clinical confidence.<br />Human warmth.</p>
+              <HeartPulse className="mt-1 size-6 shrink-0 text-primary" aria-hidden="true" />
+            </div>
+            <p className="mt-3 max-w-[30ch] text-sm leading-relaxed text-ink-muted">One practitioner. Unhurried attention. Care shaped around you.</p>
+          </div>
         </div>
       </Section>
 
@@ -168,7 +168,7 @@ export default async function Home() {
               >
                 <span className={`relative min-h-52 overflow-hidden bg-eucalyptus-100 ${index === 2 ? "lg:min-h-64" : ""}`}>
                   <Image src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill unoptimized={Boolean(service.imageUrl?.startsWith("http"))} sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
-                  <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-950/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">0{index + 1}</span>
+                  <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-900/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">0{index + 1}</span>
                 </span>
                 <div className="flex max-w-[54ch] flex-col justify-end p-8">
                   <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.name}</h3>
@@ -197,7 +197,7 @@ export default async function Home() {
           </div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100 shadow-[0_24px_70px_rgba(31,41,34,.12)]">
             <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa Yirerong welcoming clients to Terios Wellness" fill sizes="(min-width: 1024px) 42vw, 94vw" className="object-cover" />
-            <div className="absolute inset-x-5 bottom-5 rounded-[1.25rem] border border-sand-0/25 bg-eucalyptus-950/70 p-5 text-sand-0 backdrop-blur-md">
+            <div className="absolute inset-x-5 bottom-5 rounded-[1.25rem] border border-sand-0/25 bg-eucalyptus-900/70 p-5 text-sand-0 backdrop-blur-md">
               <p className="font-display text-xl">A familiar face from first conversation to follow-up.</p>
               <Link href="/about" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-eucalyptus-100">Meet Theresa <ArrowRight className="size-4" /></Link>
             </div>

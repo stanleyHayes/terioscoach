@@ -118,16 +118,25 @@ export default async function About() {
       </Section>
 
       <Section containerClassName="pt-0" ariaLabelledby="care-in-practice-heading">
-        <div className="grid gap-5 md:grid-cols-[1.25fr_.75fr]">
-          <div className="relative min-h-80 overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100 md:min-h-[480px]">
-            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp" alt="Theresa Yirerong in nursing scrubs" fill sizes="(min-width: 768px) 58vw, 94vw" className="object-cover" />
-            <div className="absolute inset-x-6 bottom-6 max-w-sm rounded-[1.25rem] border border-sand-0/20 bg-eucalyptus-950/75 p-5 text-sand-0 backdrop-blur-md">
-              <h2 id="care-in-practice-heading" className="font-display text-2xl">Nursing experience, brought closer.</h2>
-              <p className="mt-2 text-sm leading-relaxed text-eucalyptus-100">Professional care can still feel personal, familiar and human.</p>
-            </div>
+        <div className="grid overflow-hidden rounded-[2rem] border border-eucalyptus-200 bg-eucalyptus-900 md:grid-cols-[1.1fr_.9fr]">
+          <div className="relative min-h-[360px] md:min-h-[540px]">
+            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp" alt="Theresa Yirerong in nursing scrubs" fill sizes="(min-width: 768px) 55vw, 94vw" className="object-cover" />
           </div>
-          <div className="relative min-h-72 overflow-hidden rounded-[4rem_2rem_4rem_2rem] bg-eucalyptus-100 md:min-h-[480px]">
-            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa smiling in the Terios Wellness studio" fill sizes="(min-width: 768px) 34vw, 94vw" className="object-cover" />
+          <div className="flex flex-col justify-between gap-8 p-7 text-sand-0 sm:p-10 lg:p-12">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.12em] text-eucalyptus-200">Care with a familiar face</p>
+              <h2 id="care-in-practice-heading" className="mt-5 max-w-[14ch] font-display text-3xl leading-tight sm:text-4xl">Nursing experience, brought closer.</h2>
+              <p className="mt-5 max-w-sm text-base leading-relaxed text-eucalyptus-100">Professional care can still feel personal, familiar and human.</p>
+            </div>
+            <div className="flex items-center gap-5 border-t border-eucalyptus-300/30 pt-6">
+              <div className="relative size-20 shrink-0 overflow-hidden rounded-full bg-eucalyptus-100">
+                <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa smiling in the Terios Wellness studio" fill sizes="80px" className="object-cover" />
+              </div>
+              <div>
+                <p className="font-display text-lg">Theresa Yirerong</p>
+                <p className="mt-1 text-sm leading-relaxed text-eucalyptus-200">Registered nurse &amp; wellness coach</p>
+              </div>
+            </div>
           </div>
         </div>
       </Section>
