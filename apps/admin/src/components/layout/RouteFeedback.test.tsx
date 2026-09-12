@@ -16,4 +16,17 @@ describe("RouteFeedback", () => {
     fireEvent.click(link);
     expect(document.querySelector(".terios-route-progress")?.hasAttribute("data-active")).toBe(true);
   });
+  it("does not revive a completed transition when a save returns programmatically", () => {
+    pathname.mockReturnValue("/content");
+    const { rerender } = render(<><RouteFeedback /><Link href="/content/posts/1/edit">Edit post</Link></>);
+    fireEvent.click(screen.getByRole("link", { name: "Edit post" }));
+    expect(document.querySelector(".terios-route-progress")?.hasAttribute("data-active")).toBe(true);
+    pathname.mockReturnValue("/content/posts/1/edit");
+    rerender(<RouteFeedback />);
+    expect(document.querySelector(".terios-route-progress")?.hasAttribute("data-active")).toBe(false);
+    pathname.mockReturnValue("/content");
+    rerender(<RouteFeedback />);
+    expect(document.querySelector(".terios-route-progress")?.hasAttribute("data-active")).toBe(false);
+  });
+
 });

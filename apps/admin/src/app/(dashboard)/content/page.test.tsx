@@ -3,6 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FAQ, Page, Post, Testimonial } from "@/lib/content";
 import ContentPage from "./page";
 
+const navigation = vi.hoisted(() => ({ query: "", listeners: new Set<() => void>() }));
+vi.mock("next/navigation", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useSearchParams: () => new URLSearchParams(useSyncExternalStore(
+      (listener) => { navigation.listeners.add(listener); return () => { navigation.listeners.delete(listener); }; },
+      () => navigation.query,
+    )),
+    useRouter: () => ({ replace: (url: string) => { navigation.query = url.split("?")[1] || ""; navigation.listeners.forEach((listener) => listener()); } }),
+  };
+});
+beforeEach(() => { navigation.query = ""; });
+
 const pageList = vi.hoisted(() => vi.fn());
 const pageCreate = vi.hoisted(() => vi.fn());
 const pageUpdate = vi.hoisted(() => vi.fn());
@@ -118,6 +131,15 @@ describe("ContentPage", () => {
     pageSetPublished.mockImplementation((_s, _c, id, published) =>
       Promise.resolve(aPage({ id, status: published ? "published" : "draft" })),
     );
+  });
+
+  it("opens the blog tab after saving and confirms success", async () => {
+    navigation.query = "tab=blog&saved=1";
+    postList.mockResolvedValue([]);
+    render(<ContentPage />);
+    expect(screen.getByRole("tab", { name: "Blog" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Blog post saved.")).toBeTruthy();
+    await waitFor(() => expect(postList).toHaveBeenCalled());
   });
 
   it("opens on pages and only loads the visible tab", async () => {

@@ -7,7 +7,10 @@ import { usePathname, useRouter } from "next/navigation";
 export function RouteFeedback() {
   const pathname = usePathname();
   const router = useRouter();
-  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [navigation, setNavigation] = useState<{ from: string; to: string } | null>(null);
+  // A completed navigation must be consumed: otherwise a later router.push
+  // (such as returning from the post editor) revives the old progress bar.
+  if (navigation && navigation.from !== pathname) setNavigation(null);
   useEffect(() => {
     function localPath(target: EventTarget | null) {
       const anchor = target instanceof Element ? target.closest("a[href]") : null;
@@ -22,7 +25,7 @@ export function RouteFeedback() {
     function begin(event: MouseEvent) {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const href = localPath(event.target);
-      if (href && href !== pathname) setPendingPath(href);
+      if (href && href !== pathname) setNavigation({ from: pathname, to: href });
     }
     document.addEventListener("pointerover", warm, true);
     document.addEventListener("focusin", warm, true);
@@ -34,5 +37,5 @@ export function RouteFeedback() {
     };
   }, [pathname, router]);
 
-  return <div className="terios-route-progress" data-active={(pendingPath !== null && pendingPath !== pathname) || undefined} aria-hidden="true"><span /></div>;
+  return <div className="terios-route-progress" data-active={(navigation !== null && navigation.from === pathname && navigation.to !== pathname) || undefined} aria-hidden="true"><span /></div>;
 }

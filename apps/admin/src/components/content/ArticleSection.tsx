@@ -20,9 +20,8 @@ import { useAction, useResource } from "@/lib/use-resource";
  * The list behind both the Pages and Blog tabs (ADM-07).
  *
  * Publish is its own button, separate from Save, all the way down to the
- * API. That is the whole design: an editor can leave a half-finished draft
- * open for a week, and a live page can be revised without the revision
- * going out until it is meant to.
+ * API. A draft stays private until published; saving changes to an already
+ * published article updates the live version.
  */
 export function ArticleSection({ kind }: { kind: "page" | "post" }) {
   const api = kind === "page" ? pagesApi : postsApi;
@@ -35,6 +34,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
   );
   const action = useAction();
   const [editing, setEditing] = useState<Page | Post | null | undefined>(undefined);
+  const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Page | Post | null>(null);
 
   const items = articles.data ?? [];
@@ -72,10 +72,12 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
   }
 
   async function setPublished(article: Page | Post, published: boolean) {
+    setNotice(null);
     const updated = await action.run(article.id, (session, callbacks) =>
       api.setPublished(session, callbacks, article.id, published),
     );
     if (updated) {
+      setNotice(published ? `${updated.title} is now published.` : `${updated.title} is now a draft.`);
       articles.set((current) => (current ?? []).map((a) => (a.id === updated.id ? updated : a)));
     }
   }
@@ -104,6 +106,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
       </div>
 
       <ErrorBanner message={action.error} />
+      {notice ? <p role="status" className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800">{notice}</p> : null}
 
       {articles.error ? (
         <LoadFailure message={articles.error} onRetry={articles.refresh} />

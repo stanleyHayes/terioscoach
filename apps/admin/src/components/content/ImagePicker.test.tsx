@@ -3,29 +3,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import { ImagePicker } from "./ImagePicker";
 
-const { uploadCMSImage, listCMSImages } = vi.hoisted(() => ({
+const { uploadCMSImage, listCMSImages, deleteCMSImage } = vi.hoisted(() => ({
   uploadCMSImage: vi.fn(),
   listCMSImages: vi.fn(),
+  deleteCMSImage: vi.fn(),
 }));
 
 vi.mock("@/lib/media", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/media")>();
-  return { ...original, uploadCMSImage, listCMSImages };
+  return { ...original, uploadCMSImage, listCMSImages, deleteCMSImage };
 });
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/auth")>();
   return {
     ...original,
-    useAuth: () => ({
+    useAuth: () => authContext,
+  };
+});
+
+const authContext = {
       status: "authenticated",
       user: { id: "prac-1", email: "t@example.com", role: "practitioner", name: "Terios" },
       session: { accessToken: "a1", refreshToken: "r1" },
       refreshCallbacks: { onTokensRefreshed: vi.fn() },
       logout: vi.fn(),
-    }),
-  };
-});
+};
 
 function pngFile(name = "cover.png"): File {
   return new File(["x"], name, { type: "image/png" });
@@ -43,10 +46,12 @@ describe("ImagePicker", () => {
     uploadCMSImage.mockResolvedValue({
       url: "https://res.cloudinary.com/demo/cover.png",
       publicId: "cms/cover",
+      documentId: "doc-new",
       filename: "cover.png",
       bytes: 1024,
     });
     listCMSImages.mockResolvedValue([]);
+    deleteCMSImage.mockResolvedValue(undefined);
   });
 
   it("uses no visible native file control", () => {
@@ -137,4 +142,31 @@ describe("ImagePicker", () => {
     release({ url: "https://res.cloudinary.com/demo/cover.png", publicId: "p", filename: "f", bytes: 1 });
     await waitFor(() => expect(screen.getByRole("button", { name: /upload a new image/i })).toBeTruthy());
   });
+  it("confirms deleting by document ID and clears a selected deleted image", async () => {
+    const url = "https://res.cloudinary.com/demo/image/upload/cms/cover.png";
+    listCMSImages.mockResolvedValue([{ id: "doc-delete", url, title: "Old cover", filename: "old.png", bytes: 10, createdAt: "2026-09-12" }]);
+    const onChange = vi.fn();
+    render(<ImagePicker value={url} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: /choose from media library/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Old cover" }));
+    expect(deleteCMSImage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Delete image" }));
+    await waitFor(() => expect(deleteCMSImage).toHaveBeenCalledWith(expect.anything(), expect.anything(), "doc-delete"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Use Old cover" })).toBeNull());
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.getByRole("status").textContent).toContain("deleted");
+  });
+
+  it("keeps an image available and shows delete errors inside the library", async () => {
+    listCMSImages.mockResolvedValue([{ id: "doc-1", url: "https://res.cloudinary.com/demo/cover", title: "Keep me", filename: "cover.png", bytes: 10, createdAt: "2026-09-12" }]);
+    deleteCMSImage.mockRejectedValue(new ApiError(503, "unavailable", "Storage unavailable. Try again."));
+    render(<ImagePicker value="" onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /choose from media library/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Keep me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete image" }));
+    expect((await screen.findByRole("alert")).closest('[role="dialog"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use Keep me" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete image" }).hasAttribute("disabled")).toBe(false);
+  });
+
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
-import { MAX_IMAGE_BYTES, rejectionReason, uploadCMSImage } from "@/lib/media";
+import { MAX_IMAGE_BYTES, rejectionReason, uploadCMSImage, deleteCMSImage } from "@/lib/media";
 
 const authedRequest = vi.hoisted(() => vi.fn());
 
@@ -90,6 +90,14 @@ describe("uploadCMSImage", () => {
 
     expect(result.url).toBe("https://res.cloudinary.com/demo/image/upload/cms/cover.png");
     expect(result.publicId).toBe("cms/cover");
+  });
+
+  it("returns the document ID needed to delete a newly uploaded image", async () => {
+    authedRequest.mockResolvedValueOnce(signed).mockResolvedValueOnce({ document: { id: "document-123" } });
+    const image = await uploadCMSImage(session, callbacks, imageFile());
+    expect(image.documentId).toBe("document-123");
+    await deleteCMSImage(session, callbacks, image.documentId!);
+    expect(authedRequest).toHaveBeenLastCalledWith("/v1/admin/documents/document-123", session, callbacks, { method: "DELETE" });
   });
 
   it("records the upload with the API afterwards", async () => {

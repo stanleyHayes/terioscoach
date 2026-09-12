@@ -276,6 +276,19 @@ func TestCMSMediaLibraryReturnsReusablePublicImages(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "publicId") {
 		t.Errorf("media library leaked provider public id: %s", rec.Body.String())
 	}
+	deleted := doJSON(t, rig.srv, http.MethodDelete, "/v1/admin/documents/"+item.ID, nil, bearer(rig.practitionerToken))
+	if deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete CMS image = %d", deleted.Code)
+	}
+	if len(rig.media.Deleted) != 1 || rig.media.Deleted[0].Private {
+		t.Fatal("CMS deletion must remove the public asset")
+	}
+	rec = doJSON(t, rig.srv, http.MethodGet, "/v1/admin/documents/media", nil, bearer(rig.practitionerToken))
+	decodeBody(t, rec, &list)
+	if len(list.Items) != 0 {
+		t.Fatal("deleted image remained in media library")
+	}
+
 }
 
 // TestDeleteRemovesTheStoredFile: a file must not outlive the record that

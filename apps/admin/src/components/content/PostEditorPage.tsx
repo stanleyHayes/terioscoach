@@ -27,5 +27,5 @@ export function PostEditorPage({ postId }: { postId?: string }) {
   if (posts.data === null) return <Skeletons label="Opening the writing desk…" />;
   if (postId && !post) return <LoadFailure message="That post could not be found." onRetry={() => router.push("/content?tab=blog")} />;
 
-  return <ArticleEditor kind="post" article={post ?? null} presentation="page" onClose={() => router.push("/content?tab=blog")} onSubmit={save} />;
+  return <ArticleEditor kind="post" article={post ?? null} presentation="page" onSaved={() => router.push("/content?tab=blog&saved=1")} onClose={() => router.push("/content?tab=blog")} onSubmit={save} />;
 }

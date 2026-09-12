@@ -102,6 +102,12 @@ describe("practice dashboard CSP", () => {
     expect(media).not.toMatch(/(?:^|\s)(?:\*|https:)(?:\s|$)/);
   });
 
+  it("allows the bundled brand-library thumbnails from the public asset origin", () => {
+    const images = directive(run(), "img-src");
+    expect(images).toContain(new URL(process.env.NEXT_PUBLIC_ASSET_ORIGIN || "https://terioscoach.com").origin);
+    expect(images).not.toMatch(/(?:^|\s)(?:\*|https:)(?:\s|$)/);
+  });
+
   it("carries a nonce on documents but not on static assets", () => {
     // Matching _next/static would mint a nonce for every chunk and script
     // file, which carry no HTML and cannot use one.

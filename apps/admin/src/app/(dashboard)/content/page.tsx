@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ArticleSection } from "@/components/content/ArticleSection";
 import { FAQManager } from "@/components/content/FAQManager";
 import { TestimonialModeration } from "@/components/content/TestimonialModeration";
@@ -15,9 +16,8 @@ import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
  * after the website") done in one place, and the sidebar is for jobs, not
  * for record types.
  *
- * The tabs are local state, not routes. Nothing here is worth linking to
- * from outside the dashboard, and a route per tab would mean four screens
- * that each have to re-authenticate and re-fetch on every switch.
+ * The query string keeps the active tab stable through editor navigation
+ * and browser history, without giving each tab a separate page.
  */
 
 const TABS = [
@@ -30,15 +30,21 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function ContentPage() {
-  const [tab, setTab] = useState<TabId>(() => {
-    if (typeof window === "undefined") return "pages";
-    const requested = new URLSearchParams(window.location.search).get("tab");
-    return TABS.some((item) => item.id === requested) ? (requested as TabId) : "pages";
-  });
+  return <Suspense fallback={<p role="status">Opening site content…</p>}><ContentTabs /></Suspense>;
+}
+
+function ContentTabs() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const requested = params.get("tab");
+  const tab: TabId = TABS.some((item) => item.id === requested) ? requested as TabId : "pages";
+  function setTab(id: TabId) { router.replace(`/content?tab=${id}`, { scroll: false }); }
 
   return (
     <div data-admin-page="content" className="flex flex-col gap-6">
       <AdminPageHeader eyebrow="Publishing desk" title="Site content" description="Draft, review and publish everything the public site shows. Nothing goes live until you choose it." />
+
+      {tab === "blog" && params.get("saved") === "1" ? <p role="status" className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800">Blog post saved.</p> : null}
 
       {/* A real tablist: arrow keys move between tabs and only the selected
           panel is in the tab order, which is what a screen reader user

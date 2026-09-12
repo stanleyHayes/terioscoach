@@ -45,7 +45,7 @@ function staticDirectives(): string[] {
     "style-src 'self' 'unsafe-inline'",
     // Cloudinary serves CMS media and client documents; data:/blob: cover
     // canvas exports and locally previewed uploads.
-    "img-src 'self' data: blob: https://res.cloudinary.com",
+    `img-src 'self' data: blob: https://res.cloudinary.com ${new URL(process.env.NEXT_PUBLIC_ASSET_ORIGIN || "https://terioscoach.com").origin}`,
     "font-src 'self'",
     // Uploads go browser→Cloudinary directly on a signed, folder-scoped
     // signature, so the upload endpoint is a first-class destination.

@@ -26,6 +26,8 @@ interface CloudinaryUpload {
 }
 
 export interface UploadedImage {
+  /** Persisted document ID, used by library deletion (not the storage ID). */
+  documentId?: string;
   /** The public delivery URL, which is what a post's coverImage stores. */
   url: string;
   publicId: string;
@@ -54,6 +56,11 @@ export async function listCMSImages(
     callbacks,
   );
   return items;
+}
+
+/** Deletes the stored file and its library record through the authorized API. */
+export async function deleteCMSImage(session: Session, callbacks: RefreshCallbacks, id: string): Promise<void> {
+  await authedRequest(`/v1/admin/documents/${encodeURIComponent(id)}`, session, callbacks, { method: "DELETE" });
 }
 
 /** Cloudinary's free tier tops out well above this; the limit is here so a
@@ -113,7 +120,7 @@ export async function uploadCMSImage(
   }
   const uploaded = (await response.json()) as CloudinaryUpload;
 
-  await authedRequest("/v1/admin/documents", session, callbacks, {
+  const recorded = await authedRequest<{ document: { id: string } }>("/v1/admin/documents", session, callbacks, {
     method: "POST",
     body: {
       kind: "cms_image",
@@ -127,6 +134,7 @@ export async function uploadCMSImage(
   });
 
   return {
+    documentId: recorded?.document?.id,
     url: uploaded.secure_url,
     publicId: uploaded.public_id,
     filename: file.name,

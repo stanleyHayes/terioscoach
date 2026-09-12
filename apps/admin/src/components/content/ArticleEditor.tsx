@@ -17,8 +17,8 @@ import { slugify, type Page, type Post } from "@/lib/content";
  * The two differ only in the extra fields a post carries, so they share one
  * form rather than two that drift. What they also share is the rule that
  * matters most here: **saving never publishes**. Status is changed from the
- * list, by its own button, so an editor can revise a live page and take as
- * long over it as they like without anything going out half-written.
+ * list, by its own button. Saving a draft keeps it a draft; edits to an
+ * already-published article are immediately visible on the public site.
  */
 
 export interface ArticleValues {
@@ -59,6 +59,7 @@ export function ArticleEditor({
   article,
   onClose,
   onSubmit,
+  onSaved,
   presentation = "modal",
 }: {
   kind: "page" | "post";
@@ -68,6 +69,7 @@ export function ArticleEditor({
   /** The parent performs the call and throws on failure. */
   onSubmit: (values: ArticleValues) => Promise<void>;
   presentation?: "modal" | "page";
+  onSaved?: () => void;
 }) {
   const editing = article !== null;
   const initial = initialValues(article);
@@ -124,7 +126,7 @@ export function ArticleEditor({
     setSubmitting(true);
     try {
       await onSubmit(values);
-      onClose();
+      (onSaved ?? onClose)();
     } catch (error) {
       setFormError(
         error instanceof ApiError ? error.message : "Something went wrong. Try again.",

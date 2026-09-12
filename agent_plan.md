@@ -446,3 +446,14 @@ Delivery: verified implementation prepared for publication to `main`; production
 | PDF-06 | Homepage CTA hover contrast | Done locally | Explicit inverse button variant with dark-green-on-sand hover/focus; production computed colors verified; homepage portrait caption redesigned on solid sand and undefined eucalyptus-950 utilities replaced across marketing routes |
 
 Validation: full Go suite; all-workspace frontend suites (admin 441, portal 288, web 182 at full-suite run), plus new recording-player/CSP tests; all-workspace lint; all three production builds; `git diff --check`. Responsive homepage/About checks at 390, 768 and 1440px show no horizontal overflow. Production-build hover/focus colors are rgb(28,51,40) on rgb(253,252,250). Media fixture verified by ffprobe as H.264 video + AAC audio in MP4, duration 2.008 seconds; both Chrome and mobile WebKit advanced playback with no media error. Existing legacy inline recordings retain their original source; the MP4 conversion applies to Cloudinary-stored recordings. Physical-device and production-deployment verification are not claimed.
+
+## 28. Updated PDF follow-up (12 Sep 2026)
+
+Owner: Codex. Source: `Terios Website Update (1).pdf`. Items 1–6 match the prior PDF; additional scope is items 7–8.
+
+| ID | Requirement | Status | Acceptance |
+|---|---|---|---|
+| PDF-07 | Blog save/publish finishes cleanly in admin | Done; browser verified | Completed route transitions are consumed so returning from the editor cannot revive the loading bar; URL-driven tabs preserve Blog; save and publish confirmations; production-build browser fixture verified updated title and no active progress indicator |
+| PDF-08 | Delete uploaded media-library images | Done; browser/API verified | Confirmation uses persisted document ID; successful deletion removes file and library record and clears selected image; failures remain visible in the modal and allow retry; new uploads preserve their document ID; bundled brand images remain built-in |
+
+Verification: admin full suite 447 tests passed, plus focused final CSP/image-picker/modal checks (17 and 26 tests); admin lint and production build passed; Go HTTP document/media deletion tests passed. Production-build browser walkthrough used isolated API fixtures to publish, edit/save/return, confirm deletion, and verify 390px media-library layout without touching live content. Also fixed the media-library thumbnail CSP allowlist and modal stacking above the admin header, with desktop/mobile screenshots inspected. Original PDF items 1–6 remain in `9b25405`.
