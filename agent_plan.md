@@ -457,3 +457,9 @@ Owner: Codex. Source: `Terios Website Update (1).pdf`. Items 1–6 match the pri
 | PDF-08 | Delete uploaded media-library images | Done; browser/API verified | Confirmation uses persisted document ID; successful deletion removes file and library record and clears selected image; failures remain visible in the modal and allow retry; new uploads preserve their document ID; bundled brand images remain built-in |
 
 Verification: admin full suite 447 tests passed, plus focused final CSP/image-picker/modal checks (17 and 26 tests); admin lint and production build passed; Go HTTP document/media deletion tests passed. Production-build browser walkthrough used isolated API fixtures to publish, edit/save/return, confirm deletion, and verify 390px media-library layout without touching live content. Also fixed the media-library thumbnail CSP allowlist and modal stacking above the admin header, with desktop/mobile screenshots inspected. Original PDF items 1–6 remain in `9b25405`.
+
+## 29. Availability time-menu clipping (13 Sep 2026)
+
+Owner: Codex. Done: time options render in a fixed body portal outside the clipped availability card, flip upward when needed, track scroll/resize, and open at the selected time. Arrow/Home/End selection, Escape focus return, and outside-pointer dismissal are supported.
+
+Verification: 11 focused time-picker/availability tests, admin lint, production build, and diff checks passed. Production browser with isolated API fixtures verified all 96 options, desktop and 390px mobile viewport bounds, 23:45 selection, and saved Sunday endMin=1425. Screenshots inspected; no live availability changed.

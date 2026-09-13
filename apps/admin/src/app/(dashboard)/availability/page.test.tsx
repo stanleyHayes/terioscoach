@@ -60,7 +60,7 @@ function saveButton() {
 
 function chooseTime(region: HTMLElement, label: string, display: string) {
   fireEvent.click(within(region).getByLabelText(label));
-  fireEvent.click(within(region).getByRole("option", { name: display }));
+  fireEvent.click(screen.getByRole("option", { name: display }));
 }
 
 function chooseDate(label: string, value: string) {
