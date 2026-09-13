@@ -1,8 +1,9 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { CalendarDays, CircleAlert, List } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { UpcomingConsultations } from "@/components/schedule/UpcomingConsultations";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
 import { KpiStrip } from "@/components/insights/KpiStrip";
 import type { BookingAction } from "@/components/schedule/BookingDetailModal";
@@ -53,6 +54,7 @@ export default function CalendarPage() {
   const [weekStart, setWeekStart] = useState<CivilDate>(() =>
     mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)),
   );
+  const [view, setView] = useState<"calendar" | "list">("calendar");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,10 @@ export default function CalendarPage() {
     let cancelled = false;
     const weekEnd = addDaysCivil(weekStart, 7);
     scheduleApi
-      .listBookings(session, refreshCallbacks, {
+      .listBookings(session, refreshCallbacks, view === "list" ? {
+        from: new Date().toISOString(),
+        status: "confirmed",
+      } : {
         from: wallClockToUtcIso(
           dateKey(weekStart),
           "00:00",
@@ -99,7 +104,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, refreshCallbacks, weekStart, filter, handleSessionExpiry]);
+  }, [session, refreshCallbacks, weekStart, filter, view, handleSessionExpiry]);
 
   useEffect(() => load(), [load]);
 
@@ -195,7 +200,7 @@ export default function CalendarPage() {
           </p>
         </div>
         {/* status filter chips (§3.20): selected = eucalyptus-100 + primary border */}
-        <div
+        {view === "calendar" ? <div
           role="group"
           aria-label="Filter by status"
           className="flex flex-wrap gap-2"
@@ -220,10 +225,23 @@ export default function CalendarPage() {
               {label}
             </button>
           ))}
-        </div>
+        </div> : null}
       </div>
 
-      {bookings ? (
+      <div role="group" aria-label="Consultation view" className="flex w-fit gap-1 rounded-full border border-border bg-surface-raised p-1">
+        {([ ["calendar", "Weekly calendar", CalendarDays], ["list", "Upcoming list", List] ] as const).map(([value, label, Icon]) => (
+          <button key={value} type="button" aria-pressed={view === value} onClick={() => {
+            if (view === value) return;
+            setBookings(null);
+            setError(null);
+            setView(value);
+          }} className={cn("flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors", view === value ? "bg-primary text-on-primary" : "text-ink-muted hover:bg-surface-sunken")}>
+            <Icon size={16} aria-hidden="true" />{label}
+          </button>
+        ))}
+      </div>
+
+      {bookings && view === "calendar" ? (
         <KpiStrip
           label="Weekly schedule summary"
           items={[
@@ -291,8 +309,10 @@ export default function CalendarPage() {
       ) : null}
 
       {bookings === null && !error ? (
-        <CalendarSkeleton />
-      ) : error ? null : (
+        view === "calendar" ? <CalendarSkeleton /> : <div role="status" aria-busy="true" className="flex flex-col gap-4"><span className="sr-only">Loading upcoming consultations…</span>{[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="skeleton-shimmer h-36 rounded-[1.5rem]" />)}</div>
+      ) : error ? null : view === "list" ? (
+        <UpcomingConsultations bookings={bookings ?? []} clientNames={clientNames} serviceNames={serviceNames} onAction={handleAction} onReschedule={handleReschedule} />
+      ) : (
         <WeekCalendar
           weekStart={weekStart}
           bookings={bookings ?? []}

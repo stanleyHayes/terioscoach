@@ -130,6 +130,61 @@ describe("CalendarPage", () => {
     expect(screen.getByText("Times in GMT")).toBeTruthy();
   });
 
+  it("lists future consultations beyond the current week in date order and restores the calendar", async () => {
+    listBookingsMock.mockResolvedValue([
+      booking({ id: "later", clientId: "Later client", startAt: "2099-10-20T09:00:00Z", endAt: "2099-10-20T10:00:00Z" }),
+      booking({ id: "nearer", clientId: "Nearer client", startAt: "2099-10-15T09:00:00Z", endAt: "2099-10-15T10:00:00Z" }),
+    ]);
+    render(<CalendarPage />);
+    await screen.findByRole("grid");
+    const before = Date.now();
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
+    const list = await screen.findByRole("region", { name: "Upcoming consultations" });
+    const params = listBookingsMock.mock.lastCall?.[2];
+    expect(params.status).toBe("confirmed");
+    expect(params.to).toBeUndefined();
+    expect(Date.parse(params.from)).toBeGreaterThanOrEqual(before);
+    expect(within(list).getAllByRole("listitem")[0].textContent).toContain("Nearer client");
+    expect(within(list).getAllByRole("listitem")[1].textContent).toContain("Later client");
+    expect(list.textContent).toContain("Africa/Accra");
+    fireEvent.click(screen.getByRole("button", { name: "Weekly calendar" }));
+    await screen.findByRole("grid");
+    expect(listBookingsMock).toHaveBeenLastCalledWith(session, refreshCallbacks, currentWeekRange());
+  });
+
+  it("opens existing booking controls from the list and removes cancelled consultations", async () => {
+    const upcoming = booking({ startAt: "2099-10-15T09:00:00Z", endAt: "2099-10-15T10:00:00Z" });
+    listBookingsMock.mockResolvedValue([upcoming]);
+    cancelBookingMock.mockResolvedValue({ ...upcoming, status: "cancelled" });
+    render(<CalendarPage />);
+    await screen.findByRole("grid");
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
+    const list = await screen.findByRole("region", { name: "Upcoming consultations" });
+    fireEvent.click(within(list).getByRole("button", { name: /client-1/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("link", { name: "Start session" }).getAttribute("href")).toContain("/sessions/bk-1/room");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel booking" }));
+    await waitFor(() => expect(cancelBookingMock).toHaveBeenCalledWith(session, refreshCallbacks, "bk-1"));
+    expect(await screen.findByText("No upcoming consultations")).toBeTruthy();
+  });
+
+  it("shows list loading and retry states before an empty result", async () => {
+    listBookingsMock.mockResolvedValue([]).mockResolvedValueOnce([]).mockReturnValueOnce(new Promise(() => {}));
+    render(<CalendarPage />);
+    await screen.findByRole("grid");
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
+    expect(screen.getByText("Loading upcoming consultations…")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Weekly calendar" }));
+    listBookingsMock.mockRejectedValueOnce(new ApiError(0, "network_error", "List unavailable"));
+    await screen.findByRole("grid");
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("List unavailable");
+    listBookingsMock.mockResolvedValueOnce([]);
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("No upcoming consultations")).toBeTruthy();
+  });
+
   it("shows a skeleton while loading", async () => {
     listBookingsMock.mockReturnValue(new Promise(() => {}));
     render(<CalendarPage />);

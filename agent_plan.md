@@ -463,3 +463,9 @@ Verification: admin full suite 447 tests passed, plus focused final CSP/image-pi
 Owner: Codex. Done: time options render in a fixed body portal outside the clipped availability card, flip upward when needed, track scroll/resize, and open at the selected time. Arrow/Home/End selection, Escape focus return, and outside-pointer dismissal are supported.
 
 Verification: 11 focused time-picker/availability tests, admin lint, production build, and diff checks passed. Production browser with isolated API fixtures verified all 96 options, desktop and 390px mobile viewport bounds, 23:45 selection, and saved Sunday endMin=1425. Screenshots inspected; no live availability changed.
+
+## 30. Admin upcoming consultation list (13 Sep 2026)
+
+Owner: Codex. Done: Upcoming list option beside the weekly calendar shows confirmed future bookings across all upcoming dates in chronological order, with client/service names, timezone labels, and existing booking controls. Calendar navigation and filters remain available in the weekly view.
+
+Verification: 19 scheduling tests, admin lint, production build, and diff checks passed. Production browser with isolated API fixtures verified desktop and 390px mobile rows, resolved names, session links, switching back to calendar, and no horizontal overflow or page errors. Loading/retry/empty states and cancellation removal covered by tests. No live bookings changed.
