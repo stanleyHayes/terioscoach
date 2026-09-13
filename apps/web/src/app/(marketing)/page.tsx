@@ -1,5 +1,6 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import Link from "next/link";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import { ArrowRight, Globe, HeartPulse, ShieldCheck, Video } from "lucide-react";
 import { Testimonials } from "@/components/content/Testimonials";
 import { HeroWatermark } from "@/components/marketing/HeroWatermark";
@@ -22,23 +23,7 @@ import { serviceImageFor } from "@/lib/service-imagery";
 // moment they are approved, so this page is never statically cached.
 export const dynamic = "force-dynamic";
 
-const trustPoints = [
-  {
-    icon: Video,
-    title: "Sessions by video",
-    body: "Care from your own space, on your schedule.",
-  },
-  {
-    icon: Globe,
-    title: "Clients worldwide",
-    body: "Time zones are a detail, not a barrier.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure client portal",
-    body: "Your notes, plans and messages stay private.",
-  },
-];
+
 
 /** Social proof, fetched together so the count beside the stars always
  * matches the list under them. Every route here returns approved content
@@ -57,6 +42,26 @@ async function loadSocialProof(): Promise<{
 }
 
 export default async function Home() {
+  const copy = await getSiteCopy("home");
+
+const trustPoints = [
+  {
+    icon: Video,
+    title: copy("field-001", "Sessions by video"),
+    body: copy("field-002", "Care from your own space, on your schedule."),
+  },
+  {
+    icon: Globe,
+    title: copy("field-003", "Clients worldwide"),
+    body: copy("field-004", "Time zones are a detail, not a barrier."),
+  },
+  {
+    icon: ShieldCheck,
+    title: copy("field-005", "Secure client portal"),
+    body: copy("field-006", "Your notes, plans and messages stay private."),
+  },
+];
+
   const [{ testimonials, reviews, summary }, homePage, services] = await Promise.all([
     loadSocialProof(),
     getPage("home").catch(() => undefined),
@@ -71,51 +76,48 @@ export default async function Home() {
       <Section background="night" className="terios-grain relative overflow-hidden" containerClassName="relative grid min-h-[calc(100dvh-72px)] items-center gap-14 py-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-20" overlay={<HeroWatermark />}>
         <div className="max-w-[68ch]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">
-            Nursing &amp; wellness coaching
-          </p>
+            {copy("field-007", "Nursing & wellness coaching ")}</p>
           <h1 className="mt-5 font-display text-[3.7rem] leading-[.92] font-semibold tracking-[-0.055em] text-sand-0 sm:text-[4.5rem] lg:text-[5.75rem] [text-wrap:balance]">
-            Care that lets you <em className="font-medium text-clay-300">exhale.</em>
+            {copy("field-008", "Care that lets you ")}<em className="font-medium text-clay-300">{copy("field-009", "exhale.")}</em>
           </h1>
           <p className="mt-7 max-w-[56ch] text-lg leading-[1.7] text-eucalyptus-200 [text-wrap:pretty]">
-            {homeLead}
+            {copy("hero-description", homeLead)}
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Link
-              href="/work-with-me"
+              href={copy("field-010", "/work-with-me")}
               className={buttonClasses({ size: "lg", className: "!bg-sand-0 !text-eucalyptus-900 shadow-none hover:!bg-eucalyptus-100" })}
             >
-              Book a session
-            </Link>
+              {copy("field-011", "Book a session ")}</Link>
             <Link
-              href="/services"
+              href={copy("field-012", "/services")}
               className={buttonClasses({ variant: "inverse", size: "lg" })}
             >
-              Explore services
-            </Link>
+              {copy("field-013", "Explore services ")}</Link>
           </div>
           <div className="mt-12 flex flex-wrap gap-x-7 gap-y-3 border-t border-sand-0/12 pt-6 text-[13px] font-medium text-eucalyptus-300">
-            <span>Registered nurse-led</span><span>Private by design</span><span>Available worldwide</span>
+            <span>{copy("field-014", "Registered nurse-led")}</span><span>{copy("field-015", "Private by design")}</span><span>{copy("field-016", "Available worldwide")}</span>
           </div>
         </div>
         <div className="mx-auto w-full max-w-[480px] overflow-hidden rounded-[2rem_4rem_2rem_2rem] border border-eucalyptus-300/40 bg-sand-0 text-eucalyptus-900 lg:mr-0">
           <div className="relative aspect-[5/4]">
-            <Image
-              src={homePage?.coverImage || "/images/brand/theresa-yirerong-clinical.webp"}
-              alt="Theresa Yirerong, registered nurse and wellness coach"
+            <Image unoptimized
+              src={copy("field-017", homePage?.coverImage || "/images/brand/theresa-yirerong-clinical.webp")}
+              alt={copy("field-018", "Theresa Yirerong, registered nurse and wellness coach")}
               fill
               priority
-              unoptimized={Boolean(homePage?.coverImage?.startsWith("http"))}
+
               sizes="(min-width: 1024px) 480px, 90vw"
               className="object-cover object-top"
             />
-            <span className="absolute left-5 top-5 rounded-full bg-sand-0 px-3 py-2 text-xs font-semibold text-eucalyptus-900">Video-first care</span>
+            <span className="absolute left-5 top-5 rounded-full bg-sand-0 px-3 py-2 text-xs font-semibold text-eucalyptus-900">{copy("field-019", "Video-first care")}</span>
           </div>
           <div className="p-6 sm:p-8">
             <div className="flex items-start justify-between gap-4">
-              <p className="font-display text-2xl leading-tight sm:text-3xl">Clinical confidence.<br />Human warmth.</p>
+              <p className="font-display text-2xl leading-tight sm:text-3xl">{copy("field-020", "Clinical confidence.")}<br />{copy("field-021", "Human warmth.")}</p>
               <HeartPulse className="mt-1 size-6 shrink-0 text-primary" aria-hidden="true" />
             </div>
-            <p className="mt-3 max-w-[30ch] text-sm leading-relaxed text-ink-muted">One practitioner. Unhurried attention. Care shaped around you.</p>
+            <p className="mt-3 max-w-[30ch] text-sm leading-relaxed text-ink-muted">{copy("field-022", "One practitioner. Unhurried attention. Care shaped around you.")}</p>
           </div>
         </div>
       </Section>
@@ -129,8 +131,7 @@ export default async function Home() {
         containerClassName="py-10 lg:py-12"
       >
         <h2 id="trust-heading" className="sr-only">
-          Why clients trust Terios
-        </h2>
+          {copy("field-023", "Why clients trust Terios ")}</h2>
         <ul className="grid gap-8 md:grid-cols-3 md:gap-6">
           {trustPoints.map((point) => (
             <li key={point.title} className="flex items-start gap-4">
@@ -155,9 +156,9 @@ export default async function Home() {
       <Section ariaLabelledby="services-preview-heading">
         <SectionHeading
           id="services-preview-heading"
-          eyebrow="Services"
-          title="Care that fits the season you are in"
-          description="Explore the practice’s current one-to-one services. Every published offering comes directly from the live care menu."
+          eyebrow={copy("field-024", "Services")}
+          title={copy("field-025", "Care that fits the season you are in")}
+          description={copy("field-026", "Explore the practice’s current one-to-one services. Every published offering comes directly from the live care menu.")}
         />
         {services?.length ? <ul className="mt-12 grid gap-5 lg:grid-cols-12">
           {services.slice(0, 3).map((service: ServiceSummary, index) => (
@@ -167,18 +168,18 @@ export default async function Home() {
                 className={`terios-feature-card group grid h-full min-h-72 overflow-hidden rounded-[2rem] border border-border/80 bg-surface-raised/90 shadow-[0_18px_60px_rgba(31,41,34,.04)] transition-[border-color,box-shadow,transform] duration-base ease-out hover:-translate-y-1 hover:border-eucalyptus-200 hover:shadow-md ${index === 2 ? "lg:grid-cols-[.8fr_1.2fr]" : ""}`}
               >
                 <span className={`relative min-h-52 overflow-hidden bg-eucalyptus-100 ${index === 2 ? "lg:min-h-64" : ""}`}>
-                  <Image src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill unoptimized={Boolean(service.imageUrl?.startsWith("http"))} sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
-                  <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-900/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">0{index + 1}</span>
+                  <Image unoptimized src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill  sizes={index === 2 ? "(min-width: 1024px) 38vw, 94vw" : "(min-width: 1024px) 45vw, 94vw"} className="object-cover transition-transform duration-page group-hover:scale-[1.03] motion-reduce:transition-none" />
+                  <span className="absolute left-5 top-5 rounded-full bg-eucalyptus-900/75 px-3 py-1.5 font-mono text-[11px] text-sand-0 backdrop-blur-md">{copy("field-027", "0")}{index + 1}</span>
                 </span>
                 <div className="flex max-w-[54ch] flex-col justify-end p-8">
                   <h3 className="font-display text-3xl leading-[1.08] font-medium tracking-[-0.02em] text-ink">{service.name}</h3>
                   <p className="mt-4 text-sm leading-[1.65] text-ink-muted">{service.description}</p>
-                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">Book this service <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
+                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary">{copy("field-028", "Book this service ")}<ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
                 </div>
               </Link>
             </li>
           ))}
-        </ul> : <p className="mt-10 rounded-2xl border border-border bg-surface-raised p-6 text-sm text-ink-muted">The live service menu is being prepared. <Link href="/services" className="font-semibold text-primary">View service availability</Link>.</p>}
+        </ul> : <p className="mt-10 rounded-2xl border border-border bg-surface-raised p-6 text-sm text-ink-muted">{copy("field-029", "The live service menu is being prepared. ")}<Link href={copy("field-030", "/services")} className="font-semibold text-primary">{copy("field-031", "View service availability")}</Link>.</p>}
       </Section>
 
       {/* Approach teaser → /about. */}
@@ -187,19 +188,18 @@ export default async function Home() {
           <div>
             <SectionHeading
               id="approach-heading"
-              eyebrow="The approach"
-              title="The trust of a nurse, the exhale of a spa"
-              description="Terios sits deliberately between a clinic and a retreat. You get the precision and confidentiality of registered nursing, delivered with the unhurried warmth of a wellness practice — and a plan shaped around your life, not around a system."
+              eyebrow={copy("field-032", "The approach")}
+              title={copy("field-033", "The trust of a nurse, the exhale of a spa")}
+              description={copy("field-034", "Terios sits deliberately between a clinic and a retreat. You get the precision and confidentiality of registered nursing, delivered with the unhurried warmth of a wellness practice — and a plan shaped around your life, not around a system.")}
             />
-            <Link href="/about" className={buttonClasses({ variant: "secondary", size: "lg", className: "mt-8" })}>
-              About the practice
-            </Link>
+            <Link href={copy("field-035", "/about")} className={buttonClasses({ variant: "secondary", size: "lg", className: "mt-8" })}>
+              {copy("field-036", "About the practice ")}</Link>
           </div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100 shadow-[0_24px_70px_rgba(31,41,34,.12)]">
-            <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp" alt="Theresa Yirerong welcoming clients to Terios Wellness" fill sizes="(min-width: 1024px) 42vw, 94vw" className="object-cover" />
+            <Image unoptimized src={copy("field-037", "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp")} alt={copy("field-038", "Theresa Yirerong welcoming clients to Terios Wellness")} fill sizes="(min-width: 1024px) 42vw, 94vw" className="object-cover" />
             <div className="absolute inset-x-5 bottom-5 rounded-[1.25rem] border border-sand-0/25 bg-eucalyptus-900/70 p-5 text-sand-0 backdrop-blur-md">
-              <p className="font-display text-xl">A familiar face from first conversation to follow-up.</p>
-              <Link href="/about" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-eucalyptus-100">Meet Theresa <ArrowRight className="size-4" /></Link>
+              <p className="font-display text-xl">{copy("field-039", "A familiar face from first conversation to follow-up.")}</p>
+              <Link href={copy("field-040", "/about")} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-eucalyptus-100">{copy("field-041", "Meet Theresa ")}<ArrowRight className="size-4" /></Link>
             </div>
           </div>
         </div>
@@ -211,8 +211,8 @@ export default async function Home() {
         <Section ariaLabelledby="testimonials-heading">
           <SectionHeading
             id="testimonials-heading"
-            eyebrow="Kind words"
-            title="What clients say"
+            eyebrow={copy("field-042", "Kind words")}
+            title={copy("field-043", "What clients say")}
             align="center"
           />
           <Testimonials
@@ -235,19 +235,15 @@ export default async function Home() {
             id="closing-cta-heading"
             className="font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink lg:text-[2.25rem] [text-wrap:balance]"
           >
-            Begin where you are
-          </h2>
+            {copy("field-044", "Begin where you are ")}</h2>
           <p className="mt-5 text-lg leading-[1.6] text-ink-muted [text-wrap:pretty]">
-            You do not need to be ready, fixed or finished. Book a first
-            conversation and we will find the next right step together.
-          </p>
+            {copy("field-045", "You do not need to be ready, fixed or finished. Book a first conversation and we will find the next right step together. ")}</p>
           <div className="mt-10">
             <Link
-              href="/work-with-me"
+              href={copy("field-046", "/work-with-me")}
               className={buttonClasses({ size: "lg" })}
             >
-              Book a session
-            </Link>
+              {copy("field-047", "Book a session ")}</Link>
           </div>
         </div>
       </Section>

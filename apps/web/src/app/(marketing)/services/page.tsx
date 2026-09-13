@@ -1,5 +1,6 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
@@ -29,6 +30,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
+  const copy = await getSiteCopy("services");
+
   let services: ServiceSummary[] | null;
   try {
     services = await listServices();
@@ -40,9 +43,9 @@ export default async function ServicesPage() {
   return (
     <>
       <PageIntro
-        eyebrow="Services"
-        title="Every session, clearly priced"
-        description="One-to-one care by video — nursing, coaching and recovery. Prices come live from the practice, so what you see here is what you book."
+        eyebrow={copy("field-001", "Services")}
+        title={copy("field-002", "Every session, clearly priced")}
+        description={copy("field-003", "One-to-one care by video — nursing, coaching and recovery. Prices come live from the practice, so what you see here is what you book.")}
       />
 
       {/* Service menu — marketing feature cards (design-system §3.21):
@@ -51,36 +54,31 @@ export default async function ServicesPage() {
           elements). */}
       <Section ariaLabelledby="service-menu-heading">
         <h2 id="service-menu-heading" className="sr-only">
-          Service menu
-        </h2>
+          {copy("field-004", "Service menu ")}</h2>
         {services === null ? (
           <div
             role="alert"
             className="mx-auto max-w-[480px] rounded-xl border border-border bg-surface-raised p-8 text-center"
           >
             <h3 className="font-display text-xl leading-[1.3] font-medium text-ink">
-              The service menu didn&rsquo;t load
-            </h3>
+              {copy("field-005", "The service menu didn’t load ")}</h3>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              Something interrupted the connection on our side. Nothing is wrong
-              on yours — try again in a moment.
-            </p>
+              {copy("field-006", "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. ")}</p>
             <div className="mt-6">
               <Link
-                href="/services"
+                href={copy("field-007", "/services")}
                 className={buttonClasses({ variant: "secondary" })}
               >
-                Try again
-              </Link>
+                {copy("field-008", "Try again ")}</Link>
             </div>
           </div>
         ) : services.length === 0 ? (
           /* EmptyState (design-system §3.27). */
           <EmptyState
             icon={<Leaf className="size-8" />}
-            title="No services are published yet"
-            description="The practice is preparing its bookable services. This page is working; there simply is not a live service to show right now."
-            action={<Link href="/contact" className={buttonClasses({ variant: "secondary" })}>Ask about care</Link>}
+            title={copy("field-009", "No services are published yet")}
+            description={copy("field-010", "The practice is preparing its bookable services. This page is working; there simply is not a live service to show right now.")}
+            action={<Link href={copy("field-011", "/contact")} className={buttonClasses({ variant: "secondary" })}>{copy("field-012", "Ask about care")}</Link>}
           />
         ) : (
           <ul className="grid gap-6">
@@ -90,11 +88,11 @@ export default async function ServicesPage() {
                 className="terios-service-row group grid overflow-hidden rounded-[2rem] border border-border bg-surface-raised shadow-[0_18px_55px_rgba(31,41,34,.05)] transition-[border-color,box-shadow,transform] duration-base hover:-translate-y-0.5 hover:border-eucalyptus-200 hover:shadow-md md:grid-cols-[minmax(260px,.72fr)_1.28fr]"
               >
                 <div className="relative min-h-64 overflow-hidden bg-eucalyptus-100 md:min-h-80">
-                  <Image
+                  <Image unoptimized
                     src={service.imageUrl || serviceImageFor(service.name, index)}
                     alt={`${service.name} at Terios Wellness`}
                     fill
-                    unoptimized={Boolean(service.imageUrl?.startsWith("http"))}
+
                     loading={index === 0 ? "eager" : "lazy"}
                     sizes="(min-width: 768px) 38vw, 94vw"
                     className="object-cover transition-transform duration-page ease-out group-hover:scale-[1.025] motion-reduce:transition-none"
@@ -126,8 +124,7 @@ export default async function ServicesPage() {
                       className: "mt-7 self-start sm:min-w-32",
                     })}
                   >
-                    Book this
-                  </Link>
+                    {copy("field-013", "Book this ")}</Link>
                 </div>
               </li>
             ))}

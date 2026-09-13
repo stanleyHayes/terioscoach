@@ -440,3 +440,22 @@ describe("ContentPage", () => {
     expect(form.hasAttribute("novalidate")).toBe(true);
   });
 });
+
+it("publishes website section edits and reuses the saved record", async () => {
+  pageList.mockResolvedValue([]);
+  pageCreate.mockImplementation(async (_session, _callbacks, draft) => aPage({ ...draft, id: "site-home" }));
+  pageSetPublished.mockImplementation(async () => aPage({ id: "site-home", slug: "website-content-home", status: "published" }));
+  pageUpdate.mockImplementation(async (_session, _callbacks, _id, patch) => aPage({ ...patch, id: "site-home", status: "published" }));
+  render(<ContentPage />);
+  fireEvent.click(screen.getByRole("tab", { name: "Website sections" }));
+  const field = await screen.findByLabelText("Hero description");
+  fireEvent.change(field, { target: { value: "Care tailored to you." } });
+  fireEvent.click(screen.getByRole("button", { name: "Save and publish" }));
+  await screen.findByText("Home changes published.");
+  expect(pageCreate.mock.lastCall?.[2].slug).toBe("website-content-home");
+  expect(JSON.parse(pageCreate.mock.lastCall?.[2].body)["hero-description"]).toBe("Care tailored to you.");
+  fireEvent.change(field, { target: { value: "Updated care." } });
+  fireEvent.click(screen.getByRole("button", { name: "Save and publish" }));
+  await waitFor(() => expect(pageUpdate).toHaveBeenCalled());
+  expect(pageUpdate.mock.lastCall?.[2]).toBe("site-home");
+});

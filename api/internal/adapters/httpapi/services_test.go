@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"context"
+	domaincatalog "github.com/xcreativs/terios/api/internal/domain/catalog"
 	"net/http"
 	"testing"
 	"time"
@@ -458,5 +460,44 @@ func TestAvailabilityRulesRoundTrip(t *testing.T) {
 	}, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("overnight rules status = %d, want 400", rec.Code)
+	}
+}
+
+// The public site is one practice catalog, even when multiple owner/staff
+// accounts create services. Every visible service must be manageable in admin.
+func TestPracticeCatalogIncludesOtherAccountServices(t *testing.T) {
+	rig := newCatalogTestRig(t)
+	svc, err := rig.services.Create(context.Background(), domaincatalog.Service{PractitionerID: "other-practice-account", Name: "Legacy introduction", Active: true, DurationMinutes: 30, Currency: "USD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := doJSON(t, rig.srv, http.MethodGet, "/v1/services/all", nil, bearer(rig.practitionerToken))
+	var listed serviceListTestBody
+	decodeBody(t, rec, &listed)
+	if len(listed.Items) != 1 || listed.Items[0].ID != svc.ID {
+		t.Fatalf("admin catalog = %+v", listed)
+	}
+	rec = doJSON(t, rig.srv, http.MethodPatch, "/v1/services/"+svc.ID, map[string]any{"active": false}, bearer(rig.practitionerToken))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("retire: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, rig.srv, http.MethodGet, "/v1/services", nil, nil)
+	decodeBody(t, rec, &listed)
+	if len(listed.Items) != 0 {
+		t.Fatal("retired service remains public")
+	}
+	rig.services.BookedServiceIDs[svc.ID] = true
+	rec = doJSON(t, rig.srv, http.MethodDelete, "/v1/services/"+svc.ID, nil, bearer(rig.practitionerToken))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d", rec.Code)
+	}
+	stored, _ := rig.services.Raw(svc.ID)
+	if stored.DeletedAt == nil || stored.PractitionerID != "other-practice-account" {
+		t.Fatal("booking history or practitioner ownership was lost")
+	}
+	rec = doJSON(t, rig.srv, http.MethodGet, "/v1/services/all", nil, bearer(rig.practitionerToken))
+	decodeBody(t, rec, &listed)
+	if len(listed.Items) != 0 {
+		t.Fatal("deleted service remains in admin")
 	}
 }

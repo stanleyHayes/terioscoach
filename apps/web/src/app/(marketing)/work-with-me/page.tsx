@@ -1,6 +1,7 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import {
   ArrowUpRight,
   CalendarCheck,
@@ -35,29 +36,33 @@ export const metadata: Metadata = {
 // prices shown here always match the dashboard.
 export const dynamic = "force-dynamic";
 
-const steps = [
-  {
-    icon: ListChecks,
-    title: "Choose a service",
-    body: "Pick the care that fits the season you are in. Every service is one-to-one and by video.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "Pick a time",
-    body: "A live calendar shows real openings with a clear timezone, so nothing gets lost in translation.",
-  },
-  {
-    icon: CreditCard,
-    title: "Confirm & pay",
-    body: "Review the details, pay securely, and your session is booked. Confirmation lands in your inbox.",
-  },
-];
+
 
 export default async function WorkWithMePage({
   searchParams,
 }: {
   searchParams: Promise<{ service?: string | string[] }>;
 }) {
+  const copy = await getSiteCopy("work-with-me");
+
+const steps = [
+  {
+    icon: ListChecks,
+    title: copy("field-001", "Choose a service"),
+    body: copy("field-002", "Pick the care that fits the season you are in. Every service is one-to-one and by video."),
+  },
+  {
+    icon: CalendarCheck,
+    title: copy("field-003", "Pick a time"),
+    body: copy("field-004", "A live calendar shows real openings with a clear timezone, so nothing gets lost in translation."),
+  },
+  {
+    icon: CreditCard,
+    title: copy("field-005", "Confirm & pay"),
+    body: copy("field-006", "Review the details, pay securely, and your session is booked. Confirmation lands in your inbox."),
+  },
+];
+
   // ?service=<id> (from a "Book this" card on /services) pre-highlights the
   // chosen service in the list below.
   const { service: serviceParam } = await searchParams;
@@ -72,21 +77,20 @@ export default async function WorkWithMePage({
   return (
     <>
       <PageIntro
-        eyebrow="Work with me"
-        title="Begin with a single step"
+        eyebrow={copy("field-007", "Work with me")}
+        title={copy("field-008", "Begin with a single step")}
         description={
-          page?.body ||
-          "Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal."
+          copy("field-009", "Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal.")
         }
       />
 
       <Section containerClassName="pt-8 pb-0 sm:pt-12 lg:pt-16">
         <div className="relative aspect-[3/2] max-h-[520px] overflow-hidden rounded-[2rem] bg-eucalyptus-50 lg:aspect-[21/9]">
-          <Image
-            src={page?.coverImage || "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp"}
-            alt="Theresa Yirerong, founder of Terios Wellness, seated outdoors"
+          <Image unoptimized
+            src={copy("field-010", page?.coverImage || "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp")}
+            alt={copy("field-011", "Theresa Yirerong, founder of Terios Wellness, seated outdoors")}
             fill
-            unoptimized={Boolean(page?.coverImage?.startsWith("http"))}
+
             sizes="(min-width: 1280px) 1200px, 94vw"
             className="object-cover"
           />
@@ -99,9 +103,9 @@ export default async function WorkWithMePage({
       <Section ariaLabelledby="choose-service-heading">
         <SectionHeading
           id="choose-service-heading"
-          eyebrow="Step one"
-          title="Choose your service"
-          description="Live from the practice menu — durations and prices are always current."
+          eyebrow={copy("field-012", "Step one")}
+          title={copy("field-013", "Choose your service")}
+          description={copy("field-014", "Live from the practice menu — durations and prices are always current.")}
         />
         {services === null ? (
           <div
@@ -109,27 +113,23 @@ export default async function WorkWithMePage({
             className="mx-auto mt-12 max-w-[480px] rounded-xl border border-border bg-surface-raised p-8 text-center"
           >
             <h3 className="font-display text-xl leading-[1.3] font-medium text-ink">
-              The service menu didn&rsquo;t load
-            </h3>
+              {copy("field-015", "The service menu didn’t load ")}</h3>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              Something interrupted the connection on our side. Try again in a
-              moment.
-            </p>
+              {copy("field-016", "Something interrupted the connection on our side. Try again in a moment. ")}</p>
             <div className="mt-6">
               <Link
-                href="/work-with-me"
+                href={copy("field-017", "/work-with-me")}
                 className={buttonClasses({ variant: "secondary" })}
               >
-                Try again
-              </Link>
+                {copy("field-018", "Try again ")}</Link>
             </div>
           </div>
         ) : services.length === 0 ? (
           <div className="mt-12">
             <EmptyState
               icon={<ListChecks className="size-8" />}
-              title="The service menu is being refreshed"
-              description="When a service is published, it appears here. Check back soon."
+              title={copy("field-019", "The service menu is being refreshed")}
+              description={copy("field-020", "When a service is published, it appears here. Check back soon.")}
             />
           </div>
         ) : (
@@ -148,7 +148,7 @@ export default async function WorkWithMePage({
                     )}
                   >
                     <span className="relative aspect-[16/10] overflow-hidden bg-eucalyptus-50 lg:aspect-auto lg:min-h-52" aria-hidden="true">
-                      <Image src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill unoptimized={Boolean(service.imageUrl?.startsWith("http"))} sizes="(min-width: 1024px) 224px, 94vw" className="object-cover object-center" />
+                      <Image unoptimized src={service.imageUrl || serviceImageFor(service.name, index)} alt="" fill  sizes="(min-width: 1024px) 224px, 94vw" className="object-cover object-center" />
                       <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-900/70 px-2 py-1 font-mono text-[10px] text-sand-0">{String(index + 1).padStart(2, "0")}</span>
                     </span>
                     <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
@@ -158,8 +158,7 @@ export default async function WorkWithMePage({
                         </h3>
                         {selected && (
                           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">
-                            Selected
-                          </span>
+                            {copy("field-021", "Selected ")}</span>
                         )}
                       </div>
                       <p className="mt-2 text-sm leading-[1.55] text-ink-muted group-[.is-selected]:text-eucalyptus-100">
@@ -186,7 +185,7 @@ export default async function WorkWithMePage({
                           selected && "!border-sand-0 !bg-sand-0 !text-eucalyptus-900 hover:!bg-sand-100",
                         )}
                       >
-                        Choose <ArrowUpRight size={15} aria-hidden="true" />
+                        {copy("field-022", "Choose ")}<ArrowUpRight size={15} aria-hidden="true" />
                       </Link>
                     </div>
                   </div>
@@ -201,8 +200,8 @@ export default async function WorkWithMePage({
       <Section background="sunken" ariaLabelledby="how-booking-works-heading">
         <SectionHeading
           id="how-booking-works-heading"
-          eyebrow="How booking works"
-          title="Three steps, no paperwork"
+          eyebrow={copy("field-023", "How booking works")}
+          title={copy("field-024", "Three steps, no paperwork")}
           align="center"
         />
         <ol className="mx-auto mt-12 grid max-w-[960px] gap-10 md:grid-cols-3 md:gap-6">
@@ -222,9 +221,7 @@ export default async function WorkWithMePage({
           ))}
         </ol>
         <p className="mx-auto mt-10 max-w-[60ch] text-center text-sm leading-[1.55] text-ink-muted">
-          No account is needed before you start — you create yours during
-          booking, and it becomes your private client portal.
-        </p>
+          {copy("field-025", "No account is needed before you start — you create yours during booking, and it becomes your private client portal. ")}</p>
       </Section>
     </>
   );

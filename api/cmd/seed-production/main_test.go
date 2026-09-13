@@ -26,14 +26,3 @@ func TestSeedScope(t *testing.T) {
 		})
 	}
 }
-
-func TestProductionCatalogUsesOnlySuppliedPricingFacts(t *testing.T) {
-	t.Parallel()
-	if len(productionServices) != 1 {
-		t.Fatalf("production services = %d, want only the supplied obligation-free entry", len(productionServices))
-	}
-	service := productionServices[0]
-	if service.priceMinor != 0 || service.durationMinutes != 30 || service.currency != "USD" {
-		t.Fatalf("production service = %+v, want a free 30-minute USD introduction", service)
-	}
-}

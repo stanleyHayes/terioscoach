@@ -57,6 +57,8 @@ function contentSecurityPolicy(): string {
 }
 
 const nextConfig: NextConfig = {
+  // Resolve custom-page existence before sending headers, including browsers.
+  htmlLimitedBots: /.*/,
   poweredByHeader: false,
   compress: true,
   async redirects() {

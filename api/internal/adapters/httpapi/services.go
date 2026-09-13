@@ -98,12 +98,12 @@ func (h *catalogHandler) listActive(w http.ResponseWriter, r *http.Request) {
 // listAll handles GET /v1/services/all for the practitioner, including
 // inactive services.
 func (h *catalogHandler) listAll(w http.ResponseWriter, r *http.Request) {
-	id, ok := IdentityFromContext(r.Context())
+	_, ok := IdentityFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	services, err := h.svc.ListAll(r.Context(), id.UserID)
+	services, err := h.svc.ListAll(r.Context(), "")
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -151,7 +151,7 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 // update handles PATCH /v1/services/{id} with partial-update semantics:
 // only supplied fields change — including activate/deactivate and reorder.
 func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
-	id, ok := IdentityFromContext(r.Context())
+	_, ok := IdentityFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
@@ -170,7 +170,7 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	svc, err := h.svc.UpdateService(r.Context(), id.UserID, chi.URLParam(r, "id"), ports.ServicePatch{
+	svc, err := h.svc.UpdateService(r.Context(), "", chi.URLParam(r, "id"), ports.ServicePatch{
 		Name:            req.Name,
 		Description:     req.Description,
 		ImageURL:        req.ImageURL,
@@ -191,12 +191,12 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 // delete handles DELETE /v1/services/{id}. Hard vs soft delete is decided
 // by the use case (bookings exist or not); both answer 204.
 func (h *catalogHandler) delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := IdentityFromContext(r.Context())
+	_, ok := IdentityFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	if err := h.svc.DeleteService(r.Context(), id.UserID, chi.URLParam(r, "id")); err != nil {
+	if err := h.svc.DeleteService(r.Context(), "", chi.URLParam(r, "id")); err != nil {
 		writeDomainError(w, err)
 		return
 	}

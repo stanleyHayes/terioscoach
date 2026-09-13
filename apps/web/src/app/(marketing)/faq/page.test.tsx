@@ -59,3 +59,5 @@ describe("FAQPage", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/didn’t load/i);
   });
 });
+
+vi.mock("@/lib/site-copy", () => ({ getSiteCopy: async () => (_key: string, fallback: string) => fallback }));

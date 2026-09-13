@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleAlert, ImagePlus, Images, Loader2, Search, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/auth";
@@ -107,6 +107,7 @@ export function ImagePicker({
   label?: string;
 }) {
   const { session, refreshCallbacks } = useAuth();
+  const labelId = useId();
   const confirmationRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -189,8 +190,8 @@ export function ImagePicker({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <span id="cover-image-label" className="text-sm font-medium text-ink">
+    <div role="group" aria-labelledby={labelId} className="flex flex-col gap-2">
+      <span id={labelId} className="text-sm font-medium text-ink">
         {label}
       </span>
 
@@ -232,7 +233,7 @@ export function ImagePicker({
           size="sm"
           disabled={disabled || uploading}
           onClick={() => inputRef.current?.click()}
-          aria-describedby="cover-image-label"
+          aria-describedby={labelId}
         >
           {uploading ? (
             <>

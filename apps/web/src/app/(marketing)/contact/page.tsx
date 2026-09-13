@@ -1,5 +1,6 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import Link from "next/link";
 import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import { EnquiryForm } from "@/components/content/EnquiryForm";
@@ -18,43 +19,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const copy = await getSiteCopy("contact");
+
   return (
     <>
-      <PageIntro eyebrow="Contact" title="Start with a question" description="You do not have to know what you need yet. Say what is going on and the right next step comes back — even if that step is somewhere else." />
+      <PageIntro eyebrow={copy("field-001", "Contact")} title={copy("field-002", "Start with a question")} description={copy("field-003", "You do not have to know what you need yet. Say what is going on and the right next step comes back — even if that step is somewhere else.")} />
 
       <Section ariaLabelledby="contact-form-heading">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-16">
           <div>
             <h2 id="contact-form-heading" className="sr-only">
-              Send a message
-            </h2>
+              {copy("field-004", "Send a message ")}</h2>
             <EnquiryForm />
           </div>
 
           <aside className="flex flex-col gap-8 lg:pt-2">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem_4rem_2rem_4rem] bg-eucalyptus-100">
-              <Image src="/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-009.webp" alt="Theresa Yirerong, the person who reads every enquiry" fill sizes="(min-width: 1024px) 320px, 94vw" className="object-cover" />
+              <Image unoptimized src={copy("field-005", "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-009.webp")} alt={copy("field-006", "Theresa Yirerong, the person who reads every enquiry")} fill sizes="(min-width: 1024px) 320px, 94vw" className="object-cover" />
             </div>
             <div className="rounded-[1.5rem] border border-border bg-surface-raised p-5 shadow-soft">
               <h2 className="font-display text-xl font-semibold tracking-[-0.02em] text-ink">
-                Contact Terios Wellness
-              </h2>
+                {copy("field-007", "Contact Terios Wellness ")}</h2>
               <div className="mt-4 flex flex-col gap-3">
                 <a
-                  href="mailto:Hello@terioscoach.com"
+                  href={copy("field-008", "mailto:Hello@terioscoach.com")}
                   className="group flex items-center gap-3 rounded-xl bg-surface-sunken px-4 py-3 text-sm font-semibold text-ink transition-colors hover:text-primary"
                 >
                   <Mail size={17} aria-hidden="true" className="text-primary" />
-                  Hello@terioscoach.com
-                </a>
+                  {copy("field-009", "Hello@terioscoach.com ")}</a>
                 <a
-                  href="tel:+19293748914"
+                  href={copy("field-010", "tel:+19293748914")}
                   className="group flex items-center gap-3 rounded-xl bg-surface-sunken px-4 py-3 text-sm font-semibold text-ink transition-colors hover:text-primary"
                 >
                   <Phone size={17} aria-hidden="true" className="text-primary" />
-                  +1 (929) 374-8914
-                </a>
+                  {copy("field-011", "+1 (929) 374-8914 ")}</a>
               </div>
             </div>
             <div className="flex gap-4">
@@ -63,11 +62,9 @@ export default function ContactPage() {
               </span>
               <div>
                 <h3 className="text-base font-semibold leading-[1.4] text-ink">
-                  A person reads it
-                </h3>
+                  {copy("field-012", "A person reads it ")}</h3>
                 <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-                  Messages go to the practitioner, not an inbox nobody opens.
-                </p>
+                  {copy("field-013", "Messages go to the practitioner, not an inbox nobody opens. ")}</p>
               </div>
             </div>
 
@@ -77,11 +74,9 @@ export default function ContactPage() {
               </span>
               <div>
                 <h3 className="text-base font-semibold leading-[1.4] text-ink">
-                  Usually within a working day
-                </h3>
+                  {copy("field-014", "Usually within a working day ")}</h3>
                 <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-                  Sooner where it matters. Weekends run slower.
-                </p>
+                  {copy("field-015", "Sooner where it matters. Weekends run slower. ")}</p>
               </div>
             </div>
 
@@ -91,18 +86,14 @@ export default function ContactPage() {
               </span>
               <div>
                 <h3 className="text-base font-semibold leading-[1.4] text-ink">
-                  Already a client?
-                </h3>
+                  {copy("field-016", "Already a client? ")}</h3>
                 <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-                  Your portal is the faster route for anything about a booked
-                  session.
-                </p>
+                  {copy("field-017", "Your portal is the faster route for anything about a booked session. ")}</p>
                 <Link
-                  href="/portal"
+                  href={copy("field-018", "/portal")}
                   className="mt-2 inline-flex text-sm font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
                 >
-                  Open your portal
-                </Link>
+                  {copy("field-019", "Open your portal ")}</Link>
               </div>
             </div>
           </aside>

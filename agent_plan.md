@@ -469,3 +469,15 @@ Verification: 11 focused time-picker/availability tests, admin lint, production 
 Owner: Codex. Done: Upcoming list option beside the weekly calendar shows confirmed future bookings across all upcoming dates in chronological order, with client/service names, timezone labels, and existing booking controls. Calendar navigation and filters remain available in the weekly view.
 
 Verification: 19 scheduling tests, admin lint, production build, and diff checks passed. Production browser with isolated API fixtures verified desktop and 390px mobile rows, resolved names, session links, switching back to calendar, and no horizontal overflow or page errors. Loading/retry/empty states and cancellation removal covered by tests. No live bookings changed.
+
+## 31. Additional PDF updates (13 Sep 2026)
+
+Owner: Codex. Source: `Terios additional updates (1).pdf`.
+
+| Item | Status | Acceptance |
+|---|---|---|
+| Published custom pages | Done locally | Public slug renders Markdown, cover and metadata; isolated loading boundary and blocking metadata preserve HTTP 404 for missing/draft/internal records |
+| Fully managed service catalog | Done locally | Authenticated admin manages the full public practice catalog; existing practitioner IDs/history preserved; production service seeding removed; startup migration retires only the unchanged launch sample once |
+| Full website content editing | Done; browser verified | Website sections editor covers all nine main pages plus header/footer, introductions, legal copy, contact form and FAQ search; image library, links, legacy copy, deliberate empty values, publish errors and unsaved page-switch protection |
+
+Verification: full web suite (188 tests), full admin suite (454 tests), final focused editor/image-picker suite (29 tests), full Go suite, admin/web lint and production builds passed. Isolated production-build browser flow published hero text and selected a replacement image, then confirmed both on the public homepage without rebuilding. Every main-page scope and shared header/footer/legal/intro scope rendered overridden text. Cleared image rendered safely; desktop/390px mobile checks had no horizontal overflow or page errors. Published custom URL returned 200; missing, draft and internal records returned 404. Empty catalog verified on Services and Work with me; Go HTTP test covers cross-account retirement/deletion and preserved booking history. Production database audit was unavailable: no live records changed, and deployment/migration execution is not claimed.

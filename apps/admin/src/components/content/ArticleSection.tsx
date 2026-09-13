@@ -37,7 +37,7 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Page | Post | null>(null);
 
-  const items = articles.data ?? [];
+  const items = (articles.data ?? []).filter(article => !article.slug.startsWith("website-content-"));
   const liveCount = items.filter((a) => a.status === "published").length;
 
   async function save(values: ArticleValues) {

@@ -41,7 +41,7 @@ describe("Home page", () => {
       }),
     ).toBeTruthy();
     expect(screen.getByAltText(/registered nurse and wellness coach/i).getAttribute("src"))
-      .toContain("/_next/image?url=%2Fcustom-home.webp");
+      .toBe("/custom-home.webp");
   });
 
   it("links hero CTAs to the right routes", async () => {

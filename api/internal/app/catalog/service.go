@@ -150,7 +150,10 @@ func (s *Service) ownedService(ctx context.Context, practitionerID, id string) (
 	if err != nil {
 		return domain.Service{}, err
 	}
-	if svc.PractitionerID != practitionerID {
+	// Empty scope is used only by the authenticated practice catalog handlers.
+	// The public catalog spans this single practice, so its administrators must
+	// also see and manage entries created by another practice account.
+	if practitionerID != "" && svc.PractitionerID != practitionerID {
 		return domain.Service{}, domain.ErrServiceNotFound
 	}
 	return svc, nil

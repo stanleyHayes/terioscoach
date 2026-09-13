@@ -1,3 +1,4 @@
+import { siteCopy, type SiteValues } from "../../../../../shared/site-content";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, CalendarDays, Mail, ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -11,13 +12,14 @@ export interface LegalSection {
 }
 
 interface LegalPageProps {
+  copyValues?: SiteValues;
   eyebrow: string;
   title: string;
   description: string;
   summary: string;
   notice: string;
   sections: readonly LegalSection[];
-  relatedHref: "/privacy" | "/terms";
+  relatedHref: string;
   relatedLabel: string;
 }
 
@@ -26,6 +28,7 @@ function sectionId(title: string) {
 }
 
 export function LegalPage({
+  copyValues,
   eyebrow,
   title,
   description,
@@ -35,6 +38,8 @@ export function LegalPage({
   relatedHref,
   relatedLabel,
 }: LegalPageProps) {
+  const copy = siteCopy("legal", copyValues);
+
   return (
     <>
       <PageIntro eyebrow={eyebrow} title={title} description={description} />
@@ -45,18 +50,16 @@ export function LegalPage({
               <div className="max-w-[720px]">
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-100">
                   <ShieldCheck size={14} aria-hidden="true" />
-                  Plain-language policy
-                </span>
+                  {copy("field-001", "Plain-language policy ")}</span>
                 <h2 id="legal-overview-heading" className="mt-6 font-display text-[clamp(1.65rem,3vw,2.5rem)] leading-[1.12] font-medium tracking-[-0.025em] text-sand-0">
-                  The important part, up front.
-                </h2>
+                  {copy("field-002", "The important part, up front. ")}</h2>
                 <p className="mt-4 max-w-[62ch] text-base leading-[1.75] text-eucalyptus-100">
                   {summary}
                 </p>
               </div>
               <div className="flex items-center gap-3 border-t border-white/12 pt-5 text-sm text-eucalyptus-100 lg:border-t-0 lg:border-l lg:py-2 lg:pl-8">
                 <CalendarDays size={18} aria-hidden="true" className="text-clay-200" />
-                <span><span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">Last reviewed</span>12 August 2026</span>
+                <span><span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-eucalyptus-300">{copy("field-003", "Last reviewed")}</span>{copy("field-004", "12 August 2026")}</span>
               </div>
             </div>
             <p className="border-t border-white/12 bg-black/8 px-6 py-4 text-[13px] leading-[1.6] text-eucalyptus-200 sm:px-9 lg:px-12">
@@ -66,7 +69,7 @@ export function LegalPage({
 
           <div className="mt-14 grid gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
             <aside className="lg:sticky lg:top-28 lg:self-start">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">On this page</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">{copy("field-005", "On this page")}</p>
               <nav aria-label={`${eyebrow} contents`} className="mt-5 border-l border-eucalyptus-200">
                 {sections.map((section, index) => (
                   <a key={section.title} href={`#${sectionId(section.title)}`} className="group flex items-center gap-3 border-l-2 border-transparent py-2.5 pl-4 text-sm text-ink-muted transition-colors hover:border-primary hover:text-ink">
@@ -101,13 +104,12 @@ export function LegalPage({
 
               <section className="mt-3 flex flex-col gap-5 rounded-[1.5rem_2.5rem_1.5rem_1.5rem] border border-clay-100 bg-clay-50 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8" aria-labelledby="legal-question-heading">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-clay-700">Still unsure?</p>
-                  <h2 id="legal-question-heading" className="mt-2 font-display text-xl font-medium text-ink">Ask before you continue.</h2>
-                  <p className="mt-2 text-sm leading-[1.6] text-ink-muted">We would rather explain something clearly than leave you guessing.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-clay-700">{copy("field-006", "Still unsure?")}</p>
+                  <h2 id="legal-question-heading" className="mt-2 font-display text-xl font-medium text-ink">{copy("field-007", "Ask before you continue.")}</h2>
+                  <p className="mt-2 text-sm leading-[1.6] text-ink-muted">{copy("field-008", "We would rather explain something clearly than leave you guessing.")}</p>
                 </div>
-                <Link href="/contact" className="terios-button terios-button-primary relative inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-eucalyptus-900 px-5 text-sm font-semibold text-sand-0 transition-transform hover:-translate-y-0.5">
-                  <Mail size={16} aria-hidden="true" /> Contact the practice
-                </Link>
+                <Link href={copy("field-009", "/contact")} className="terios-button terios-button-primary relative inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-eucalyptus-900 px-5 text-sm font-semibold text-sand-0 transition-transform hover:-translate-y-0.5">
+                  <Mail size={16} aria-hidden="true" /> {copy("field-010", "Contact the practice ")}</Link>
               </section>
             </div>
           </div>

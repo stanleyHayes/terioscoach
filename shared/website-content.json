@@ -1,0 +1,2212 @@
+{
+  "home": {
+    "label": "Home",
+    "fields": [
+      {
+        "key": "field-007",
+        "label": "Nursing & wellness coaching",
+        "group": "Hero",
+        "type": "text",
+        "value": "Nursing & wellness coaching "
+      },
+      {
+        "key": "field-008",
+        "label": "Care that lets you",
+        "group": "Hero",
+        "type": "text",
+        "value": "Care that lets you "
+      },
+      {
+        "key": "field-009",
+        "label": "exhale.",
+        "group": "Hero",
+        "type": "text",
+        "value": "exhale."
+      },
+      {
+        "key": "field-010",
+        "label": "Link",
+        "group": "Hero",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-011",
+        "label": "Book a session",
+        "group": "Hero",
+        "type": "text",
+        "value": "Book a session "
+      },
+      {
+        "key": "field-012",
+        "label": "Link",
+        "group": "Hero",
+        "type": "link",
+        "value": "/services"
+      },
+      {
+        "key": "field-013",
+        "label": "Explore services",
+        "group": "Hero",
+        "type": "text",
+        "value": "Explore services "
+      },
+      {
+        "key": "field-014",
+        "label": "Registered nurse-led",
+        "group": "Hero",
+        "type": "text",
+        "value": "Registered nurse-led"
+      },
+      {
+        "key": "field-015",
+        "label": "Private by design",
+        "group": "Hero",
+        "type": "text",
+        "value": "Private by design"
+      },
+      {
+        "key": "field-016",
+        "label": "Available worldwide",
+        "group": "Hero",
+        "type": "text",
+        "value": "Available worldwide"
+      },
+      {
+        "key": "field-017",
+        "label": "Image: Theresa Yirerong, registered nurse and wellness coach",
+        "group": "Hero",
+        "type": "image",
+        "value": "/images/brand/theresa-yirerong-clinical.webp"
+      },
+      {
+        "key": "field-018",
+        "label": "Theresa Yirerong, registered nurse and wellness coach",
+        "group": "Hero",
+        "type": "text",
+        "value": "Theresa Yirerong, registered nurse and wellness coach"
+      },
+      {
+        "key": "field-019",
+        "label": "Video-first care",
+        "group": "Hero",
+        "type": "text",
+        "value": "Video-first care"
+      },
+      {
+        "key": "field-020",
+        "label": "Clinical confidence.",
+        "group": "Hero",
+        "type": "text",
+        "value": "Clinical confidence."
+      },
+      {
+        "key": "field-021",
+        "label": "Human warmth.",
+        "group": "Hero",
+        "type": "text",
+        "value": "Human warmth."
+      },
+      {
+        "key": "field-022",
+        "label": "One practitioner. Unhurried attention. Care shaped around you.",
+        "group": "Hero",
+        "type": "text",
+        "value": "One practitioner. Unhurried attention. Care shaped around you."
+      },
+      {
+        "key": "hero-description",
+        "label": "Hero description",
+        "group": "Hero",
+        "type": "text",
+        "value": "Registered nursing and wellness coaching, brought together in one calm, private practice. Thoughtful video sessions. A plan that fits your real life. Care that travels with you."
+      },
+      {
+        "key": "field-001",
+        "label": "Sessions by video",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Sessions by video"
+      },
+      {
+        "key": "field-002",
+        "label": "Care from your own space, on your schedule.",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Care from your own space, on your schedule."
+      },
+      {
+        "key": "field-003",
+        "label": "Clients worldwide",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Clients worldwide"
+      },
+      {
+        "key": "field-004",
+        "label": "Time zones are a detail, not a barrier.",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Time zones are a detail, not a barrier."
+      },
+      {
+        "key": "field-005",
+        "label": "Secure client portal",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Secure client portal"
+      },
+      {
+        "key": "field-006",
+        "label": "Your notes, plans and messages stay private.",
+        "group": "Trust points",
+        "type": "text",
+        "value": "Your notes, plans and messages stay private."
+      },
+      {
+        "key": "field-023",
+        "label": "Why clients trust Terios",
+        "group": "Trust",
+        "type": "text",
+        "value": "Why clients trust Terios "
+      },
+      {
+        "key": "field-024",
+        "label": "Services",
+        "group": "Services preview",
+        "type": "text",
+        "value": "Services"
+      },
+      {
+        "key": "field-025",
+        "label": "Care that fits the season you are in",
+        "group": "Services preview",
+        "type": "text",
+        "value": "Care that fits the season you are in"
+      },
+      {
+        "key": "field-026",
+        "label": "Explore the practice’s current one-to-one services. Every publish",
+        "group": "Services preview",
+        "type": "text",
+        "value": "Explore the practice’s current one-to-one services. Every published offering comes directly from the live care menu."
+      },
+      {
+        "key": "field-027",
+        "label": "0",
+        "group": "Services preview",
+        "type": "text",
+        "value": "0"
+      },
+      {
+        "key": "field-028",
+        "label": "Book this service",
+        "group": "Services preview",
+        "type": "text",
+        "value": "Book this service "
+      },
+      {
+        "key": "field-029",
+        "label": "The live service menu is being prepared.",
+        "group": "Services preview",
+        "type": "text",
+        "value": "The live service menu is being prepared. "
+      },
+      {
+        "key": "field-030",
+        "label": "Link",
+        "group": "Services preview",
+        "type": "link",
+        "value": "/services"
+      },
+      {
+        "key": "field-031",
+        "label": "View service availability",
+        "group": "Services preview",
+        "type": "text",
+        "value": "View service availability"
+      },
+      {
+        "key": "field-032",
+        "label": "The approach",
+        "group": "Approach",
+        "type": "text",
+        "value": "The approach"
+      },
+      {
+        "key": "field-033",
+        "label": "The trust of a nurse, the exhale of a spa",
+        "group": "Approach",
+        "type": "text",
+        "value": "The trust of a nurse, the exhale of a spa"
+      },
+      {
+        "key": "field-034",
+        "label": "Terios sits deliberately between a clinic and a retreat. You get ",
+        "group": "Approach",
+        "type": "text",
+        "value": "Terios sits deliberately between a clinic and a retreat. You get the precision and confidentiality of registered nursing, delivered with the unhurried warmth of a wellness practice — and a plan shaped around your life, not around a system."
+      },
+      {
+        "key": "field-035",
+        "label": "Link",
+        "group": "Approach",
+        "type": "link",
+        "value": "/about"
+      },
+      {
+        "key": "field-036",
+        "label": "About the practice",
+        "group": "Approach",
+        "type": "text",
+        "value": "About the practice "
+      },
+      {
+        "key": "field-037",
+        "label": "Image: Theresa Yirerong welcoming clients to Terios Wellness",
+        "group": "Approach",
+        "type": "image",
+        "value": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp"
+      },
+      {
+        "key": "field-038",
+        "label": "Theresa Yirerong welcoming clients to Terios Wellness",
+        "group": "Approach",
+        "type": "text",
+        "value": "Theresa Yirerong welcoming clients to Terios Wellness"
+      },
+      {
+        "key": "field-039",
+        "label": "A familiar face from first conversation to follow-up.",
+        "group": "Approach",
+        "type": "text",
+        "value": "A familiar face from first conversation to follow-up."
+      },
+      {
+        "key": "field-040",
+        "label": "Link",
+        "group": "Approach",
+        "type": "link",
+        "value": "/about"
+      },
+      {
+        "key": "field-041",
+        "label": "Meet Theresa",
+        "group": "Approach",
+        "type": "text",
+        "value": "Meet Theresa "
+      },
+      {
+        "key": "field-042",
+        "label": "Kind words",
+        "group": "Testimonials",
+        "type": "text",
+        "value": "Kind words"
+      },
+      {
+        "key": "field-043",
+        "label": "What clients say",
+        "group": "Testimonials",
+        "type": "text",
+        "value": "What clients say"
+      },
+      {
+        "key": "field-044",
+        "label": "Begin where you are",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "Begin where you are "
+      },
+      {
+        "key": "field-045",
+        "label": "You do not need to be ready, fixed or finished. Book a first conv",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "You do not need to be ready, fixed or finished. Book a first conversation and we will find the next right step together. "
+      },
+      {
+        "key": "field-046",
+        "label": "Link",
+        "group": "Closing invitation",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-047",
+        "label": "Book a session",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "Book a session "
+      }
+    ]
+  },
+  "about": {
+    "label": "About",
+    "fields": [
+      {
+        "key": "practitioner-story",
+        "label": "Practitioner story",
+        "group": "Practitioner story",
+        "type": "text",
+        "value": "I’m Theresa Yirerong. After more than two decades as a registered nurse, I have come to believe that nothing is more valuable than your health and wellbeing.\n\nAfter caring for thousands of people, many with preventable conditions, I reshaped my nursing practice around a simple truth: wellness can be pursued at every stage of life, whether or not you are living with a diagnosis.\n\nTerios gives you one-to-one space to look honestly at where you are, decide what living well means for you, and build realistic steps toward it. Sessions happen by video, so care can fit around your life wherever you are."
+      },
+      {
+        "key": "field-004",
+        "label": "Listen first",
+        "group": "Principles",
+        "type": "text",
+        "value": "Listen first"
+      },
+      {
+        "key": "field-005",
+        "label": "Every engagement starts with your story, not a protocol. Good car",
+        "group": "Principles",
+        "type": "text",
+        "value": "Every engagement starts with your story, not a protocol. Good care is built on being properly heard."
+      },
+      {
+        "key": "field-006",
+        "label": "Clinical grounding",
+        "group": "Principles",
+        "type": "text",
+        "value": "Clinical grounding"
+      },
+      {
+        "key": "field-007",
+        "label": "A registered nurse stands behind every recommendation. Calm never",
+        "group": "Principles",
+        "type": "text",
+        "value": "A registered nurse stands behind every recommendation. Calm never means casual about your health."
+      },
+      {
+        "key": "field-008",
+        "label": "Small, sustainable steps",
+        "group": "Principles",
+        "type": "text",
+        "value": "Small, sustainable steps"
+      },
+      {
+        "key": "field-009",
+        "label": "Plans you can actually keep. Progress measured in weeks and seaso",
+        "group": "Principles",
+        "type": "text",
+        "value": "Plans you can actually keep. Progress measured in weeks and seasons, not in dramatic overhauls."
+      },
+      {
+        "key": "field-010",
+        "label": "Your pace, your place",
+        "group": "Principles",
+        "type": "text",
+        "value": "Your pace, your place"
+      },
+      {
+        "key": "field-011",
+        "label": "Sessions by video, scheduled across time zones. Care that adapts ",
+        "group": "Principles",
+        "type": "text",
+        "value": "Sessions by video, scheduled across time zones. Care that adapts to your life instead of interrupting it."
+      },
+      {
+        "key": "field-012",
+        "label": "20+",
+        "group": "Credentials",
+        "type": "text",
+        "value": "20+"
+      },
+      {
+        "key": "field-013",
+        "label": "Years in nursing",
+        "group": "Credentials",
+        "type": "text",
+        "value": "Years in nursing"
+      },
+      {
+        "key": "field-014",
+        "label": "RN",
+        "group": "Credentials",
+        "type": "text",
+        "value": "RN"
+      },
+      {
+        "key": "field-015",
+        "label": "Registered nurse",
+        "group": "Credentials",
+        "type": "text",
+        "value": "Registered nurse"
+      },
+      {
+        "key": "field-016",
+        "label": "One-to-one",
+        "group": "Credentials",
+        "type": "text",
+        "value": "One-to-one"
+      },
+      {
+        "key": "field-017",
+        "label": "Wellness coaching",
+        "group": "Credentials",
+        "type": "text",
+        "value": "Wellness coaching"
+      },
+      {
+        "key": "field-018",
+        "label": "Book a time",
+        "group": "Steps",
+        "type": "text",
+        "value": "Book a time"
+      },
+      {
+        "key": "field-019",
+        "label": "Choose a session and a time that suits you. Times are always show",
+        "group": "Steps",
+        "type": "text",
+        "value": "Choose a session and a time that suits you. Times are always shown with a timezone, so nothing gets lost in translation."
+      },
+      {
+        "key": "field-020",
+        "label": "Meet by video",
+        "group": "Steps",
+        "type": "text",
+        "value": "Meet by video"
+      },
+      {
+        "key": "field-021",
+        "label": "Join from wherever you are. Sessions are one-to-one, unhurried an",
+        "group": "Steps",
+        "type": "text",
+        "value": "Join from wherever you are. Sessions are one-to-one, unhurried and entirely focused on you."
+      },
+      {
+        "key": "field-022",
+        "label": "Follow up in your portal",
+        "group": "Steps",
+        "type": "text",
+        "value": "Follow up in your portal"
+      },
+      {
+        "key": "field-023",
+        "label": "Notes, plans and next steps wait in your secure client portal, wi",
+        "group": "Steps",
+        "type": "text",
+        "value": "Notes, plans and next steps wait in your secure client portal, with space to ask questions between sessions."
+      },
+      {
+        "key": "field-024",
+        "label": "About",
+        "group": "General",
+        "type": "text",
+        "value": "About"
+      },
+      {
+        "key": "field-025",
+        "label": "A practice built on calm, clinical care",
+        "group": "General",
+        "type": "text",
+        "value": "A practice built on calm, clinical care"
+      },
+      {
+        "key": "field-026",
+        "label": "Terios Wellness is the one-woman practice of a registered nurse a",
+        "group": "General",
+        "type": "text",
+        "value": "Terios Wellness is the one-woman practice of a registered nurse and wellness coach — care that is credentialed, confidential and genuinely unhurried."
+      },
+      {
+        "key": "field-027",
+        "label": "Image: Theresa Yirerong, founder of Terios Wellness",
+        "group": "Story",
+        "type": "image",
+        "value": "/images/brand/theresa-yirerong-about.webp"
+      },
+      {
+        "key": "field-028",
+        "label": "Theresa Yirerong, founder of Terios Wellness",
+        "group": "Story",
+        "type": "text",
+        "value": "Theresa Yirerong, founder of Terios Wellness"
+      },
+      {
+        "key": "field-029",
+        "label": "The practitioner",
+        "group": "Story",
+        "type": "text",
+        "value": "The practitioner "
+      },
+      {
+        "key": "field-030",
+        "label": "Image: Theresa Yirerong in nursing scrubs",
+        "group": "Care in practice",
+        "type": "image",
+        "value": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-037.webp"
+      },
+      {
+        "key": "field-031",
+        "label": "Theresa Yirerong in nursing scrubs",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Theresa Yirerong in nursing scrubs"
+      },
+      {
+        "key": "field-032",
+        "label": "Care with a familiar face",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Care with a familiar face"
+      },
+      {
+        "key": "field-033",
+        "label": "Nursing experience, brought closer.",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Nursing experience, brought closer."
+      },
+      {
+        "key": "field-034",
+        "label": "Professional care can still feel personal, familiar and human.",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Professional care can still feel personal, familiar and human."
+      },
+      {
+        "key": "field-035",
+        "label": "Image: Theresa smiling in the Terios Wellness studio",
+        "group": "Care in practice",
+        "type": "image",
+        "value": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-010.webp"
+      },
+      {
+        "key": "field-036",
+        "label": "Theresa smiling in the Terios Wellness studio",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Theresa smiling in the Terios Wellness studio"
+      },
+      {
+        "key": "field-037",
+        "label": "Theresa Yirerong",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Theresa Yirerong"
+      },
+      {
+        "key": "field-038",
+        "label": "Registered nurse & wellness coach",
+        "group": "Care in practice",
+        "type": "text",
+        "value": "Registered nurse & wellness coach"
+      },
+      {
+        "key": "field-039",
+        "label": "Philosophy",
+        "group": "Philosophy",
+        "type": "text",
+        "value": "Philosophy"
+      },
+      {
+        "key": "field-040",
+        "label": "How I approach care",
+        "group": "Philosophy",
+        "type": "text",
+        "value": "How I approach care"
+      },
+      {
+        "key": "field-041",
+        "label": "Four principles shape every session, every plan and every follow-",
+        "group": "Philosophy",
+        "type": "text",
+        "value": "Four principles shape every session, every plan and every follow-up."
+      },
+      {
+        "key": "field-042",
+        "label": "Credentials",
+        "group": "Credentials",
+        "type": "text",
+        "value": "Credentials "
+      },
+      {
+        "key": "field-043",
+        "label": "How sessions work",
+        "group": "How it works",
+        "type": "text",
+        "value": "How sessions work"
+      },
+      {
+        "key": "field-044",
+        "label": "From booking to follow-up",
+        "group": "How it works",
+        "type": "text",
+        "value": "From booking to follow-up"
+      },
+      {
+        "key": "field-045",
+        "label": "Care, one conversation at a time",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "Care, one conversation at a time "
+      },
+      {
+        "key": "field-046",
+        "label": "If this approach sounds like what you have been looking for, the ",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "If this approach sounds like what you have been looking for, the next step is simply a conversation. "
+      },
+      {
+        "key": "field-047",
+        "label": "Link",
+        "group": "Closing invitation",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-048",
+        "label": "Work with me",
+        "group": "Closing invitation",
+        "type": "text",
+        "value": "Work with me "
+      }
+    ]
+  },
+  "work-with-me": {
+    "label": "Work with me",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Choose a service",
+        "group": "Steps",
+        "type": "text",
+        "value": "Choose a service"
+      },
+      {
+        "key": "field-002",
+        "label": "Pick the care that fits the season you are in. Every service is o",
+        "group": "Steps",
+        "type": "text",
+        "value": "Pick the care that fits the season you are in. Every service is one-to-one and by video."
+      },
+      {
+        "key": "field-003",
+        "label": "Pick a time",
+        "group": "Steps",
+        "type": "text",
+        "value": "Pick a time"
+      },
+      {
+        "key": "field-004",
+        "label": "A live calendar shows real openings with a clear timezone, so not",
+        "group": "Steps",
+        "type": "text",
+        "value": "A live calendar shows real openings with a clear timezone, so nothing gets lost in translation."
+      },
+      {
+        "key": "field-005",
+        "label": "Confirm & pay",
+        "group": "Steps",
+        "type": "text",
+        "value": "Confirm & pay"
+      },
+      {
+        "key": "field-006",
+        "label": "Review the details, pay securely, and your session is booked. Con",
+        "group": "Steps",
+        "type": "text",
+        "value": "Review the details, pay securely, and your session is booked. Confirmation lands in your inbox."
+      },
+      {
+        "key": "field-007",
+        "label": "Work with me",
+        "group": "General",
+        "type": "text",
+        "value": "Work with me"
+      },
+      {
+        "key": "field-008",
+        "label": "Begin with a single step",
+        "group": "General",
+        "type": "text",
+        "value": "Begin with a single step"
+      },
+      {
+        "key": "field-009",
+        "label": "Choose the care that fits, pick a time, confirm and pay. There is",
+        "group": "General",
+        "type": "text",
+        "value": "Choose the care that fits, pick a time, confirm and pay. There is no separate sign-up — your account is created while you book, and it becomes your private client portal."
+      },
+      {
+        "key": "field-010",
+        "label": "Image: Theresa Yirerong, founder of Terios Wellness, seated outdoors",
+        "group": "Supporting section",
+        "type": "image",
+        "value": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-062.webp"
+      },
+      {
+        "key": "field-011",
+        "label": "Theresa Yirerong, founder of Terios Wellness, seated outdoors",
+        "group": "Supporting section",
+        "type": "text",
+        "value": "Theresa Yirerong, founder of Terios Wellness, seated outdoors"
+      },
+      {
+        "key": "field-012",
+        "label": "Step one",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Step one"
+      },
+      {
+        "key": "field-013",
+        "label": "Choose your service",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Choose your service"
+      },
+      {
+        "key": "field-014",
+        "label": "Live from the practice menu — durations and prices are always cur",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Live from the practice menu — durations and prices are always current."
+      },
+      {
+        "key": "field-015",
+        "label": "The service menu didn’t load",
+        "group": "Choose service",
+        "type": "text",
+        "value": "The service menu didn’t load "
+      },
+      {
+        "key": "field-016",
+        "label": "Something interrupted the connection on our side. Try again in a ",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Something interrupted the connection on our side. Try again in a moment. "
+      },
+      {
+        "key": "field-017",
+        "label": "Link",
+        "group": "Choose service",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-018",
+        "label": "Try again",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Try again "
+      },
+      {
+        "key": "field-019",
+        "label": "The service menu is being refreshed",
+        "group": "Choose service",
+        "type": "text",
+        "value": "The service menu is being refreshed"
+      },
+      {
+        "key": "field-020",
+        "label": "When a service is published, it appears here. Check back soon.",
+        "group": "Choose service",
+        "type": "text",
+        "value": "When a service is published, it appears here. Check back soon."
+      },
+      {
+        "key": "field-021",
+        "label": "Selected",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Selected "
+      },
+      {
+        "key": "field-022",
+        "label": "Choose",
+        "group": "Choose service",
+        "type": "text",
+        "value": "Choose "
+      },
+      {
+        "key": "field-023",
+        "label": "How booking works",
+        "group": "How booking works",
+        "type": "text",
+        "value": "How booking works"
+      },
+      {
+        "key": "field-024",
+        "label": "Three steps, no paperwork",
+        "group": "How booking works",
+        "type": "text",
+        "value": "Three steps, no paperwork"
+      },
+      {
+        "key": "field-025",
+        "label": "No account is needed before you start — you create yours during b",
+        "group": "How booking works",
+        "type": "text",
+        "value": "No account is needed before you start — you create yours during booking, and it becomes your private client portal. "
+      }
+    ]
+  },
+  "services": {
+    "label": "Services",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Services",
+        "group": "General",
+        "type": "text",
+        "value": "Services"
+      },
+      {
+        "key": "field-002",
+        "label": "Every session, clearly priced",
+        "group": "General",
+        "type": "text",
+        "value": "Every session, clearly priced"
+      },
+      {
+        "key": "field-003",
+        "label": "One-to-one care by video — nursing, coaching and recovery. Prices",
+        "group": "General",
+        "type": "text",
+        "value": "One-to-one care by video — nursing, coaching and recovery. Prices come live from the practice, so what you see here is what you book."
+      },
+      {
+        "key": "field-004",
+        "label": "Service menu",
+        "group": "Service menu",
+        "type": "text",
+        "value": "Service menu "
+      },
+      {
+        "key": "field-005",
+        "label": "The service menu didn’t load",
+        "group": "Service menu",
+        "type": "text",
+        "value": "The service menu didn’t load "
+      },
+      {
+        "key": "field-006",
+        "label": "Something interrupted the connection on our side. Nothing is wron",
+        "group": "Service menu",
+        "type": "text",
+        "value": "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. "
+      },
+      {
+        "key": "field-007",
+        "label": "Link",
+        "group": "Service menu",
+        "type": "link",
+        "value": "/services"
+      },
+      {
+        "key": "field-008",
+        "label": "Try again",
+        "group": "Service menu",
+        "type": "text",
+        "value": "Try again "
+      },
+      {
+        "key": "field-009",
+        "label": "No services are published yet",
+        "group": "Service menu",
+        "type": "text",
+        "value": "No services are published yet"
+      },
+      {
+        "key": "field-010",
+        "label": "The practice is preparing its bookable services. This page is wor",
+        "group": "Service menu",
+        "type": "text",
+        "value": "The practice is preparing its bookable services. This page is working; there simply is not a live service to show right now."
+      },
+      {
+        "key": "field-011",
+        "label": "Link",
+        "group": "Service menu",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-012",
+        "label": "Ask about care",
+        "group": "Service menu",
+        "type": "text",
+        "value": "Ask about care"
+      },
+      {
+        "key": "field-013",
+        "label": "Book this",
+        "group": "Service menu",
+        "type": "text",
+        "value": "Book this "
+      }
+    ]
+  },
+  "blog": {
+    "label": "Blog",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Journal",
+        "group": "General",
+        "type": "text",
+        "value": "Journal"
+      },
+      {
+        "key": "field-002",
+        "label": "Notes for the time between sessions",
+        "group": "General",
+        "type": "text",
+        "value": "Notes for the time between sessions"
+      },
+      {
+        "key": "field-003",
+        "label": "Recovery is mostly what happens after you leave. These are the th",
+        "group": "General",
+        "type": "text",
+        "value": "Recovery is mostly what happens after you leave. These are the things worth knowing in between — written plainly, no hurry."
+      },
+      {
+        "key": "field-004",
+        "label": "Articles",
+        "group": "Journal",
+        "type": "text",
+        "value": "Articles "
+      },
+      {
+        "key": "field-005",
+        "label": "Showing",
+        "group": "Journal",
+        "type": "text",
+        "value": "Showing "
+      },
+      {
+        "key": "field-006",
+        "label": "Link",
+        "group": "Journal",
+        "type": "link",
+        "value": "/blog"
+      },
+      {
+        "key": "field-007",
+        "label": "Show everything",
+        "group": "Journal",
+        "type": "text",
+        "value": "Show everything "
+      },
+      {
+        "key": "field-008",
+        "label": "The journal didn’t load",
+        "group": "Journal",
+        "type": "text",
+        "value": "The journal didn’t load "
+      },
+      {
+        "key": "field-009",
+        "label": "Something interrupted the connection on our side. Nothing is wron",
+        "group": "Journal",
+        "type": "text",
+        "value": "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. "
+      },
+      {
+        "key": "field-010",
+        "label": "Link",
+        "group": "Journal",
+        "type": "link",
+        "value": "/blog"
+      },
+      {
+        "key": "field-011",
+        "label": "Try again",
+        "group": "Journal",
+        "type": "text",
+        "value": "Try again "
+      },
+      {
+        "key": "field-012",
+        "label": "Nothing under that heading yet",
+        "group": "Journal",
+        "type": "text",
+        "value": "Nothing under that heading yet"
+      },
+      {
+        "key": "field-013",
+        "label": "The first note is on its way",
+        "group": "Journal",
+        "type": "text",
+        "value": "The first note is on its way"
+      },
+      {
+        "key": "field-014",
+        "label": "Try the full journal — there may be something close by.",
+        "group": "Journal",
+        "type": "text",
+        "value": "Try the full journal — there may be something close by."
+      },
+      {
+        "key": "field-015",
+        "label": "When an article is published it appears here. Check back soon.",
+        "group": "Journal",
+        "type": "text",
+        "value": "When an article is published it appears here. Check back soon."
+      },
+      {
+        "key": "field-016",
+        "label": "Link",
+        "group": "Journal",
+        "type": "link",
+        "value": "/blog"
+      },
+      {
+        "key": "field-017",
+        "label": "Read everything",
+        "group": "Journal",
+        "type": "text",
+        "value": "Read everything "
+      }
+    ]
+  },
+  "faq": {
+    "label": "Faq",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Questions",
+        "group": "General",
+        "type": "text",
+        "value": "Questions"
+      },
+      {
+        "key": "field-002",
+        "label": "The things people ask first",
+        "group": "General",
+        "type": "text",
+        "value": "The things people ask first"
+      },
+      {
+        "key": "field-003",
+        "label": "Booking, payment, what a first session is like. If yours is not h",
+        "group": "General",
+        "type": "text",
+        "value": "Booking, payment, what a first session is like. If yours is not here, ask it — a real answer comes back."
+      },
+      {
+        "key": "field-004",
+        "label": "Frequently asked questions",
+        "group": "Faq",
+        "type": "text",
+        "value": "Frequently asked questions "
+      },
+      {
+        "key": "field-005",
+        "label": "The questions didn’t load",
+        "group": "Faq",
+        "type": "text",
+        "value": "The questions didn’t load "
+      },
+      {
+        "key": "field-006",
+        "label": "Something interrupted the connection on our side. Nothing is wron",
+        "group": "Faq",
+        "type": "text",
+        "value": "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. "
+      },
+      {
+        "key": "field-007",
+        "label": "Link",
+        "group": "Faq",
+        "type": "link",
+        "value": "/faq"
+      },
+      {
+        "key": "field-008",
+        "label": "Try again",
+        "group": "Faq",
+        "type": "text",
+        "value": "Try again "
+      },
+      {
+        "key": "field-009",
+        "label": "No questions published yet",
+        "group": "Faq",
+        "type": "text",
+        "value": "No questions published yet"
+      },
+      {
+        "key": "field-010",
+        "label": "Ask yours directly and it will be answered — and probably end up ",
+        "group": "Faq",
+        "type": "text",
+        "value": "Ask yours directly and it will be answered — and probably end up here."
+      },
+      {
+        "key": "field-011",
+        "label": "Link",
+        "group": "Faq",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-012",
+        "label": "Ask a question",
+        "group": "Faq",
+        "type": "text",
+        "value": "Ask a question "
+      },
+      {
+        "key": "field-013",
+        "label": "Still wondering something?",
+        "group": "Supporting section",
+        "type": "text",
+        "value": "Still wondering something? "
+      },
+      {
+        "key": "field-014",
+        "label": "Send it over. Questions are answered by the practitioner, not a f",
+        "group": "Supporting section",
+        "type": "text",
+        "value": "Send it over. Questions are answered by the practitioner, not a form letter. "
+      },
+      {
+        "key": "field-015",
+        "label": "Link",
+        "group": "Supporting section",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-016",
+        "label": "Get in touch",
+        "group": "Supporting section",
+        "type": "text",
+        "value": "Get in touch "
+      }
+    ]
+  },
+  "contact": {
+    "label": "Contact",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Contact",
+        "group": "General",
+        "type": "text",
+        "value": "Contact"
+      },
+      {
+        "key": "field-002",
+        "label": "Start with a question",
+        "group": "General",
+        "type": "text",
+        "value": "Start with a question"
+      },
+      {
+        "key": "field-003",
+        "label": "You do not have to know what you need yet. Say what is going on a",
+        "group": "General",
+        "type": "text",
+        "value": "You do not have to know what you need yet. Say what is going on and the right next step comes back — even if that step is somewhere else."
+      },
+      {
+        "key": "field-004",
+        "label": "Send a message",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Send a message "
+      },
+      {
+        "key": "field-005",
+        "label": "Image: Theresa Yirerong, the person who reads every enquiry",
+        "group": "Contact form",
+        "type": "image",
+        "value": "/images/brand/portraits/theresa-yirerong-by-jinnifer-douglass-009.webp"
+      },
+      {
+        "key": "field-006",
+        "label": "Theresa Yirerong, the person who reads every enquiry",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Theresa Yirerong, the person who reads every enquiry"
+      },
+      {
+        "key": "field-007",
+        "label": "Contact Terios Wellness",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Contact Terios Wellness "
+      },
+      {
+        "key": "field-008",
+        "label": "Link",
+        "group": "Contact form",
+        "type": "link",
+        "value": "mailto:Hello@terioscoach.com"
+      },
+      {
+        "key": "field-009",
+        "label": "Hello@terioscoach.com",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Hello@terioscoach.com "
+      },
+      {
+        "key": "field-010",
+        "label": "Link",
+        "group": "Contact form",
+        "type": "link",
+        "value": "tel:+19293748914"
+      },
+      {
+        "key": "field-011",
+        "label": "+1 (929) 374-8914",
+        "group": "Contact form",
+        "type": "text",
+        "value": "+1 (929) 374-8914 "
+      },
+      {
+        "key": "field-012",
+        "label": "A person reads it",
+        "group": "Contact form",
+        "type": "text",
+        "value": "A person reads it "
+      },
+      {
+        "key": "field-013",
+        "label": "Messages go to the practitioner, not an inbox nobody opens.",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Messages go to the practitioner, not an inbox nobody opens. "
+      },
+      {
+        "key": "field-014",
+        "label": "Usually within a working day",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Usually within a working day "
+      },
+      {
+        "key": "field-015",
+        "label": "Sooner where it matters. Weekends run slower.",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Sooner where it matters. Weekends run slower. "
+      },
+      {
+        "key": "field-016",
+        "label": "Already a client?",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Already a client? "
+      },
+      {
+        "key": "field-017",
+        "label": "Your portal is the faster route for anything about a booked sessi",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Your portal is the faster route for anything about a booked session. "
+      },
+      {
+        "key": "field-018",
+        "label": "Link",
+        "group": "Contact form",
+        "type": "link",
+        "value": "/portal"
+      },
+      {
+        "key": "field-019",
+        "label": "Open your portal",
+        "group": "Contact form",
+        "type": "text",
+        "value": "Open your portal "
+      }
+    ]
+  },
+  "privacy": {
+    "label": "Privacy",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "What we collect",
+        "group": "Sections",
+        "type": "text",
+        "value": "What we collect"
+      },
+      {
+        "key": "field-002",
+        "label": "We collect the details needed to answer enquiries, manage your ac",
+        "group": "Sections",
+        "type": "text",
+        "value": "We collect the details needed to answer enquiries, manage your account, provide sessions, process payments and keep the records you ask us to hold."
+      },
+      {
+        "key": "field-003",
+        "label": "Why we use it",
+        "group": "Sections",
+        "type": "text",
+        "value": "Why we use it"
+      },
+      {
+        "key": "field-004",
+        "label": "Your information supports your care, booking administration, requ",
+        "group": "Sections",
+        "type": "text",
+        "value": "Your information supports your care, booking administration, required clinical records and direct communication with you. We do not sell personal information."
+      },
+      {
+        "key": "field-005",
+        "label": "Who can access it",
+        "group": "Sections",
+        "type": "text",
+        "value": "Who can access it"
+      },
+      {
+        "key": "field-006",
+        "label": "Access is limited to the practitioner and service providers requi",
+        "group": "Sections",
+        "type": "text",
+        "value": "Access is limited to the practitioner and service providers required to operate the practice securely. Those providers process information under their own security and privacy commitments."
+      },
+      {
+        "key": "field-007",
+        "label": "Your choices",
+        "group": "Sections",
+        "type": "text",
+        "value": "Your choices"
+      },
+      {
+        "key": "field-008",
+        "label": "You may ask to access, correct or discuss deletion of your inform",
+        "group": "Sections",
+        "type": "text",
+        "value": "You may ask to access, correct or discuss deletion of your information. Some clinical and financial records must be retained where the law requires it."
+      },
+      {
+        "key": "field-009",
+        "label": "Privacy",
+        "group": "General",
+        "type": "text",
+        "value": "Privacy"
+      },
+      {
+        "key": "field-010",
+        "label": "Your information stays part of your care.",
+        "group": "General",
+        "type": "text",
+        "value": "Your information stays part of your care."
+      },
+      {
+        "key": "field-011",
+        "label": "A plain-language overview of what the practice keeps, why it is n",
+        "group": "General",
+        "type": "text",
+        "value": "A plain-language overview of what the practice keeps, why it is needed, and the choices you have."
+      },
+      {
+        "key": "field-012",
+        "label": "We use your information to provide care, run your bookings and ke",
+        "group": "General",
+        "type": "text",
+        "value": "We use your information to provide care, run your bookings and keep the records the practice needs. It is never treated as a product, and access stays limited."
+      },
+      {
+        "key": "field-013",
+        "label": "This page is a service summary and should be reviewed against the",
+        "group": "General",
+        "type": "text",
+        "value": "This page is a service summary and should be reviewed against the practice’s final legal requirements before launch."
+      },
+      {
+        "key": "field-014",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/terms"
+      },
+      {
+        "key": "field-015",
+        "label": "Read our terms",
+        "group": "General",
+        "type": "text",
+        "value": "Read our terms"
+      }
+    ]
+  },
+  "terms": {
+    "label": "Terms",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Using the practice",
+        "group": "Sections",
+        "type": "text",
+        "value": "Using the practice"
+      },
+      {
+        "key": "field-002",
+        "label": "Book and use services only for yourself unless the practitioner h",
+        "group": "Sections",
+        "type": "text",
+        "value": "Book and use services only for yourself unless the practitioner has agreed otherwise. Keep your account details private and provide accurate information relevant to your care."
+      },
+      {
+        "key": "field-003",
+        "label": "Appointments",
+        "group": "Sections",
+        "type": "text",
+        "value": "Appointments"
+      },
+      {
+        "key": "field-004",
+        "label": "Your booking confirmation states the time, timezone, price and ap",
+        "group": "Sections",
+        "type": "text",
+        "value": "Your booking confirmation states the time, timezone, price and applicable change rules. Rescheduling, cancellation and refund outcomes follow the terms shown during booking."
+      },
+      {
+        "key": "field-005",
+        "label": "Clinical boundaries",
+        "group": "Sections",
+        "type": "text",
+        "value": "Clinical boundaries"
+      },
+      {
+        "key": "field-006",
+        "label": "Online wellness and nursing support does not replace emergency ca",
+        "group": "Sections",
+        "type": "text",
+        "value": "Online wellness and nursing support does not replace emergency care. If you may be experiencing an emergency, contact local emergency services immediately."
+      },
+      {
+        "key": "field-007",
+        "label": "Digital access",
+        "group": "Sections",
+        "type": "text",
+        "value": "Digital access"
+      },
+      {
+        "key": "field-008",
+        "label": "We work to keep the portal available and secure, but maintenance ",
+        "group": "Sections",
+        "type": "text",
+        "value": "We work to keep the portal available and secure, but maintenance and network conditions can interrupt access. Contact the practice when an interruption affects an upcoming session."
+      },
+      {
+        "key": "field-009",
+        "label": "Terms",
+        "group": "General",
+        "type": "text",
+        "value": "Terms"
+      },
+      {
+        "key": "field-010",
+        "label": "Clear expectations make care easier.",
+        "group": "General",
+        "type": "text",
+        "value": "Clear expectations make care easier."
+      },
+      {
+        "key": "field-011",
+        "label": "The practical agreement behind appointments, the client portal, p",
+        "group": "General",
+        "type": "text",
+        "value": "The practical agreement behind appointments, the client portal, payments and online sessions."
+      },
+      {
+        "key": "field-012",
+        "label": "Use the practice honestly, keep your account secure, and rely on ",
+        "group": "General",
+        "type": "text",
+        "value": "Use the practice honestly, keep your account secure, and rely on the details shown when you book. We will communicate clearly when access, timing or care boundaries matter."
+      },
+      {
+        "key": "field-013",
+        "label": "Final launch terms should be reviewed by a qualified adviser in t",
+        "group": "General",
+        "type": "text",
+        "value": "Final launch terms should be reviewed by a qualified adviser in the practice’s operating jurisdictions."
+      },
+      {
+        "key": "field-014",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/privacy"
+      },
+      {
+        "key": "field-015",
+        "label": "Read our privacy policy",
+        "group": "General",
+        "type": "text",
+        "value": "Read our privacy policy"
+      }
+    ]
+  },
+  "header": {
+    "label": "Header and navigation",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Home",
+        "group": "Links",
+        "type": "text",
+        "value": "Home"
+      },
+      {
+        "key": "field-002",
+        "label": "Link",
+        "group": "Links",
+        "type": "link",
+        "value": "/about"
+      },
+      {
+        "key": "field-003",
+        "label": "About",
+        "group": "Links",
+        "type": "text",
+        "value": "About"
+      },
+      {
+        "key": "field-004",
+        "label": "Link",
+        "group": "Links",
+        "type": "link",
+        "value": "/services"
+      },
+      {
+        "key": "field-005",
+        "label": "Services",
+        "group": "Links",
+        "type": "text",
+        "value": "Services"
+      },
+      {
+        "key": "field-006",
+        "label": "Link",
+        "group": "Links",
+        "type": "link",
+        "value": "/blog"
+      },
+      {
+        "key": "field-007",
+        "label": "Blog",
+        "group": "Links",
+        "type": "text",
+        "value": "Blog"
+      },
+      {
+        "key": "field-008",
+        "label": "Link",
+        "group": "Links",
+        "type": "link",
+        "value": "/faq"
+      },
+      {
+        "key": "field-009",
+        "label": "FAQ",
+        "group": "Links",
+        "type": "text",
+        "value": "FAQ"
+      },
+      {
+        "key": "field-010",
+        "label": "Link",
+        "group": "Links",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-011",
+        "label": "Contact",
+        "group": "Links",
+        "type": "text",
+        "value": "Contact"
+      },
+      {
+        "key": "field-012",
+        "label": "Image: Terios",
+        "group": "General",
+        "type": "image",
+        "value": "/images/brand/identity/terios-mark.svg"
+      },
+      {
+        "key": "field-013",
+        "label": "Terios",
+        "group": "General",
+        "type": "text",
+        "value": "Terios "
+      },
+      {
+        "key": "field-014",
+        "label": "Wellness",
+        "group": "General",
+        "type": "text",
+        "value": "Wellness"
+      },
+      {
+        "key": "field-015",
+        "label": "Sign in",
+        "group": "General",
+        "type": "text",
+        "value": "Sign in "
+      },
+      {
+        "key": "field-016",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-017",
+        "label": "Book now",
+        "group": "General",
+        "type": "text",
+        "value": "Book now "
+      },
+      {
+        "key": "field-018",
+        "label": "Image: Terios Wellness",
+        "group": "General",
+        "type": "image",
+        "value": "/images/brand/identity/terios-mark.svg"
+      },
+      {
+        "key": "field-019",
+        "label": "Terios Wellness",
+        "group": "General",
+        "type": "text",
+        "value": "Terios Wellness"
+      },
+      {
+        "key": "field-020",
+        "label": "Navigate the practice",
+        "group": "General",
+        "type": "text",
+        "value": "Navigate the practice"
+      },
+      {
+        "key": "field-021",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-022",
+        "label": "Book now",
+        "group": "General",
+        "type": "text",
+        "value": "Book now "
+      },
+      {
+        "key": "field-023",
+        "label": "Sign in",
+        "group": "General",
+        "type": "text",
+        "value": "Sign in "
+      }
+    ]
+  },
+  "footer": {
+    "label": "Footer",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Home",
+        "group": "Explore links",
+        "type": "text",
+        "value": "Home"
+      },
+      {
+        "key": "field-002",
+        "label": "Link",
+        "group": "Explore links",
+        "type": "link",
+        "value": "/about"
+      },
+      {
+        "key": "field-003",
+        "label": "About",
+        "group": "Explore links",
+        "type": "text",
+        "value": "About"
+      },
+      {
+        "key": "field-004",
+        "label": "Link",
+        "group": "Explore links",
+        "type": "link",
+        "value": "/blog"
+      },
+      {
+        "key": "field-005",
+        "label": "Journal",
+        "group": "Explore links",
+        "type": "text",
+        "value": "Journal"
+      },
+      {
+        "key": "field-006",
+        "label": "Link",
+        "group": "Explore links",
+        "type": "link",
+        "value": "/faq"
+      },
+      {
+        "key": "field-007",
+        "label": "FAQ",
+        "group": "Explore links",
+        "type": "text",
+        "value": "FAQ"
+      },
+      {
+        "key": "field-008",
+        "label": "Link",
+        "group": "Practice links",
+        "type": "link",
+        "value": "/services"
+      },
+      {
+        "key": "field-009",
+        "label": "Services",
+        "group": "Practice links",
+        "type": "text",
+        "value": "Services"
+      },
+      {
+        "key": "field-010",
+        "label": "Link",
+        "group": "Practice links",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-011",
+        "label": "Work with me",
+        "group": "Practice links",
+        "type": "text",
+        "value": "Work with me"
+      },
+      {
+        "key": "field-012",
+        "label": "Link",
+        "group": "Practice links",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-013",
+        "label": "Contact",
+        "group": "Practice links",
+        "type": "text",
+        "value": "Contact"
+      },
+      {
+        "key": "field-014",
+        "label": "Your next chapter",
+        "group": "General",
+        "type": "text",
+        "value": "Your next chapter"
+      },
+      {
+        "key": "field-015",
+        "label": "Care can begin with one calm conversation.",
+        "group": "General",
+        "type": "text",
+        "value": "Care can begin with one calm conversation."
+      },
+      {
+        "key": "field-016",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/work-with-me"
+      },
+      {
+        "key": "field-017",
+        "label": "Book a session",
+        "group": "General",
+        "type": "text",
+        "value": "Book a session"
+      },
+      {
+        "key": "field-018",
+        "label": "Image: Terios",
+        "group": "General",
+        "type": "image",
+        "value": "/images/brand/identity/terios-mark.svg"
+      },
+      {
+        "key": "field-019",
+        "label": "Terios",
+        "group": "General",
+        "type": "text",
+        "value": "Terios "
+      },
+      {
+        "key": "field-020",
+        "label": "Wellness",
+        "group": "General",
+        "type": "text",
+        "value": "Wellness"
+      },
+      {
+        "key": "field-021",
+        "label": "Registered nursing and wellness coaching, held in one private, vi",
+        "group": "General",
+        "type": "text",
+        "value": "Registered nursing and wellness coaching, held in one private, video-first practice."
+      },
+      {
+        "key": "field-022",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "mailto:Hello@terioscoach.com"
+      },
+      {
+        "key": "field-023",
+        "label": "Hello@terioscoach.com",
+        "group": "General",
+        "type": "text",
+        "value": "Hello@terioscoach.com "
+      },
+      {
+        "key": "field-024",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "tel:+19293748914"
+      },
+      {
+        "key": "field-025",
+        "label": "+1 (929) 374-8914",
+        "group": "General",
+        "type": "text",
+        "value": "+1 (929) 374-8914 "
+      },
+      {
+        "key": "field-026",
+        "label": "Explore",
+        "group": "General",
+        "type": "text",
+        "value": "Explore"
+      },
+      {
+        "key": "field-027",
+        "label": "Practice",
+        "group": "General",
+        "type": "text",
+        "value": "Practice"
+      },
+      {
+        "key": "field-028",
+        "label": "Terios Wellness Spa",
+        "group": "General",
+        "type": "text",
+        "value": "Terios Wellness Spa"
+      },
+      {
+        "key": "field-029",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/privacy"
+      },
+      {
+        "key": "field-030",
+        "label": "Privacy",
+        "group": "General",
+        "type": "text",
+        "value": "Privacy"
+      },
+      {
+        "key": "field-031",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/terms"
+      },
+      {
+        "key": "field-032",
+        "label": "Terms",
+        "group": "General",
+        "type": "text",
+        "value": "Terms"
+      },
+      {
+        "key": "field-033",
+        "label": "Clinical calm, wherever you are.",
+        "group": "General",
+        "type": "text",
+        "value": "Clinical calm, wherever you are. "
+      },
+      {
+        "key": "field-034",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "https://xcreativs.com"
+      },
+      {
+        "key": "field-035",
+        "label": "DEVELOPED BY XCREATIVS TECHNOLOGIES LTD",
+        "group": "General",
+        "type": "text",
+        "value": "DEVELOPED BY XCREATIVS TECHNOLOGIES LTD"
+      },
+      {
+        "key": "field-036",
+        "label": "Powered by XHI",
+        "group": "General",
+        "type": "text",
+        "value": "Powered by XHI"
+      },
+      {
+        "key": "quality-0",
+        "label": "Nurse-led",
+        "group": "Practice qualities",
+        "type": "text",
+        "value": "Nurse-led"
+      },
+      {
+        "key": "quality-1",
+        "label": "Worldwide",
+        "group": "Practice qualities",
+        "type": "text",
+        "value": "Worldwide"
+      },
+      {
+        "key": "quality-2",
+        "label": "Private by design",
+        "group": "Practice qualities",
+        "type": "text",
+        "value": "Private by design"
+      }
+    ]
+  },
+  "legal": {
+    "label": "Shared legal sections",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Plain-language policy",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "Plain-language policy "
+      },
+      {
+        "key": "field-002",
+        "label": "The important part, up front.",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "The important part, up front. "
+      },
+      {
+        "key": "field-003",
+        "label": "Last reviewed",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "Last reviewed"
+      },
+      {
+        "key": "field-004",
+        "label": "12 August 2026",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "12 August 2026"
+      },
+      {
+        "key": "field-005",
+        "label": "On this page",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "On this page"
+      },
+      {
+        "key": "field-006",
+        "label": "Still unsure?",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "Still unsure?"
+      },
+      {
+        "key": "field-007",
+        "label": "Ask before you continue.",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "Ask before you continue."
+      },
+      {
+        "key": "field-008",
+        "label": "We would rather explain something clearly than leave you guessing",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "We would rather explain something clearly than leave you guessing."
+      },
+      {
+        "key": "field-009",
+        "label": "Link",
+        "group": "Legal overview",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-010",
+        "label": "Contact the practice",
+        "group": "Legal overview",
+        "type": "text",
+        "value": "Contact the practice "
+      }
+    ]
+  },
+  "intro": {
+    "label": "Page introductions",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Terios field note",
+        "group": "General",
+        "type": "text",
+        "value": "Terios field note"
+      },
+      {
+        "key": "field-002",
+        "label": "Clinical care, recorded with warmth and kept intentionally person",
+        "group": "General",
+        "type": "text",
+        "value": "Clinical care, recorded with warmth and kept intentionally personal."
+      }
+    ]
+  },
+  "contact-form": {
+    "label": "Contact form",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Thank you — it has arrived",
+        "group": "General",
+        "type": "text",
+        "value": "Thank you — it has arrived "
+      },
+      {
+        "key": "field-002",
+        "label": "Your message is with the practice. You will hear back at",
+        "group": "General",
+        "type": "text",
+        "value": "Your message is with the practice. You will hear back at"
+      },
+      {
+        "key": "field-003",
+        "label": ", usually within a working day.",
+        "group": "General",
+        "type": "text",
+        "value": ", usually within a working day. "
+      },
+      {
+        "key": "field-004",
+        "label": "Your name",
+        "group": "General",
+        "type": "text",
+        "value": "Your name"
+      },
+      {
+        "key": "field-005",
+        "label": "Email",
+        "group": "General",
+        "type": "text",
+        "value": "Email"
+      },
+      {
+        "key": "field-006",
+        "label": "Phone",
+        "group": "General",
+        "type": "text",
+        "value": "Phone"
+      },
+      {
+        "key": "field-007",
+        "label": "Subject",
+        "group": "General",
+        "type": "text",
+        "value": "Subject"
+      },
+      {
+        "key": "field-008",
+        "label": "Your message",
+        "group": "General",
+        "type": "text",
+        "value": "Your message "
+      },
+      {
+        "key": "field-009",
+        "label": "Send message",
+        "group": "General",
+        "type": "text",
+        "value": "Send message "
+      },
+      {
+        "key": "field-010",
+        "label": "Your details go to the practice only.",
+        "group": "General",
+        "type": "text",
+        "value": "Your details go to the practice only. "
+      }
+    ]
+  },
+  "faq-search": {
+    "label": "FAQ search",
+    "fields": [
+      {
+        "key": "field-001",
+        "label": "Search the questions",
+        "group": "General",
+        "type": "text",
+        "value": "Search the questions "
+      },
+      {
+        "key": "field-002",
+        "label": "Try “payment” or “first session”",
+        "group": "General",
+        "type": "text",
+        "value": "Try “payment” or “first session”"
+      },
+      {
+        "key": "field-003",
+        "label": "Nothing matches that",
+        "group": "General",
+        "type": "text",
+        "value": "Nothing matches that"
+      },
+      {
+        "key": "field-004",
+        "label": "Try a different word — or send the question over and it will be a",
+        "group": "General",
+        "type": "text",
+        "value": "Try a different word — or send the question over and it will be answered directly."
+      },
+      {
+        "key": "field-005",
+        "label": "Clear search",
+        "group": "General",
+        "type": "text",
+        "value": "Clear search "
+      },
+      {
+        "key": "field-006",
+        "label": "Link",
+        "group": "General",
+        "type": "link",
+        "value": "/contact"
+      },
+      {
+        "key": "field-007",
+        "label": "Ask a question",
+        "group": "General",
+        "type": "text",
+        "value": "Ask a question "
+      }
+    ]
+  }
+}

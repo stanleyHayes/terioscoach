@@ -1,5 +1,6 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { Section } from "@/components/marketing/Section";
@@ -30,6 +31,8 @@ interface BlogPageProps {
 }
 
 export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const copy = await getSiteCopy("blog");
+
   const { category, tag } = await searchParams;
 
   let posts: Post[] | null;
@@ -45,25 +48,23 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   return (
     <>
       <PageIntro
-        eyebrow="Journal"
-        title="Notes for the time between sessions"
-        description="Recovery is mostly what happens after you leave. These are the things worth knowing in between — written plainly, no hurry."
+        eyebrow={copy("field-001", "Journal")}
+        title={copy("field-002", "Notes for the time between sessions")}
+        description={copy("field-003", "Recovery is mostly what happens after you leave. These are the things worth knowing in between — written plainly, no hurry.")}
       />
 
       <Section ariaLabelledby="journal-heading">
         <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
           <h2 id="journal-heading" className="sr-only">
-            Articles
-          </h2>
+            {copy("field-004", "Articles ")}</h2>
           {filter ? (
             <p className="text-sm text-ink-muted">
-              Showing <span className="font-medium text-ink">{filter}</span>
+              {copy("field-005", "Showing ")}<span className="font-medium text-ink">{filter}</span>
               <Link
-                href="/blog"
+                href={copy("field-006", "/blog")}
                 className="ml-3 text-sm font-medium text-primary transition-colors duration-instant ease-out hover:text-primary-hover"
               >
-                Show everything
-              </Link>
+                {copy("field-007", "Show everything ")}</Link>
             </p>
           ) : null}
         </div>
@@ -74,19 +75,15 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             className="mx-auto max-w-[480px] rounded-xl border border-border bg-surface-raised p-8 text-center"
           >
             <h3 className="font-display text-xl leading-[1.3] font-medium text-ink">
-              The journal didn&rsquo;t load
-            </h3>
+              {copy("field-008", "The journal didn’t load ")}</h3>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              Something interrupted the connection on our side. Nothing is wrong
-              on yours — try again in a moment.
-            </p>
+              {copy("field-009", "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. ")}</p>
             <div className="mt-6">
               <Link
-                href="/blog"
+                href={copy("field-010", "/blog")}
                 className={buttonClasses({ variant: "secondary" })}
               >
-                Try again
-              </Link>
+                {copy("field-011", "Try again ")}</Link>
             </div>
           </div>
         ) : posts.length === 0 ? (
@@ -94,25 +91,24 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             icon={<BookOpen className="size-8" />}
             title={
               filter
-                ? "Nothing under that heading yet"
-                : "The first note is on its way"
+                ? copy("field-012", "Nothing under that heading yet")
+                : copy("field-013", "The first note is on its way")
             }
             description={
               filter
-                ? "Try the full journal — there may be something close by."
-                : "When an article is published it appears here. Check back soon."
+                ? copy("field-014", "Try the full journal — there may be something close by.")
+                : copy("field-015", "When an article is published it appears here. Check back soon.")
             }
             action={
               filter ? (
                 <Link
-                  href="/blog"
+                  href={copy("field-016", "/blog")}
                   className={buttonClasses({
                     variant: "secondary",
                     size: "sm",
                   })}
                 >
-                  Read everything
-                </Link>
+                  {copy("field-017", "Read everything ")}</Link>
               ) : undefined
             }
           />

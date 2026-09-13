@@ -132,3 +132,5 @@ describe("Services page", () => {
     ).toBeTruthy();
   });
 });
+
+vi.mock("@/lib/site-copy", () => ({ getSiteCopy: async () => (_key: string, fallback: string) => fallback }));

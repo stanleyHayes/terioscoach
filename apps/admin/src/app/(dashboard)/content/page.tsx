@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { WebsiteEditor } from "@/components/content/WebsiteEditor";
 import { ArticleSection } from "@/components/content/ArticleSection";
 import { FAQManager } from "@/components/content/FAQManager";
 import { TestimonialModeration } from "@/components/content/TestimonialModeration";
@@ -21,6 +22,7 @@ import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
  */
 
 const TABS = [
+  { id: "website", label: "Website sections" },
   { id: "pages", label: "Pages" },
   { id: "blog", label: "Blog" },
   { id: "faqs", label: "FAQs" },
@@ -89,6 +91,7 @@ function ContentTabs() {
             aria-labelledby={`content-tab-${id}`}
             tabIndex={0}
           >
+            {id === "website" ? <WebsiteEditor /> : null}
             {id === "pages" ? <ArticleSection kind="page" /> : null}
             {id === "blog" ? <ArticleSection kind="post" /> : null}
             {id === "faqs" ? <FAQManager /> : null}

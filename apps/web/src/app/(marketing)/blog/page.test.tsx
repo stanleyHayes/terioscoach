@@ -87,3 +87,5 @@ describe("BlogPage", () => {
     expect(screen.getByRole("link", { name: /try again/i })).toBeTruthy();
   });
 });
+
+vi.mock("@/lib/site-copy", () => ({ getSiteCopy: async () => (_key: string, fallback: string) => fallback }));

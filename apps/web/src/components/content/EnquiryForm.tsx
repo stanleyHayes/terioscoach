@@ -1,4 +1,6 @@
 "use client";
+import { useSiteCopy } from "@/lib/site-copy-context";
+
 
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -25,6 +27,8 @@ interface FieldErrors {
 }
 
 export function EnquiryForm() {
+  const copy = useSiteCopy("contact-form");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -73,13 +77,10 @@ export function EnquiryForm() {
           <CircleCheck aria-hidden="true" className="size-7 text-success-ink" />
         </span>
         <h2 className="mt-6 font-display text-2xl leading-[1.2] font-medium text-ink">
-          Thank you — it has arrived
-        </h2>
+          {copy("field-001", "Thank you — it has arrived ")}</h2>
         <p className="mx-auto mt-3 max-w-[46ch] text-base leading-[1.6] text-ink-muted [text-wrap:pretty]">
-          Your message is with the practice. You will hear back at{" "}
-          <span className="font-medium text-ink">{email.trim()}</span>, usually
-          within a working day.
-        </p>
+          {copy("field-002", "Your message is with the practice. You will hear back at")}{" "}
+          <span className="font-medium text-ink">{email.trim()}</span>{copy("field-003", ", usually within a working day. ")}</p>
       </div>
     );
   }
@@ -98,7 +99,7 @@ export function EnquiryForm() {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <TextInput
-          label="Your name"
+          label={copy("field-004", "Your name")}
           name="name"
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -107,7 +108,7 @@ export function EnquiryForm() {
           required
         />
         <TextInput
-          label="Email"
+          label={copy("field-005", "Email")}
           name="email"
           type="email"
           value={email}
@@ -120,7 +121,7 @@ export function EnquiryForm() {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <TextInput
-          label="Phone"
+          label={copy("field-006", "Phone")}
           name="phone"
           type="tel"
           value={phone}
@@ -129,7 +130,7 @@ export function EnquiryForm() {
           autoComplete="tel"
         />
         <TextInput
-          label="Subject"
+          label={copy("field-007", "Subject")}
           name="subject"
           value={subject}
           onChange={(event) => setSubject(event.target.value)}
@@ -139,8 +140,7 @@ export function EnquiryForm() {
 
       <div>
         <label htmlFor="enquiry-message" className="block text-sm font-medium text-ink">
-          Your message
-        </label>
+          {copy("field-008", "Your message ")}</label>
         <textarea
           id="enquiry-message"
           name="message"
@@ -174,11 +174,9 @@ export function EnquiryForm() {
         {/* `loading` swaps the label for a spinner and locks the width, so
             the label stays constant. */}
         <Button type="submit" loading={sending}>
-          Send message
-        </Button>
+          {copy("field-009", "Send message ")}</Button>
         <p className="text-[13px] leading-[1.5] text-ink-faint">
-          Your details go to the practice only.
-        </p>
+          {copy("field-010", "Your details go to the practice only. ")}</p>
       </div>
     </form>
   );

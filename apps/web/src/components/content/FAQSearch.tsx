@@ -1,4 +1,6 @@
 "use client";
+import { useSiteCopy } from "@/lib/site-copy-context";
+
 
 import { ChevronDown, Search, SearchX } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +25,8 @@ export interface FAQSearchProps {
 }
 
 export function FAQSearch({ faqs }: FAQSearchProps) {
+  const copy = useSiteCopy("faq-search");
+
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -44,8 +48,7 @@ export function FAQSearch({ faqs }: FAQSearchProps) {
             htmlFor="faq-search"
             className="block text-sm font-medium text-ink"
           >
-            Search the questions
-          </label>
+            {copy("field-001", "Search the questions ")}</label>
           <div className="relative mt-1.5">
             <Search
               size={16}
@@ -57,7 +60,7 @@ export function FAQSearch({ faqs }: FAQSearchProps) {
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try “payment” or “first session”"
+              placeholder={copy("field-002", "Try “payment” or “first session”")}
               autoComplete="off"
               className={cn(
                 "h-12 w-full rounded-full border border-border bg-surface-raised pl-10 pr-4 text-base text-ink shadow-sm",
@@ -83,8 +86,8 @@ export function FAQSearch({ faqs }: FAQSearchProps) {
       {matchCount === 0 ? (
         <EmptyState
           icon={<SearchX className="size-8" />}
-          title="Nothing matches that"
-          description="Try a different word — or send the question over and it will be answered directly."
+          title={copy("field-003", "Nothing matches that")}
+          description={copy("field-004", "Try a different word — or send the question over and it will be answered directly.")}
           action={
             <>
               <button
@@ -92,11 +95,9 @@ export function FAQSearch({ faqs }: FAQSearchProps) {
                 onClick={() => setQuery("")}
                 className={buttonClasses({ variant: "secondary", size: "sm" })}
               >
-                Clear search
-              </button>
-              <Link href="/contact" className={buttonClasses({ size: "sm" })}>
-                Ask a question
-              </Link>
+                {copy("field-005", "Clear search ")}</button>
+              <Link href={copy("field-006", "/contact")} className={buttonClasses({ size: "sm" })}>
+                {copy("field-007", "Ask a question ")}</Link>
             </>
           }
         />

@@ -1,21 +1,16 @@
 "use client";
+import { useSiteCopy } from "@/lib/site-copy-context";
+
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { ContentImage as Image } from "@/components/content/ContentImage";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/services", label: "Services" },
-  { href: "/blog", label: "Blog" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/contact", label: "Contact" },
-];
+
 const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://app.terioscoach.com";
 
 const wordmarkClasses =
@@ -30,6 +25,17 @@ const iconButtonClasses = cn(
 /** Customer top nav (design-system §30): sticky 72px bar, max-width 1200px,
  * underline-grow links, scrolled backdrop, full-screen mobile overlay menu. */
 export function SiteNav() {
+  const copy = useSiteCopy("header");
+
+const links = [
+  { href: "/", label: copy("field-001", "Home") },
+  { href: copy("field-002", "/about"), label: copy("field-003", "About") },
+  { href: copy("field-004", "/services"), label: copy("field-005", "Services") },
+  { href: copy("field-006", "/blog"), label: copy("field-007", "Blog") },
+  { href: copy("field-008", "/faq"), label: copy("field-009", "FAQ") },
+  { href: copy("field-010", "/contact"), label: copy("field-011", "Contact") },
+];
+
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -114,9 +120,9 @@ export function SiteNav() {
       >
         <Link href="/" className={wordmarkClasses}>
           <span className="flex size-10 items-center justify-center rounded-[.85rem] bg-surface-raised p-1 shadow-xs transition-transform duration-base group-hover:-rotate-2">
-            <Image src="/images/brand/identity/terios-mark.svg" alt="" width={40} height={60} className="h-full w-auto" />
+            <Image unoptimized src={copy("field-012", "/images/brand/identity/terios-mark.svg")} alt="" width={40} height={60} className="h-full w-auto" />
           </span>
-          <span>Terios <span className="font-medium text-ink-muted">Wellness</span></span>
+          <span>{copy("field-013", "Terios ")}<span className="font-medium text-ink-muted">{copy("field-014", "Wellness")}</span></span>
         </Link>
 
         <ul className="mx-auto hidden items-center gap-1 rounded-full border border-border/70 bg-surface-sunken/70 p-1 lg:flex">
@@ -143,10 +149,9 @@ export function SiteNav() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <a href={`${portalUrl}/login`} className={buttonClasses({ variant: "ghost", size: "sm" })}>
-            Sign in
-          </a>
-          <Link href="/work-with-me" className={buttonClasses({ variant: "primary", size: "sm" })}>
-            Book now <ArrowUpRight aria-hidden="true" className="size-3.5" />
+            {copy("field-015", "Sign in ")}</a>
+          <Link href={copy("field-016", "/work-with-me")} className={buttonClasses({ variant: "primary", size: "sm" })}>
+            {copy("field-017", "Book now ")}<ArrowUpRight aria-hidden="true" className="size-3.5" />
           </Link>
         </div>
 
@@ -172,7 +177,7 @@ export function SiteNav() {
           className="pointer-events-auto fixed inset-0 z-overlay flex w-full max-w-full flex-col overflow-x-hidden overflow-y-hidden bg-eucalyptus-900 text-sand-0 lg:hidden"
         >
           <div className="flex h-[76px] items-center justify-between border-b border-sand-0/12 px-6">
-            <span className="inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em]"><span className="flex size-10 items-center justify-center rounded-[.85rem] bg-sand-0 p-1"><Image src="/images/brand/identity/terios-mark.svg" alt="" width={40} height={60} className="h-full w-auto" /></span>Terios Wellness</span>
+            <span className="inline-flex items-center gap-3 font-display text-xl font-semibold tracking-[-0.035em]"><span className="flex size-10 items-center justify-center rounded-[.85rem] bg-sand-0 p-1"><Image  src={copy("field-018", "/images/brand/identity/terios-mark.svg")} alt="" width={40} height={60} className="h-full w-auto" /></span>{copy("field-019", "Terios Wellness")}</span>
             <button
               type="button"
               aria-label="Close menu"
@@ -185,7 +190,7 @@ export function SiteNav() {
 
           <nav aria-label="Mobile" className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-8">
             <div aria-hidden="true" className="absolute -right-24 top-8 size-64 rounded-full border border-eucalyptus-700" />
-            <p className="mb-6 text-[10px] font-semibold uppercase tracking-[.16em] text-eucalyptus-300">Navigate the practice</p>
+            <p className="mb-6 text-[10px] font-semibold uppercase tracking-[.16em] text-eucalyptus-300">{copy("field-020", "Navigate the practice")}</p>
             <ul className="relative flex flex-col">
               {links.map((link, index) => {
                 const active = isActive(link.href);
@@ -211,15 +216,13 @@ export function SiteNav() {
           </nav>
 
           <div className="flex flex-col gap-3 border-t border-sand-0/12 bg-eucalyptus-800/35 px-6 py-6">
-            <Link href="/work-with-me" className={buttonClasses({ fullWidth: true })}>
-              Book now
-            </Link>
+            <Link href={copy("field-021", "/work-with-me")} className={buttonClasses({ fullWidth: true })}>
+              {copy("field-022", "Book now ")}</Link>
             <a
               href={`${portalUrl}/login`}
               className={buttonClasses({ variant: "secondary", fullWidth: true, className: "border-sand-0/20 text-sand-0 hover:bg-sand-0/8" })}
             >
-              Sign in
-            </a>
+              {copy("field-023", "Sign in ")}</a>
           </div>
         </div>
       )}

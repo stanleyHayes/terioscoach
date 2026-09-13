@@ -93,6 +93,13 @@ func run() error {
 			return fmt.Errorf("ensure indexes: %w", err)
 		}
 
+		migrationCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err = mongodb.RetireLaunchSample(migrationCtx, db)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("migrate practice catalog: %w", err)
+		}
+
 		authService, err := buildAuthService(cfg, db)
 		if err != nil {
 			return err

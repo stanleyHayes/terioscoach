@@ -1,6 +1,10 @@
+"use client";
+import { useSiteCopy } from "@/lib/site-copy-context";
 import { Leaf } from "lucide-react";
 
 export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+  const copy = useSiteCopy("intro");
+
   return (
     <header className="relative overflow-hidden border-b border-eucalyptus-800 bg-eucalyptus-900 text-sand-0">
       <div aria-hidden="true" className="absolute inset-0 opacity-50 [background-image:radial-gradient(circle_at_82%_16%,rgba(157,195,174,.22),transparent_24rem),radial-gradient(circle_at_8%_110%,rgba(222,166,132,.14),transparent_28rem)]" />
@@ -15,8 +19,8 @@ export function PageIntro({ eyebrow, title, description }: { eyebrow: string; ti
           <p className="mt-8 max-w-[58ch] text-lg leading-[1.7] text-eucalyptus-200">{description}</p>
         </div>
         <div className="terios-intro-note hidden self-end border-l border-sand-0/15 pl-6 lg:block">
-          <p className="text-xs leading-relaxed text-eucalyptus-300">Terios field note</p>
-          <p className="mt-2 text-sm leading-relaxed text-sand-0/75">Clinical care, recorded with warmth and kept intentionally personal.</p>
+          <p className="text-xs leading-relaxed text-eucalyptus-300">{copy("field-001", "Terios field note")}</p>
+          <p className="mt-2 text-sm leading-relaxed text-sand-0/75">{copy("field-002", "Clinical care, recorded with warmth and kept intentionally personal.")}</p>
         </div>
       </div>
     </header>

@@ -1,3 +1,4 @@
+import { getSiteCopy } from "@/lib/site-copy";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HelpCircle } from "lucide-react";
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FAQPage() {
+  const copy = await getSiteCopy("faq");
+
   let faqs: FAQ[] | null;
   try {
     faqs = await listFAQs();
@@ -33,15 +36,14 @@ export default async function FAQPage() {
   return (
     <>
       <PageIntro
-        eyebrow="Questions"
-        title="The things people ask first"
-        description="Booking, payment, what a first session is like. If yours is not here, ask it — a real answer comes back."
+        eyebrow={copy("field-001", "Questions")}
+        title={copy("field-002", "The things people ask first")}
+        description={copy("field-003", "Booking, payment, what a first session is like. If yours is not here, ask it — a real answer comes back.")}
       />
 
       <Section ariaLabelledby="faq-heading">
         <h2 id="faq-heading" className="sr-only">
-          Frequently asked questions
-        </h2>
+          {copy("field-004", "Frequently asked questions ")}</h2>
 
         {faqs === null ? (
           <div
@@ -49,30 +51,25 @@ export default async function FAQPage() {
             className="mx-auto max-w-[480px] rounded-xl border border-border bg-surface-raised p-8 text-center"
           >
             <h3 className="font-display text-xl leading-[1.3] font-medium text-ink">
-              The questions didn&rsquo;t load
-            </h3>
+              {copy("field-005", "The questions didn’t load ")}</h3>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              Something interrupted the connection on our side. Nothing is wrong
-              on yours — try again in a moment.
-            </p>
+              {copy("field-006", "Something interrupted the connection on our side. Nothing is wrong on yours — try again in a moment. ")}</p>
             <div className="mt-6">
               <Link
-                href="/faq"
+                href={copy("field-007", "/faq")}
                 className={buttonClasses({ variant: "secondary" })}
               >
-                Try again
-              </Link>
+                {copy("field-008", "Try again ")}</Link>
             </div>
           </div>
         ) : faqs.length === 0 ? (
           <EmptyState
             icon={<HelpCircle className="size-8" />}
-            title="No questions published yet"
-            description="Ask yours directly and it will be answered — and probably end up here."
+            title={copy("field-009", "No questions published yet")}
+            description={copy("field-010", "Ask yours directly and it will be answered — and probably end up here.")}
             action={
-              <Link href="/contact" className={buttonClasses({ size: "sm" })}>
-                Ask a question
-              </Link>
+              <Link href={copy("field-011", "/contact")} className={buttonClasses({ size: "sm" })}>
+                {copy("field-012", "Ask a question ")}</Link>
             }
           />
         ) : (
@@ -83,16 +80,12 @@ export default async function FAQPage() {
       <Section background="sunken">
         <div className="mx-auto max-w-[560px] text-center">
           <h2 className="font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink [text-wrap:balance]">
-            Still wondering something?
-          </h2>
+            {copy("field-013", "Still wondering something? ")}</h2>
           <p className="mt-4 text-base leading-[1.6] text-ink-muted [text-wrap:pretty]">
-            Send it over. Questions are answered by the practitioner, not a form
-            letter.
-          </p>
+            {copy("field-014", "Send it over. Questions are answered by the practitioner, not a form letter. ")}</p>
           <div className="mt-8">
-            <Link href="/contact" className={buttonClasses()}>
-              Get in touch
-            </Link>
+            <Link href={copy("field-015", "/contact")} className={buttonClasses()}>
+              {copy("field-016", "Get in touch ")}</Link>
           </div>
         </div>
       </Section>

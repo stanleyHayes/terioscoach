@@ -144,3 +144,5 @@ describe("Work With Me page", () => {
     ).toBe("/work-with-me");
   });
 });
+
+vi.mock("@/lib/site-copy", () => ({ getSiteCopy: async () => (_key: string, fallback: string) => fallback }));

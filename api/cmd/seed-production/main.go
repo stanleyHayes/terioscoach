@@ -32,26 +32,8 @@ var accounts = []account{
 	{"hayfordstanley@gmail.com", "Hayford Stanley", "TERIOS_OWNER_PASSWORD"},
 }
 
-type bookableService struct {
-	name, description, currency string
-	durationMinutes, sortOrder  int
-	priceMinor                  int64
-}
-
-// The supplied practice copy explicitly offers an obligation-free first
-// conversation. Paid coaching prices were not supplied, so the production
-// seed must not invent them; the full dashboard CRUD remains the source of
-// truth for Nurse Coaching and Holistic Coaching prices.
-var productionServices = []bookableService{
-	{
-		name:            "Introductory wellness conversation",
-		description:     "A private, obligation-free conversation to explore what support you are looking for and whether Terios is the right fit.",
-		durationMinutes: 30,
-		priceMinor:      0,
-		currency:        "USD",
-		sortOrder:       0,
-	},
-}
+// Bookable services are created exclusively through the practice dashboard.
+// Production provisioning must never recreate a deleted offering.
 
 type marketingPage struct{ slug, title, body, coverImage string }
 
@@ -183,22 +165,6 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 	); err != nil {
 		return fmt.Errorf("normalize catalog currency to USD: %w", err)
 	}
-	for _, service := range productionServices {
-		_, err := db.Collection("services").UpdateOne(ctx,
-			bson.M{"practitionerId": owner.ID, "name": service.name},
-			bson.M{"$setOnInsert": bson.M{
-				"practitionerId": owner.ID,
-				"name":           service.name, "description": service.description,
-				"durationMin": service.durationMinutes, "priceKobo": service.priceMinor,
-				"currency": service.currency, "active": true, "sortOrder": service.sortOrder,
-				"createdAt": now, "updatedAt": now,
-			}},
-			options.UpdateOne().SetUpsert(true),
-		)
-		if err != nil {
-			return fmt.Errorf("provision service %s: %w", service.name, err)
-		}
-	}
 	if err := migrateUnpaidPricedBookings(ctx, db, owner.ID, now); err != nil {
 		return err
 	}
@@ -220,7 +186,7 @@ func ensureCatalog(ctx context.Context, db *mongo.Database) error {
 			return fmt.Errorf("provision availability weekday %d: %w", weekday, err)
 		}
 	}
-	slog.Info("production catalog ready", "owner", catalogOwnerEmail, "services", len(productionServices))
+	slog.Info("production catalog ready", "owner", catalogOwnerEmail, "services", "managed in dashboard")
 	return nil
 }
 
