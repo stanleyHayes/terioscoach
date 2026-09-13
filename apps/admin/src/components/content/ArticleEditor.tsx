@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleAlert } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ImagePicker } from "@/components/content/ImagePicker";
 import { MarkdownEditor } from "@/components/content/MarkdownEditor";
 import { Button } from "@/components/ui/Button";
@@ -83,11 +83,30 @@ export function ArticleEditor({
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const dirty = (Object.keys(values) as (keyof ArticleValues)[]).some(
     (key) => values[key] !== initial[key],
   );
 
-  function update<K extends keyof ArticleValues>(key: K, value: ArticleValues[K]) {
+  useEffect(() => {
+    if (!dirty || submitting) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, submitting]);
+
+  function leave() {
+    if (dirty) setConfirmLeave(true);
+    else onClose();
+  }
+
+  function update<K extends keyof ArticleValues>(
+    key: K,
+    value: ArticleValues[K],
+  ) {
     setValues((current) => ({ ...current, [key]: value }));
     setFieldErrors((errors) => ({ ...errors, [key]: undefined }));
   }
@@ -98,7 +117,11 @@ export function ArticleEditor({
       title,
       slug: slugTouched ? current.slug : slugify(title),
     }));
-    setFieldErrors((errors) => ({ ...errors, title: undefined, slug: undefined }));
+    setFieldErrors((errors) => ({
+      ...errors,
+      title: undefined,
+      slug: undefined,
+    }));
   }
 
   function validate(): boolean {
@@ -129,7 +152,9 @@ export function ArticleEditor({
       (onSaved ?? onClose)();
     } catch (error) {
       setFormError(
-        error instanceof ApiError ? error.message : "Something went wrong. Try again.",
+        error instanceof ApiError
+          ? error.message
+          : "Something went wrong. Try again.",
       );
     } finally {
       setSubmitting(false);
@@ -137,54 +162,173 @@ export function ArticleEditor({
   }
 
   const noun = kind === "page" ? "page" : "post";
-  const publicPath = kind === "page" ? `/${values.slug}` : `/blog/${values.slug}`;
+  const publicPath =
+    kind === "page" ? `/${values.slug}` : `/blog/${values.slug}`;
 
   const form = (
-      <form id="article-form" noValidate onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {formError ? (
-          <div role="alert" className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink">
-            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
-            {formError}
-          </div>
-        ) : null}
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <TextInput label="Title" required data-autofocus value={values.title} error={fieldErrors.title} placeholder={kind === "page" ? "About the practice" : "Five ways to rest properly"} onChange={(event) => handleTitle(event.target.value)} />
-          <TextInput label="Web address" required value={values.slug} error={fieldErrors.slug} hint={values.slug ? `Visitors will find this at ${publicPath}` : undefined} onChange={(event) => { setSlugTouched(true); update("slug", event.target.value); }} />
+    <form
+      id="article-form"
+      noValidate
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-6"
+    >
+      {formError ? (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
+        >
+          <CircleAlert
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          />
+          {formError}
         </div>
+      ) : null}
 
-        {kind === "post" ? <TextArea label="Excerpt" rows={2} value={values.excerpt} hint="The line that appears under the title on the blog index." onChange={(event) => update("excerpt", event.target.value)} /> : null}
+      <div className="flex flex-col gap-5">
+        <TextInput
+          label="Title"
+          required
+          data-autofocus
+          value={values.title}
+          error={fieldErrors.title}
+          placeholder={
+            kind === "page"
+              ? "About the practice"
+              : "Five ways to rest properly"
+          }
+          onChange={(event) => handleTitle(event.target.value)}
+        />
+        <TextInput
+          label="Web address"
+          required
+          value={values.slug}
+          error={fieldErrors.slug}
+          hint={
+            values.slug ? `Visitors will find this at ${publicPath}` : undefined
+          }
+          onChange={(event) => {
+            setSlugTouched(true);
+            update("slug", event.target.value);
+          }}
+        />
+      </div>
 
-        {kind === "page" ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-start">
-            <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
-            <TextArea label="Body" required rows={16} value={values.body} error={fieldErrors.body} hint="Plain text. A blank line starts a new paragraph." onChange={(event) => update("body", event.target.value)} />
-          </div>
-        ) : (
-          <>
-            <ImagePicker value={values.coverImage} disabled={submitting} onChange={(url) => update("coverImage", url)} />
-            <MarkdownEditor value={values.body} error={fieldErrors.body} onChange={(body) => update("body", body)} />
-          </>
-        )}
+      {kind === "post" ? (
+        <TextArea
+          label="Excerpt"
+          rows={2}
+          value={values.excerpt}
+          hint="The line that appears under the title on the blog index."
+          onChange={(event) => update("excerpt", event.target.value)}
+        />
+      ) : null}
 
-        {kind === "post" ? <div className="grid gap-4 sm:grid-cols-2"><TextInput label="Category" value={values.category} placeholder="Wellbeing" onChange={(event) => update("category", event.target.value)} /><TextInput label="Tags" value={values.tags} hint="Separated by commas." placeholder="rest, sleep" onChange={(event) => update("tags", event.target.value)} /></div> : null}
+      <ImagePicker
+        value={values.coverImage}
+        disabled={submitting}
+        onChange={(url) => update("coverImage", url)}
+      />
+      <MarkdownEditor
+        value={values.body}
+        error={fieldErrors.body}
+        onChange={(body) => update("body", body)}
+      />
 
-        <fieldset className="flex flex-col gap-4 rounded-2xl border border-border p-5">
-          <legend className="px-1.5 text-[13px] font-medium text-ink-muted">Search engines</legend>
-          <TextInput label="Meta title" value={values.metaTitle} hint="Leave blank to use the title above." onChange={(event) => update("metaTitle", event.target.value)} />
-          <TextArea label="Meta description" rows={2} value={values.metaDescription} hint="Around 155 characters is what a search result shows." onChange={(event) => update("metaDescription", event.target.value)} />
-        </fieldset>
-      </form>
+      {kind === "post" ? (
+        <div className="flex flex-col gap-4">
+          <TextInput
+            label="Category"
+            value={values.category}
+            placeholder="Wellbeing"
+            onChange={(event) => update("category", event.target.value)}
+          />
+          <TextInput
+            label="Tags"
+            value={values.tags}
+            hint="Separated by commas."
+            placeholder="rest, sleep"
+            onChange={(event) => update("tags", event.target.value)}
+          />
+        </div>
+      ) : null}
+
+      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border p-5">
+        <legend className="px-1.5 text-[13px] font-medium text-ink-muted">
+          Search engines
+        </legend>
+        <TextInput
+          label="Meta title"
+          value={values.metaTitle}
+          hint="Leave blank to use the title above."
+          onChange={(event) => update("metaTitle", event.target.value)}
+        />
+        <TextArea
+          label="Meta description"
+          rows={2}
+          value={values.metaDescription}
+          hint="Around 155 characters is what a search result shows."
+          onChange={(event) => update("metaDescription", event.target.value)}
+        />
+      </fieldset>
+    </form>
   );
 
   if (presentation === "page") {
     return (
       <div className="flex flex-col gap-6">
         <header className="sticky top-0 z-[30] -mx-4 flex flex-wrap items-center justify-between gap-4 border-b border-border bg-surface/95 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-primary">Publishing desk</p><h1 className="mt-1 font-display text-2xl font-semibold text-ink">{editing ? "Edit blog post" : "New blog post"}</h1><p className="mt-1 text-xs text-ink-muted">{editing && article?.status === "published" ? "This post is live. Saving updates it immediately." : "Saving keeps this as a draft until you publish it."}</p></div>
-          <div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Back to blog</Button><Button type="submit" form="article-form" loading={submitting}>{editing ? "Save changes" : "Create draft"}</Button></div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-primary">
+              Publishing desk
+            </p>
+            <h1 className="mt-1 font-display text-2xl font-semibold text-ink">
+              {editing ? `Edit ${noun}` : `New ${noun}`}
+            </h1>
+            <p className="mt-1 text-xs text-ink-muted">
+              {editing && article?.status === "published"
+                ? "This is live. Saving updates it immediately."
+                : "Saving keeps this as a draft until you publish it."}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" disabled={submitting} onClick={leave}>
+              Back to {kind === "page" ? "pages" : "blog"}
+            </Button>
+            <Button type="submit" form="article-form" loading={submitting}>
+              {editing ? "Save changes" : "Create draft"}
+            </Button>
+          </div>
         </header>
-        <div className="mx-auto w-full max-w-5xl rounded-[1.75rem] border border-border/70 bg-surface-raised/65 p-5 shadow-[0_24px_80px_rgba(0,0,0,.07)] sm:p-8">{form}</div>
+        {confirmLeave && (
+          <Modal
+            open
+            onClose={() => setConfirmLeave(false)}
+            title="Discard unsaved changes?"
+            description="Your changes will be lost if you leave now."
+            footer={
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setConfirmLeave(false)}
+                >
+                  Keep editing
+                </Button>
+                <Button variant="danger" onClick={onClose}>
+                  Discard changes
+                </Button>
+              </>
+            }
+          >
+            <p className="text-sm text-ink-muted">
+              Save your work before returning to the list.
+            </p>
+          </Modal>
+        )}
+        <div className="mx-auto w-full max-w-5xl rounded-[1.75rem] border border-border/70 bg-surface-raised/65 p-5 shadow-[0_24px_80px_rgba(0,0,0,.07)] sm:p-8">
+          {form}
+        </div>
       </div>
     );
   }

@@ -487,3 +487,9 @@ Verification: full web suite (188 tests), full admin suite (454 tests), final fo
 Owner: Codex. Done: new `/services/new` and `/services/[id]/edit` routes replace the long form dialog. Service and booking details use responsive page sections with sticky save/back controls, existing media/agreement/price validation, discard confirmation and reload protection. Missing services cannot become new records; agreement-loading failures allow retry rather than silently clearing requirements.
 
 Verification: 13 service tests, admin lint/build and diff checks passed. Production browser with isolated API fixtures created a service, verified USD minor units, loaded its edit URL directly after refresh, and saved an update back to the list. Desktop/390px mobile screenshots inspected; no form dialog, horizontal overflow or page errors. No live services changed.
+
+## 33. Page routes and rich-text publishing editor (13 Sep 2026)
+
+Owner: Codex. Done: dedicated `/content/pages/new` and `/content/pages/[id]/edit` routes replace page dialogs. Title, web address, cover image, body and metadata stack vertically. The shared page/blog body editor now has a branded Tiptap toolbar for headings, marks, lists/tasks, quotes, code, links, media-library images, tables, dividers and real undo/redo, plus Markdown and GFM preview modes. Existing Markdown is preserved when switching modes without editing. Unsaved back/reload protection and partial-create retry recovery are included.
+
+Verification: all 460 admin tests, lint, production build and diff checks passed. Production browser with isolated API fixtures verified dedicated navigation, visual bold and undo, GFM round trips, create/save, direct edit URL reload, preserved slug on title changes and mobile save. Desktop and 390px screenshots inspected; no horizontal overflow or browser errors. No live content changed during testing.

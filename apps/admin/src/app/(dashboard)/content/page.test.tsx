@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FAQ, Page, Post, Testimonial } from "@/lib/content";
+import { PageEditorPage } from "@/components/content/PageEditorPage";
 import ContentPage from "./page";
 
 const navigation = vi.hoisted(() => ({ query: "", listeners: new Set<() => void>() }));
@@ -11,7 +12,7 @@ vi.mock("next/navigation", async () => {
       (listener) => { navigation.listeners.add(listener); return () => { navigation.listeners.delete(listener); }; },
       () => navigation.query,
     )),
-    useRouter: () => ({ replace: (url: string) => { navigation.query = url.split("?")[1] || ""; navigation.listeners.forEach((listener) => listener()); } }),
+    useRouter: () => ({ push: vi.fn(), replace: (url: string) => { navigation.query = url.split("?")[1] || ""; navigation.listeners.forEach((listener) => listener()); } }),
   };
 });
 beforeEach(() => { navigation.query = ""; });
@@ -62,16 +63,14 @@ vi.mock("@/lib/content", async (importOriginal) => {
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/auth")>();
-  return {
-    ...original,
-    useAuth: () => ({
+  const auth = {
       status: "authenticated",
       user: { id: "prac-1", email: "t@example.com", role: "practitioner", name: "Terios" },
       session: { accessToken: "a1", refreshToken: "r1" },
       refreshCallbacks: { onTokensRefreshed: vi.fn() },
       logout: vi.fn(),
-    }),
   };
+  return { ...original, useAuth: () => auth };
 });
 
 function aPage(overrides: Partial<Page> = {}): Page {
@@ -201,10 +200,9 @@ describe("ContentPage", () => {
   });
 
   it("derives the slug from the title until the slug is edited by hand", async () => {
-    render(<ContentPage />);
-    await screen.findByText("About the practice");
-
-    fireEvent.click(screen.getByRole("button", { name: /new page/i }));
+    render(<PageEditorPage />);
+    await screen.findByRole("heading", { name: "New page" });
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
     const title = screen.getByRole("textbox", { name: /^title/i });
     fireEvent.change(title, { target: { value: "Our Approach to Rest" } });
 
@@ -219,17 +217,16 @@ describe("ContentPage", () => {
   });
 
   it("creates a page as a draft and never publishes on save", async () => {
-    render(<ContentPage />);
-    await screen.findByText("About the practice");
-
-    fireEvent.click(screen.getByRole("button", { name: /new page/i }));
+    render(<PageEditorPage />);
+    await screen.findByRole("heading", { name: "New page" });
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
     fireEvent.change(screen.getByRole("textbox", { name: /^title/i }), {
       target: { value: "Our approach" },
     });
     fireEvent.change(screen.getByRole("textbox", { name: /^body/i }), {
       target: { value: "How we work." },
     });
-    fireEvent.click(screen.getByRole("button", { name: /create page/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create draft/i }));
 
     await waitFor(() => expect(pageCreate).toHaveBeenCalled());
     expect(pageSetPublished).not.toHaveBeenCalled();
@@ -241,16 +238,40 @@ describe("ContentPage", () => {
   });
 
   it("refuses to save a page with no body", async () => {
-    render(<ContentPage />);
-    await screen.findByText("About the practice");
-
-    fireEvent.click(screen.getByRole("button", { name: /new page/i }));
+    render(<PageEditorPage />);
+    await screen.findByRole("heading", { name: "New page" });
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
     fireEvent.change(screen.getByRole("textbox", { name: /^title/i }), {
       target: { value: "Half-written" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /create page/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create draft/i }));
 
     expect(await screen.findByText(/nothing to publish yet/i)).toBeTruthy();
+    expect(pageCreate).not.toHaveBeenCalled();
+  });
+
+  it("retries a partially saved draft without creating a duplicate", async () => {
+    pageUpdate.mockRejectedValueOnce(new Error("network"));
+    render(<PageEditorPage />);
+    await screen.findByRole("heading", { name: "New page" });
+    fireEvent.change(screen.getByRole("textbox", { name: /^title/i }), { target: { value: "Our approach" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /^body/i }), { target: { value: "How we work." } });
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+    await waitFor(() => expect(pageUpdate).toHaveBeenCalledTimes(2));
+    expect(pageCreate).toHaveBeenCalledTimes(1);
+    expect(pageUpdate.mock.calls[1]![2]).toBe("page-new");
+  });
+
+  it("loads an existing page for editing and keeps its established address", async () => {
+    render(<PageEditorPage pageId="page-1" />);
+    await screen.findByRole("heading", { name: "Edit page" });
+    fireEvent.change(screen.getByRole("textbox", { name: /^title/i }), { target: { value: "Updated practice" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(pageUpdate).toHaveBeenCalled());
+    expect(pageUpdate.mock.lastCall?.slice(2)).toEqual(["page-1", expect.objectContaining({ title: "Updated practice", slug: "about" })]);
     expect(pageCreate).not.toHaveBeenCalled();
   });
 
@@ -269,7 +290,7 @@ describe("ContentPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
 
     await waitFor(() => expect(pageRemove).toHaveBeenCalled());
-    expect(screen.queryByText("About the practice")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("About the practice")).toBeNull());
   });
 
   it("shows a load failure with a way back", async () => {
@@ -424,21 +445,14 @@ describe("ContentPage", () => {
     });
   });
 
-  it("uses no native form controls anywhere in the editor", async () => {
-    const { container } = render(<ContentPage />);
+  it("links to dedicated create and edit pages without opening a dialog", async () => {
+    render(<ContentPage />);
     await screen.findByText("About the practice");
-    fireEvent.click(screen.getByRole("button", { name: /new page/i }));
-
-    expect(container.ownerDocument.querySelectorAll("select").length).toBe(0);
-    expect(
-      container.ownerDocument.querySelectorAll(
-        'input[type="checkbox"], input[type="radio"], input[type="date"]',
-      ).length,
-    ).toBe(0);
-    // Custom validation only — no native bubbles.
-    const form = container.ownerDocument.querySelector("form")!;
-    expect(form.hasAttribute("novalidate")).toBe(true);
+    expect(screen.getByRole("link", { name: "New page" }).getAttribute("href")).toBe("/content/pages/new");
+    expect(screen.getByRole("link", { name: "Edit" }).getAttribute("href")).toBe("/content/pages/page-1/edit");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
+
 });
 
 it("publishes website section edits and reuses the saved record", async () => {

@@ -46,7 +46,7 @@ function ContentTabs() {
     <div data-admin-page="content" className="flex flex-col gap-6">
       <AdminPageHeader eyebrow="Publishing desk" title="Site content" description="Draft, review and publish everything the public site shows. Nothing goes live until you choose it." />
 
-      {tab === "blog" && params.get("saved") === "1" ? <p role="status" className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800">Blog post saved.</p> : null}
+      {(tab === "blog" || tab === "pages") && params.get("saved") === "1" ? <p role="status" className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800">{tab === "pages" ? "Page saved." : "Blog post saved."}</p> : null}
 
       {/* A real tablist: arrow keys move between tabs and only the selected
           panel is in the tab order, which is what a screen reader user

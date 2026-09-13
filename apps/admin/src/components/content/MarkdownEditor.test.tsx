@@ -1,41 +1,55 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { MarkdownEditor } from "./MarkdownEditor";
 
+function Desk({ initial = "" }: { initial?: string }) {
+  const [value, setValue] = useState(initial);
+  return <MarkdownEditor value={value} onChange={setValue} />;
+}
 describe("MarkdownEditor", () => {
-  it("edits Markdown with the toolbar and renders a preview", () => {
-    let value = "hello";
-    const onChange = vi.fn((next: string) => { value = next; });
-    const { rerender } = render(<MarkdownEditor value={value} onChange={onChange} />);
-    const body = screen.getByRole("textbox", { name: /body/i }) as HTMLTextAreaElement;
-    body.setSelectionRange(0, 5);
-    fireEvent.click(screen.getByRole("button", { name: "Bold" }));
-    expect(onChange).toHaveBeenCalledWith("**hello**");
-
-    const markdown = ["## Care", "", "- Rest", "- Hydrate"].join("\n");
-    rerender(<MarkdownEditor value={markdown} onChange={onChange} />);
-    fireEvent.click(screen.getByRole("tab", { name: /preview/i }));
-    expect(screen.getByRole("heading", { name: "Care" })).toBeTruthy();
-    expect(screen.getByText("Hydrate")).toBeTruthy();
+  it("preserves source when switching modes and renders GFM preview", async () => {
+    const source =
+      "## Care\n\n- Rest\n- Hydrate\n\n~~Old~~\n\n| A | B |\n| --- | --- |\n| One | Two |";
+    render(<Desk initial={source} />);
+    await screen.findByRole("textbox", { name: "Body" });
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
+    expect(
+      (screen.getByRole("textbox", { name: /^Body/ }) as HTMLTextAreaElement)
+        .value,
+    ).toBe(source);
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+    const preview = screen.getByRole("article", { name: "Body preview" });
+    expect(within(preview).getByRole("heading", { name: "Care" })).toBeTruthy();
+    expect(within(preview).getByRole("table")).toBeTruthy();
+    expect(preview.querySelector("del")?.textContent).toBe("Old");
   });
-
-  it("inserts fallback text, announces errors and supports undo and redo", () => {
-    const onChange = vi.fn();
-    const exec = vi.fn();
-    Object.defineProperty(document, "execCommand", { value: exec, configurable: true });
-    render(<MarkdownEditor value="" onChange={onChange} error="Body is required" />);
-    fireEvent.click(screen.getByRole("button", { name: "Link" }));
-    expect(onChange).toHaveBeenCalledWith("[link text](https://)");
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    fireEvent.click(screen.getByRole("button", { name: "Redo" }));
-    expect(exec).toHaveBeenNthCalledWith(1, "undo");
-    expect(exec).toHaveBeenNthCalledWith(2, "redo");
-    expect(screen.getByRole("alert").textContent).toContain("Body is required");
+  it("loads Markdown edits back into rich text", async () => {
+    render(<Desk />);
+    fireEvent.click(screen.getByRole("tab", { name: "Markdown" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /^Body/ }), {
+      target: { value: "**Care**" },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Rich text" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("textbox", { name: "Body" }).querySelector("strong")
+          ?.textContent,
+      ).toBe("Care"),
+    );
   });
-
-  it("shows a useful empty preview", () => {
-    render(<MarkdownEditor value="   " onChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole("tab", { name: /preview/i }));
+  it("shows errors and an empty preview", () => {
+    render(
+      <MarkdownEditor value="" onChange={vi.fn()} error="Body is required" />,
+    );
+    expect(screen.getByRole("alert").textContent).toBe("Body is required");
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
     expect(screen.getByText("Nothing to preview yet.")).toBeTruthy();
   });
 });

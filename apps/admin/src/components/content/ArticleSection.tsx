@@ -4,16 +4,15 @@ import { FileText, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArticleEditor,
-  toArticleBody,
-  type ArticleValues,
-} from "@/components/content/ArticleEditor";
-import { EmptyState, ErrorBanner, LoadFailure, Skeletons } from "@/components/content/states";
+  EmptyState,
+  ErrorBanner,
+  LoadFailure,
+  Skeletons,
+} from "@/components/content/states";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { ApiError, type RefreshCallbacks, type Session } from "@/lib/api";
-import { pagesApi, postsApi, type Page, type Post, type PostPatch } from "@/lib/content";
+import { pagesApi, postsApi, type Page, type Post } from "@/lib/content";
 import { useAction, useResource } from "@/lib/use-resource";
 
 /**
@@ -29,47 +28,19 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
 
   const articles = useResource<(Page | Post)[]>(
     (session, callbacks) =>
-      kind === "page" ? pagesApi.list(session, callbacks) : postsApi.list(session, callbacks),
+      kind === "page"
+        ? pagesApi.list(session, callbacks)
+        : postsApi.list(session, callbacks),
     [kind],
   );
   const action = useAction();
-  const [editing, setEditing] = useState<Page | Post | null | undefined>(undefined);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Page | Post | null>(null);
 
-  const items = (articles.data ?? []).filter(article => !article.slug.startsWith("website-content-"));
+  const items = (articles.data ?? []).filter(
+    (article) => !article.slug.startsWith("website-content-"),
+  );
   const liveCount = items.filter((a) => a.status === "published").length;
-
-  async function save(values: ArticleValues) {
-    const existing = editing ?? null;
-    const body = toArticleBody(kind, values);
-
-    // The create route takes slug/title/body only; everything else arrives
-    // as a follow-up patch. That keeps one form shape serving both routes
-    // without the create endpoint having to learn every optional field.
-    const patch = (session: Session, callbacks: RefreshCallbacks, id: string) =>
-      kind === "page"
-        ? pagesApi.update(session, callbacks, id, body)
-        : postsApi.update(session, callbacks, id, body as PostPatch);
-
-    const saved = await action.run<Page | Post>("form", async (session, callbacks) => {
-      if (existing) return patch(session, callbacks, existing.id);
-      const created = await api.create(session, callbacks, {
-        slug: body.slug,
-        title: body.title,
-        body: body.body,
-      });
-      return patch(session, callbacks, created.id);
-    });
-    if (!saved) throw new ApiError(500, "write_failed", "It didn't save. Try again.");
-
-    articles.set((current) => {
-      const list = current ?? [];
-      return existing
-        ? list.map((a) => (a.id === saved.id ? saved : a))
-        : [saved, ...list];
-    });
-  }
 
   async function setPublished(article: Page | Post, published: boolean) {
     setNotice(null);
@@ -77,8 +48,14 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
       api.setPublished(session, callbacks, article.id, published),
     );
     if (updated) {
-      setNotice(published ? `${updated.title} is now published.` : `${updated.title} is now a draft.`);
-      articles.set((current) => (current ?? []).map((a) => (a.id === updated.id ? updated : a)));
+      setNotice(
+        published
+          ? `${updated.title} is now published.`
+          : `${updated.title} is now a draft.`,
+      );
+      articles.set((current) =>
+        (current ?? []).map((a) => (a.id === updated.id ? updated : a)),
+      );
     }
   }
 
@@ -87,7 +64,9 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
       api.remove(session, callbacks, article.id).then(() => true),
     );
     if (done) {
-      articles.set((current) => (current ?? []).filter((a) => a.id !== article.id));
+      articles.set((current) =>
+        (current ?? []).filter((a) => a.id !== article.id),
+      );
       setConfirming(null);
     }
   }
@@ -102,11 +81,32 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
               : "Write something your clients would find useful."
             : `${liveCount} of ${items.length} live on the site`}
         </p>
-        {kind === "page" ? <Button size="sm" onClick={() => setEditing(null)}>New page</Button> : <Link href="/content/posts/new" className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary">Write a post</Link>}
+        {kind === "page" ? (
+          <Link
+            href="/content/pages/new"
+            className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary"
+          >
+            New page
+          </Link>
+        ) : (
+          <Link
+            href="/content/posts/new"
+            className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary"
+          >
+            Write a post
+          </Link>
+        )}
       </div>
 
       <ErrorBanner message={action.error} />
-      {notice ? <p role="status" className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800">{notice}</p> : null}
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-lg bg-eucalyptus-100 px-4 py-3 text-sm text-eucalyptus-800"
+        >
+          {notice}
+        </p>
+      ) : null}
 
       {articles.error ? (
         <LoadFailure message={articles.error} onRetry={articles.refresh} />
@@ -114,7 +114,9 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
         <Skeletons label={`Loading ${noun}s…`} />
       ) : items.length === 0 ? (
         <EmptyState
-          icon={<FileText size={26} aria-hidden="true" className="text-ink-faint" />}
+          icon={
+            <FileText size={26} aria-hidden="true" className="text-ink-faint" />
+          }
           title={kind === "page" ? "No pages yet" : "No posts yet"}
           body={
             kind === "page"
@@ -122,7 +124,21 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
               : "Posts appear on the blog newest first. Nothing goes out until you publish it."
           }
           action={
-            kind === "page" ? <Button size="sm" onClick={() => setEditing(null)}>New page</Button> : <Link href="/content/posts/new" className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary">Write a post</Link>
+            kind === "page" ? (
+              <Link
+                href="/content/pages/new"
+                className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary"
+              >
+                New page
+              </Link>
+            ) : (
+              <Link
+                href="/content/posts/new"
+                className="terios-button terios-button-primary inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-on-primary"
+              >
+                Write a post
+              </Link>
+            )
           }
         />
       ) : (
@@ -137,13 +153,17 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-medium text-ink">{article.title}</h3>
+                    <h3 className="text-sm font-medium text-ink">
+                      {article.title}
+                    </h3>
                     <Badge variant={live ? "success" : "neutral"}>
                       {live ? "Live" : "Draft"}
                     </Badge>
                   </div>
                   <p className="mt-1 font-mono text-[12px] text-ink-faint">
-                    {kind === "page" ? `/${article.slug}` : `/blog/${article.slug}`}
+                    {kind === "page"
+                      ? `/${article.slug}`
+                      : `/blog/${article.slug}`}
                   </p>
                   <p className="mt-2 max-w-[68ch] text-[13px] leading-[1.55] text-ink-muted">
                     {summarize(article)}
@@ -164,7 +184,13 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
                   >
                     {live ? "Unpublish" : "Publish"}
                   </Button>
-                  {kind === "page" ? <Button variant="ghost" size="sm" disabled={busy} onClick={() => setEditing(article)}><Pencil size={14} aria-hidden="true" className="mr-1.5" />Edit</Button> : <Link href={`/content/posts/${article.id}/edit`} className="inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold text-ink-muted hover:bg-surface-sunken"><Pencil size={14} aria-hidden="true" className="mr-1.5" />Edit</Link>}
+                  <Link
+                    href={`/content/${kind === "page" ? "pages" : "posts"}/${article.id}/edit`}
+                    className="inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold text-ink-muted hover:bg-surface-sunken"
+                  >
+                    <Pencil size={14} aria-hidden="true" className="mr-1.5" />
+                    Edit
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -180,15 +206,6 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
           })}
         </ul>
       )}
-
-      {kind === "page" && editing !== undefined ? (
-        <ArticleEditor
-          kind={kind}
-          article={editing}
-          onClose={() => setEditing(undefined)}
-          onSubmit={save}
-        />
-      ) : null}
 
       {confirming ? (
         <Modal
@@ -215,7 +232,9 @@ export function ArticleSection({ kind }: { kind: "page" | "post" }) {
             </>
           }
         >
-          <p className="text-sm leading-[1.55] text-ink-muted">{confirming.title}</p>
+          <p className="text-sm leading-[1.55] text-ink-muted">
+            {confirming.title}
+          </p>
         </Modal>
       ) : null}
     </div>

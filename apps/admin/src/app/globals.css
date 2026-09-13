@@ -451,3 +451,13 @@
 .terios-markdown hr { border-color: var(--border); }
 .terios-markdown table { width: 100%; border-collapse: collapse; } .terios-markdown :is(th,td) { border: 1px solid var(--border); padding: .6rem .75rem; text-align: left; }
 @media (prefers-reduced-motion: reduce) { .terios-splash-orbit, .terios-splash-core, .terios-splash-progress span { animation: none; } }
+
+/* Visual publishing editor: keep structured content legible while editing. */
+.tiptap p:empty::before { content: " "; }
+.tiptap ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.tiptap ul[data-type="taskList"] > li { display: flex; align-items: baseline; gap: .65rem; }
+.tiptap ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
+.tiptap input[type="checkbox"] { accent-color: var(--primary); }
+.tiptap .selectedCell { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.tiptap img { max-width: 100%; height: auto; border-radius: 1rem; }
+.tiptap .ProseMirror-selectednode { outline: 2px solid var(--primary); outline-offset: 2px; }
