@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import type { Service } from "@/lib/services";
 import ServicesPage from "./page";
+import { ServiceEditorPage } from "./ServiceEditorPage";
+const push = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("@/lib/agreements", () => ({ agreementsApi: { list: vi.fn().mockResolvedValue([]) } }));
 
 const logoutMock = vi.fn();
 const listAllMock = vi.fn();
@@ -72,6 +76,7 @@ const facial = service({
 });
 
 afterEach(() => {
+  push.mockReset();
   logoutMock.mockReset();
   listAllMock.mockReset();
   createMock.mockReset();
@@ -143,10 +148,10 @@ describe("ServicesPage", () => {
 
   it("validates the create form without native bubbles", async () => {
     listAllMock.mockResolvedValue([massage]);
-    render(<ServicesPage />);
+    render(<ServiceEditorPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "New service" }));
-    const dialog = await screen.findByRole("dialog");
+    await screen.findByRole("heading", { name: "New service" });
+    const dialog = document.getElementById("service-form")!;
     fireEvent.submit(document.getElementById("service-form")!);
 
     expect(within(dialog).getByText("Give the service a name")).toBeTruthy();
@@ -172,10 +177,10 @@ describe("ServicesPage", () => {
       createdAt: "2026-08-03T10:00:00Z",
     });
     createMock.mockResolvedValue(created);
-    render(<ServicesPage />);
+    render(<ServiceEditorPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "New service" }));
-    const dialog = await screen.findByRole("dialog");
+    await screen.findByRole("heading", { name: "New service" });
+    const dialog = document.getElementById("service-form")!;
     fireEvent.change(within(dialog).getByLabelText(/^Name/), {
       target: { value: "Sauna session" },
     });
@@ -199,15 +204,14 @@ describe("ServicesPage", () => {
       agreementId: "",
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(await screen.findByText("Sauna session")).toBeTruthy();
+    expect(push).toHaveBeenCalledWith("/services");
   });
 
   it("pre-fills the edit form with the stored values", async () => {
     listAllMock.mockResolvedValue([facial]);
-    render(<ServicesPage />);
-
-    fireEvent.click(await screen.findByRole("button", { name: "Edit Deep cleanse facial" }));
-    const dialog = await screen.findByRole("dialog");
+    render(<ServiceEditorPage serviceId="svc-2" />);
+    await screen.findByRole("heading", { name: "Edit service" });
+    const dialog = document.getElementById("service-form")!;
 
     expect((within(dialog).getByLabelText(/^Name/) as HTMLInputElement).value).toBe(
       "Deep cleanse facial",
@@ -259,4 +263,49 @@ describe("ServicesPage", () => {
       sortOrder: 1,
     });
   });
+});
+
+
+it("opens dedicated new and edit routes without a form dialog", async () => {
+  listAllMock.mockResolvedValue([facial]);
+  render(<ServicesPage />);
+  fireEvent.click(screen.getByRole("button", { name: "New service" }));
+  expect(push).toHaveBeenCalledWith("/services/new");
+  fireEvent.click(await screen.findByRole("button", { name: "Edit Deep cleanse facial" }));
+  expect(push).toHaveBeenCalledWith("/services/svc-2/edit");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("saves edits to the selected service and keeps failures visible", async () => {
+  listAllMock.mockResolvedValue([facial]);
+  updateMock.mockRejectedValueOnce(new ApiError(400, "invalid_service", "Please check the service details."))
+    .mockResolvedValueOnce({ ...facial, name: "Updated facial" });
+  render(<ServiceEditorPage serviceId="svc-2" />);
+  const name = await screen.findByLabelText(/^Name/);
+  fireEvent.change(name, { target: { value: "Updated facial" } });
+  fireEvent.submit(document.getElementById("service-form")!);
+  await screen.findByText("Please check the service details.");
+  expect(push).not.toHaveBeenCalled();
+  expect((name as HTMLInputElement).value).toBe("Updated facial");
+  fireEvent.submit(document.getElementById("service-form")!);
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/services"));
+  expect(updateMock.mock.lastCall?.[2]).toBe("svc-2");
+  expect(updateMock.mock.lastCall?.[3].name).toBe("Updated facial");
+});
+
+it("does not turn an unknown service into a create form", async () => {
+  listAllMock.mockResolvedValue([]);
+  render(<ServiceEditorPage serviceId="deleted" />);
+  expect(await screen.findByText(/This service was not found/)).toBeTruthy();
+  expect(screen.queryByLabelText(/^Name/)).toBeNull();
+});
+
+it("confirms discarding edits when returning to services", async () => {
+  render(<ServiceEditorPage />);
+  fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: "Unsaved" } });
+  fireEvent.click(screen.getByRole("button", { name: "Back to services" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(push).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+  expect((screen.getByLabelText(/^Name/) as HTMLInputElement).value).toBe("Unsaved");
 });

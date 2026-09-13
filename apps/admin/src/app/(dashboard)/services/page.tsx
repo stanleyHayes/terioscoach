@@ -22,11 +22,10 @@ import {
   servicesApi,
   sortServices,
   type Service,
-  type ServiceDraft,
 } from "@/lib/services";
 import { DeleteServiceModal } from "./DeleteServiceModal";
-import { ServiceFormModal } from "./ServiceFormModal";
-import { agreementsApi, type Agreement } from "@/lib/agreements";
+import { useRouter } from "next/navigation";
+
 
 /**
  * Services & pricing manager (ADM-05).
@@ -45,11 +44,9 @@ function errorMessage(error: unknown): string {
 export default function ServicesPage() {
   const { session, refreshCallbacks, logout } = useAuth();
   const [services, setServices] = useState<Service[] | null>(null);
-  const [agreements, setAgreements] = useState<Agreement[]>([]);
+  const router = useRouter();
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Service | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
 
@@ -63,22 +60,6 @@ export default function ServicesPage() {
     },
     [logout],
   );
-
-  // Loaded once for the form's "requires" field. A failure here leaves the
-  // field offering "no agreement needed" only, which is the safe default.
-  useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    agreementsApi
-      .list(session, refreshCallbacks)
-      .then((items) => {
-        if (!cancelled) setAgreements(items);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [session, refreshCallbacks]);
 
   const load = useCallback(() => {
     if (!session) return;
@@ -188,30 +169,10 @@ export default function ServicesPage() {
     }
   }
 
-  async function handleFormSubmit(draft: ServiceDraft, target: Service | null) {
-    if (!session) return;
-    if (target) {
-      replaceService(
-        await servicesApi.update(session, refreshCallbacks, target.id, draft),
-      );
-    } else {
-      const created = await servicesApi.create(
-        session,
-        refreshCallbacks,
-        draft,
-      );
-      setServices((prev) =>
-        prev ? sortServices([...prev, created]) : [created],
-      );
-    }
-  }
-
   async function handleDelete(service: Service) {
     if (!session) return;
     await servicesApi.remove(session, refreshCallbacks, service.id);
-    setServices((prev) =>
-      prev ? prev.filter((s) => s.id !== service.id) : prev,
-    );
+    setServices((prev) => prev ? prev.filter((s) => s.id !== service.id) : prev);
   }
 
   const columnCount = 6;
@@ -225,8 +186,7 @@ export default function ServicesPage() {
         actions={
           <Button
             onClick={() => {
-              setEditTarget(null);
-              setFormOpen(true);
+              router.push("/services/new");
             }}
           >
             <Plus size={16} aria-hidden="true" />
@@ -483,8 +443,7 @@ export default function ServicesPage() {
                         size="sm"
                         aria-label={`Edit ${service.name}`}
                         onClick={() => {
-                          setEditTarget(service);
-                          setFormOpen(true);
+                          router.push(`/services/${service.id}/edit`);
                         }}
                       >
                         Edit
@@ -506,25 +465,6 @@ export default function ServicesPage() {
           </tbody>
         </table>
       </div>
-
-      {formOpen ? (
-        <ServiceFormModal
-          service={editTarget}
-          agreements={agreements}
-          onClose={() => {
-            setFormOpen(false);
-            setEditTarget(null);
-          }}
-          onSubmit={async (draft, target) => {
-            try {
-              await handleFormSubmit(draft, target);
-            } catch (error) {
-              handleSessionExpiry(error);
-              throw error;
-            }
-          }}
-        />
-      ) : null}
 
       {deleteTarget ? (
         <DeleteServiceModal
