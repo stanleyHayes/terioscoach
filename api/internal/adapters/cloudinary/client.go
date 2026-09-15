@@ -196,10 +196,14 @@ func (c *Client) SignedURL(_ context.Context, asset ports.Asset, ttl time.Durati
 		"expires_at": strconv.FormatInt(c.now().Add(ttl).Unix(), 10),
 	}
 	if resourceType == "video" {
-		// Convert existing WebM recordings as well as new uploads. H.264/AAC
-		// in MP4 is playable on iPhone, Android and desktop media players.
+		// Convert existing WebM recordings as well as new uploads: mp4's
+		// default codecs (H.264/AAC) are playable on iPhone, Android and
+		// desktop media players. "format" is the only conversion parameter
+		// this endpoint signs — an arbitrary "transformation" parameter is
+		// not part of the signed set the Admin API checks, so adding one
+		// here would make the signature it computes never match the one we
+		// send, and every video download would fail with "Invalid Signature".
 		params["format"] = "mp4"
-		params["transformation"] = "vc_h264,ac_aac"
 	}
 	query := url.Values{}
 	for key, value := range params {

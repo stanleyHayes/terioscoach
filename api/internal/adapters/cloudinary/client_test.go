@@ -409,8 +409,14 @@ func TestSignedVideoDownloadConvertsToCompatibleMP4(t *testing.T) {
 	}
 	parsed, _ := url.Parse(link)
 	q := parsed.Query()
-	if q.Get("format") != "mp4" || q.Get("transformation") != "vc_h264,ac_aac" || q.Get("type") != "authenticated" {
+	if q.Get("format") != "mp4" || q.Get("type") != "authenticated" {
 		t.Fatalf("unexpected video parameters: %v", q)
+	}
+	// "transformation" is not part of Cloudinary's signed parameter set for
+	// this endpoint; including it would desync our signature from the one
+	// Cloudinary computes and every video download would 401.
+	if q.Has("transformation") {
+		t.Fatal("transformation must not be sent: it breaks the download signature")
 	}
 	signature := q.Get("signature")
 	q.Del("signature")
