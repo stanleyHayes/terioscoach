@@ -1,5 +1,7 @@
 "use client";
 
+import { createRecordingComposite } from "./recording-compositor";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { useAuth } from "./auth";
@@ -197,6 +199,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
   const parkedCameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
+  const recordCompositeRef = useRef<ReturnType<typeof createRecordingComposite> | null>(null);
   const recordContextRef = useRef<AudioContext | null>(null);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingSecondsRef = useRef(0);
@@ -267,6 +270,8 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       recorderRef.current.stop();
     }
     recorderRef.current = null;
+    recordCompositeRef.current?.stop();
+    recordCompositeRef.current = null;
     void recordContextRef.current?.close().catch(() => {});
     recordContextRef.current = null;
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
@@ -972,16 +977,20 @@ export function useVideoRoom(bookingId: string): VideoRoom {
 
     try {
       // Both voices on one track: local mic and remote audio are mixed
-      // through an AudioContext; the picture is the remote tile.
+      // through an AudioContext; both camera tiles share one stable video track.
       const context = new AudioContext();
+      recordContextRef.current = context;
+      void context.resume().catch(() => {});
       const destination = context.createMediaStreamDestination();
       for (const source of [localRef.current, remoteRef.current]) {
         if (source && source.getAudioTracks().length > 0) {
           context.createMediaStreamSource(source).connect(destination);
         }
       }
+      const composite = createRecordingComposite(() => [localRef.current, remoteRef.current], ["Practitioner", "Client"]);
+      recordCompositeRef.current = composite;
       const combined = new MediaStream([
-        ...(remoteRef.current?.getVideoTracks() ?? []),
+        ...composite.stream.getVideoTracks(),
         ...destination.stream.getAudioTracks(),
       ]);
       // MP4/H.264 first: a WebM/VP9 file is unplayable in Safari, so a
@@ -1044,6 +1053,10 @@ export function useVideoRoom(bookingId: string): VideoRoom {
       );
       emitState();
     } catch {
+      recordCompositeRef.current?.stop();
+      recordCompositeRef.current = null;
+      void recordContextRef.current?.close().catch(() => {});
+      recordContextRef.current = null;
       setError("Recording couldn't start in this browser.");
     }
   }, [bookingId, emitState, recordingSupported, refreshCallbacks]);
