@@ -104,15 +104,15 @@ func TestRescheduleMovesSlot(t *testing.T) {
 
 func TestClientCanModifyCutoff(t *testing.T) {
 	policy := DefaultPolicy()
-	start := testNow.Add(48 * time.Hour)
+	start := testNow.Add(72 * time.Hour)
 	if !policy.ClientCanModify(start, testNow) {
-		t.Error("48h out: client should still modify")
+		t.Error("72h out: client should still modify")
 	}
-	if !policy.ClientCanModify(start, start.Add(-24*time.Hour).Add(-time.Second)) {
+	if !policy.ClientCanModify(start, start.Add(-48*time.Hour).Add(-time.Second)) {
 		t.Error("just outside the cutoff: client should still modify")
 	}
-	if policy.ClientCanModify(start, start.Add(-23*time.Hour)) {
-		t.Error("inside the 24h cutoff: client must be blocked")
+	if policy.ClientCanModify(start, start.Add(-47*time.Hour)) {
+		t.Error("inside the 48h cutoff: client must be blocked")
 	}
 	if policy.ClientCanModify(start, start) {
 		t.Error("at startAt: client must be blocked")
@@ -121,7 +121,7 @@ func TestClientCanModifyCutoff(t *testing.T) {
 	// Zero-value policy falls back to the default.
 	var zero ReschedulePolicy
 	if zero.ClientCanModify(start, start.Add(-time.Hour)) {
-		t.Error("zero policy must behave like the 24h default")
+		t.Error("zero policy must behave like the 48h default")
 	}
 }
 

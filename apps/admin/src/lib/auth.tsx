@@ -42,6 +42,9 @@ export const SIGN_OUT_MESSAGE_KEY = "terios.admin.signOutMessage";
 export const NOT_PRACTITIONER_MESSAGE =
   "This account doesn't have practice-dashboard access. Sign in with an owner or staff account for this practice.";
 
+export const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+export const PROACTIVE_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
+
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 export interface AuthContextValue {
@@ -52,6 +55,8 @@ export interface AuthContextValue {
   session: AuthTokens | null;
   /** Persists rotated tokens — hand this to authedRequest as its RefreshCallbacks. */
   refreshCallbacks: RefreshCallbacks;
+  /** Resets inactivity timer (called on user interaction or inside active meeting). */
+  touchActivity: () => void;
   /** Throws ApiError on failure (code "not_a_practitioner" for wrong role). */
   login: (email: string, password: string, code?: string) => Promise<void>;
   /** Updates the local profile after a verified MFA enrollment. */
@@ -69,6 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   // Guards against the mount effect running twice in React StrictMode.
   const restoredRef = useRef(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastRefreshRef = useRef<number>(Date.now());
+
+  const touchActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
 
   const clearSession = useCallback(() => {
     setTokens(null);
@@ -88,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(nextTokens);
     setUser(nextUser);
     setStatus("authenticated");
+    lastActivityRef.current = Date.now();
+    lastRefreshRef.current = Date.now();
     // These are now the newest tokens in play; tell the shared rotation so a
     // request still holding the pre-sign-in set doesn't present it.
     resetTokenRotation(nextTokens);
@@ -205,6 +218,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Track user activity to prevent idle logout and proactively refresh tokens.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener("pointerdown", handleActivity, { passive: true });
+    window.addEventListener("keydown", handleActivity, { passive: true });
+    window.addEventListener("scroll", handleActivity, { passive: true });
+    window.addEventListener("touchstart", handleActivity, { passive: true });
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const idleTime = now - lastActivityRef.current;
+      if (idleTime > INACTIVITY_TIMEOUT_MS) {
+        void logout("Your session timed out due to inactivity. Please sign in again.");
+        return;
+      }
+      if (
+        tokens?.refreshToken &&
+        now - lastRefreshRef.current > PROACTIVE_REFRESH_INTERVAL_MS
+      ) {
+        lastRefreshRef.current = now;
+        authApi
+          .refresh(tokens.refreshToken)
+          .then((next) => {
+            refreshCallbacks.onTokensRefreshed(next);
+          })
+          .catch(() => {
+            // Background refresh failure will be handled on next request if needed.
+          });
+      }
+    }, 30 * 1000);
+
+    return () => {
+      window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("scroll", handleActivity);
+      window.removeEventListener("touchstart", handleActivity);
+      clearInterval(interval);
+    };
+  }, [status, tokens?.refreshToken, logout, refreshCallbacks]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -212,12 +270,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken: tokens?.accessToken ?? null,
       session: tokens,
       refreshCallbacks,
+      touchActivity,
       login,
       setMfaEnabled,
       setUserProfile,
       logout,
     }),
-    [status, user, tokens, refreshCallbacks, login, logout, setMfaEnabled, setUserProfile],
+    [status, user, tokens, refreshCallbacks, touchActivity, login, logout, setMfaEnabled, setUserProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

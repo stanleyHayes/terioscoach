@@ -129,6 +129,7 @@ type RefreshToken struct {
 	UserID    string
 	ExpiresAt time.Time
 	Revoked   bool
+	RevokedAt *time.Time
 	CreatedAt time.Time
 }
 

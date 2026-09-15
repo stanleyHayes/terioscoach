@@ -33,7 +33,7 @@ import {
 /**
  * Sessions (CX-04) — every booking the client has made.
  * Upcoming (changeable): Reschedule and Cancel run in custom Modals (§3.14);
- * rescheduling reuses the SlotPicker, and both actions honor the 24-hour
+ * rescheduling reuses the SlotPicker, and both actions honor the 48-hour
  * cutoff — past it, changes close client-side, and a racing 422
  * cutoff_passed from the server gets the same branded message.
  * Past sessions are listed with their terminal-status badges.
@@ -42,7 +42,7 @@ import {
 /** Brand-voice copy for the 422 cutoff_passed race (say what happened, what
  * to do next, no blame). */
 const CUTOFF_MESSAGE =
-  "This session is less than 24 hours away, so online changes have closed. Contact the practice and we'll help.";
+  "This session is less than 48 hours away, so online changes have closed. Contact the practice and we'll help.";
 
 function actionErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError && error.code === "cutoff_passed") {

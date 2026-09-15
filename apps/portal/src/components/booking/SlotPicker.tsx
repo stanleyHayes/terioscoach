@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarX2, Globe } from "lucide-react";
+import { CalendarX2, ChevronLeft, ChevronRight, Globe } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useEffect, useMemo, useState } from "react";
 import { getSlots, type Slot } from "@/lib/bookings";
@@ -10,12 +10,12 @@ import { cn } from "@/lib/cn";
 /**
  * SlotPicker — design-system §3.11 (TimeSlotPicker) + the booking day strip.
  *
- * A horizontal strip of the next 14 days (custom day cells — never a native
- * date input) drives a well of time chips for the selected day, fetched live
- * from GET /v1/availability/slots and shown in the visitor's own timezone
- * (stated explicitly on the pinned timezone chip). Chips are grouped AM/PM
- * with micro headers, render "3:30 PM" with tabular nums, and follow the
- * spec's selected/hover/unavailable states. Loading shows 6 skeleton chips;
+ * A horizontal strip of 14 days with multi-month forward/backward navigation
+ * up to 180 days (custom day cells — never a native date input) drives a well
+ * of time chips for the selected day, fetched live from GET /v1/availability/slots
+ * and shown in the visitor's own timezone (stated explicitly on the pinned timezone chip).
+ * Chips are grouped AM/PM with micro headers, render "3:30 PM" with tabular nums,
+ * and follow the spec's selected/hover/unavailable states. Loading shows 6 skeleton chips;
  * an empty day says so in words.
  *
  * Race condition: when the parent's create/reschedule answers 409
@@ -35,6 +35,7 @@ const shakeKeyframes = `
 `;
 
 const DAY_COUNT = 14;
+const MAX_OFFSET_DAYS = 180 - DAY_COUNT;
 
 interface DayCell {
   /** YYYY-MM-DD in the display timezone — the API's from/to value. */
@@ -44,7 +45,7 @@ interface DayCell {
   isToday: boolean;
 }
 
-function buildDays(timeZone: string): DayCell[] {
+function buildDays(timeZone: string, offsetDays: number = 0): DayCell[] {
   const now = new Date();
   const keyFormat = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -63,7 +64,8 @@ function buildDays(timeZone: string): DayCell[] {
   const todayKey = keyFormat.format(now);
 
   return Array.from({ length: DAY_COUNT }, (_, index) => {
-    const date = new Date(now.getTime() + index * 24 * 60 * 60 * 1000);
+    const totalOffset = offsetDays + index;
+    const date = new Date(now.getTime() + totalOffset * 24 * 60 * 60 * 1000);
     const key = keyFormat.format(date);
     return {
       key,
@@ -72,6 +74,27 @@ function buildDays(timeZone: string): DayCell[] {
       isToday: key === todayKey,
     };
   });
+}
+
+function getMonthRangeLabel(days: DayCell[]): string {
+  if (days.length === 0) return "";
+  const first = new Date(days[0].key + "T12:00:00Z");
+  const last = new Date(days[days.length - 1].key + "T12:00:00Z");
+  const monthFormat = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const monthOnlyFormat = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    timeZone: "UTC",
+  });
+  const firstStr = monthFormat.format(first);
+  const lastStr = monthFormat.format(last);
+  if (firstStr === lastStr) {
+    return firstStr;
+  }
+  return `${monthOnlyFormat.format(first)} – ${lastStr}`;
 }
 
 /** "9:30 AM" → "AM" — the chip's day period in the display timezone. */
@@ -113,11 +136,19 @@ export function SlotPicker({
   "aria-label": ariaLabel = "Available times",
 }: SlotPickerProps) {
   const tz = useMemo(() => timeZone ?? browserTimeZone(), [timeZone]);
-  const days = useMemo(() => buildDays(tz), [tz]);
+  const [offsetDays, setOffsetDays] = useState(0);
+  const days = useMemo(() => buildDays(tz, offsetDays), [tz, offsetDays]);
   const [selectedDay, setSelectedDay] = useState(days[0].key);
   const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [raceStartAt, setRaceStartAt] = useState<string | null>(null);
+
+  // If the active selection drops outside the newly scrolled window, default to day 0
+  useEffect(() => {
+    if (!days.some((d) => d.key === selectedDay)) {
+      setSelectedDay(days[0].key);
+    }
+  }, [days, selectedDay]);
 
   /* Load the selected day's slots (public endpoint, visitor tz). */
   // The synchronous reset to "loading" is the point of this effect, not a
@@ -175,7 +206,47 @@ export function SlotPicker({
     <div aria-label={ariaLabel} className="flex flex-col gap-4">
       <style>{shakeKeyframes}</style>
 
-      {/* Day strip — next 14 days, custom cells. */}
+      {/* Month header & navigation */}
+      <div className="flex items-center justify-between gap-2 px-1">
+        <span className="font-display text-base font-semibold text-ink">
+          {getMonthRangeLabel(days)}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {offsetDays > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOffsetDays(0);
+              }}
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-primary hover:bg-eucalyptus-50 transition-colors"
+            >
+              Today
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Previous 2 weeks"
+            disabled={offsetDays <= 0}
+            onClick={() => setOffsetDays((prev) => Math.max(0, prev - DAY_COUNT))}
+            className="flex size-8 items-center justify-center rounded-md border border-border bg-surface-raised text-ink transition-colors hover:border-primary hover:bg-eucalyptus-50 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next 2 weeks"
+            disabled={offsetDays >= MAX_OFFSET_DAYS}
+            onClick={() =>
+              setOffsetDays((prev) => Math.min(MAX_OFFSET_DAYS, prev + DAY_COUNT))
+            }
+            className="flex size-8 items-center justify-center rounded-md border border-border bg-surface-raised text-ink transition-colors hover:border-primary hover:bg-eucalyptus-50 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      {/* Day strip — 14 days, custom cells. */}
       <div
         role="group"
         aria-label="Choose a day"

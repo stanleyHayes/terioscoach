@@ -13,7 +13,7 @@ const (
 	maxBufferMinutes = 120
 
 	// MaxSlotRangeDays caps how far a single slot query may span.
-	MaxSlotRangeDays = 62
+	MaxSlotRangeDays = 180
 )
 
 // Window is a contiguous opening span within one local day, expressed as

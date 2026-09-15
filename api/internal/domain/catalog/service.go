@@ -24,25 +24,46 @@ const (
 // soft-delete marker: set when bookings exist and the record must be
 // retained for history; soft-deleted services are invisible to every list.
 type Service struct {
-	ID             string
-	PractitionerID string
-	Name           string
-	Description    string
-	ImageURL       string
-	/** AgreementID names the service agreement a client must have signed
-	 * before this service can be booked. Empty means the service is open to
-	 * anyone — an introductory conversation needs no contract. Several
-	 * services point at the same agreement; a client signs it once and every
-	 * one of them is then covered. */
-	AgreementID     string
-	DurationMinutes int
-	PriceKobo       int64
-	Currency        string
-	Active          bool
-	SortOrder       int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       *time.Time
+	ID                    string
+	PractitionerID        string
+	Name                  string
+	Description           string
+	ImageURL              string
+	/** AgreementID names the primary service agreement a client must have signed. */
+	AgreementID           string
+	/** AgreementIDs allows attaching multiple individual agreements to this service. */
+	AgreementIDs          []string
+	/** AgreementCollectionID links an agreement collection bundle to this service. */
+	AgreementCollectionID string
+	DurationMinutes       int
+	PriceKobo             int64
+	Currency              string
+	Active                bool
+	SortOrder             int
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	DeletedAt             *time.Time
+}
+
+// RequiredAgreementIDs returns all unique agreement IDs required for this service.
+func (s Service) RequiredAgreementIDs() []string {
+	set := make(map[string]struct{})
+	var ids []string
+	if strings.TrimSpace(s.AgreementID) != "" {
+		id := strings.TrimSpace(s.AgreementID)
+		set[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	for _, raw := range s.AgreementIDs {
+		id := strings.TrimSpace(raw)
+		if id != "" {
+			if _, exists := set[id]; !exists {
+				set[id] = struct{}{}
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
 }
 
 // NewService validates input and builds an active Service. An empty

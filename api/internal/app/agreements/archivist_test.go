@@ -146,7 +146,7 @@ func TestArchivistWithoutDocumentsIsANoOp(t *testing.T) {
 // The whole point of wiring it up: signing files the copy, once.
 func TestSigningFilesExactlyOneCopy(t *testing.T) {
 	repo := newFakeRepo()
-	a, err := agreement.New("prac-1", "holistic", "Holistic Coaching Agreement", "Terms.", fixedNow)
+	a, err := agreement.New("prac-1", "holistic", "Holistic Coaching Agreement", "Terms.", false, fixedNow)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

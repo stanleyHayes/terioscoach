@@ -25,12 +25,14 @@ import { cn } from "@/lib/cn";
 export function AgreementStep({
   agreement,
   clientName,
+  stepInfo,
   onSigned,
   onBack,
 }: {
   agreement: Agreement;
   /** The name on the account, offered as the starting value. */
   clientName: string;
+  stepInfo?: { current: number; total: number };
   onSigned: (signedName: string) => Promise<void>;
   onBack: () => void;
 }) {
@@ -46,8 +48,13 @@ export function AgreementStep({
   // A short agreement that does not overflow has already been "scrolled to
   // the end"; requiring a scroll that cannot happen would trap the client.
   useEffect(() => {
+    setConfirmed(false);
+    setScrolledToEnd(false);
+    setError(null);
+    setSubmitting(false);
     const node = scrollRef.current;
     if (!node) return;
+    node.scrollTop = 0;
     if (node.scrollHeight <= node.clientHeight + 4) setScrolledToEnd(true);
   }, [agreement.id]);
 
@@ -84,6 +91,11 @@ export function AgreementStep({
           <ScrollText size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0">
+          {stepInfo && stepInfo.total > 1 ? (
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Document {stepInfo.current} of {stepInfo.total}
+            </p>
+          ) : null}
           <h2 className="text-lg font-semibold text-ink">{agreement.title}</h2>
           <p className="mt-1 text-sm leading-relaxed text-ink-muted">
             Please read this agreement and sign it to continue. You only sign

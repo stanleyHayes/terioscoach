@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/ports"
@@ -27,12 +28,13 @@ func NewRefreshTokenRepository(db *mongo.Database) *RefreshTokenRepository {
 
 // refreshTokenDoc is the storage shape; userId is an ObjectID reference.
 type refreshTokenDoc struct {
-	ID        bson.ObjectID `bson:"_id,omitempty"`
-	TokenHash string        `bson:"tokenHash"`
-	UserID    bson.ObjectID `bson:"userId"`
-	ExpiresAt bson.DateTime `bson:"expiresAt"`
-	Revoked   bool          `bson:"revoked"`
-	CreatedAt bson.DateTime `bson:"createdAt"`
+	ID        bson.ObjectID  `bson:"_id,omitempty"`
+	TokenHash string         `bson:"tokenHash"`
+	UserID    bson.ObjectID  `bson:"userId"`
+	ExpiresAt bson.DateTime  `bson:"expiresAt"`
+	Revoked   bool           `bson:"revoked"`
+	RevokedAt *bson.DateTime `bson:"revokedAt,omitempty"`
+	CreatedAt bson.DateTime  `bson:"createdAt"`
 }
 
 // Store inserts a new session keyed by token hash.
@@ -41,11 +43,17 @@ func (r *RefreshTokenRepository) Store(ctx context.Context, token identity.Refre
 	if err != nil {
 		return fmt.Errorf("refresh token user id: %w", err)
 	}
+	var revokedAt *bson.DateTime
+	if token.RevokedAt != nil {
+		dt := bson.NewDateTimeFromTime(*token.RevokedAt)
+		revokedAt = &dt
+	}
 	doc := refreshTokenDoc{
 		TokenHash: token.TokenHash,
 		UserID:    userID,
 		ExpiresAt: bson.NewDateTimeFromTime(token.ExpiresAt),
 		Revoked:   token.Revoked,
+		RevokedAt: revokedAt,
 		CreatedAt: bson.NewDateTimeFromTime(token.CreatedAt),
 	}
 	if _, err := r.coll.InsertOne(ctx, doc); err != nil {
@@ -65,11 +73,17 @@ func (r *RefreshTokenRepository) FindByHash(ctx context.Context, tokenHash strin
 		}
 		return identity.RefreshToken{}, fmt.Errorf("find refresh token: %w", err)
 	}
+	var revokedAt *time.Time
+	if doc.RevokedAt != nil {
+		t := doc.RevokedAt.Time()
+		revokedAt = &t
+	}
 	return identity.RefreshToken{
 		TokenHash: doc.TokenHash,
 		UserID:    doc.UserID.Hex(),
 		ExpiresAt: doc.ExpiresAt.Time(),
 		Revoked:   doc.Revoked,
+		RevokedAt: revokedAt,
 		CreatedAt: doc.CreatedAt.Time(),
 	}, nil
 }
@@ -77,9 +91,10 @@ func (r *RefreshTokenRepository) FindByHash(ctx context.Context, tokenHash strin
 // Revoke marks a session revoked. Missing sessions are not an error, so
 // logout and rotation stay idempotent.
 func (r *RefreshTokenRepository) Revoke(ctx context.Context, tokenHash string) error {
+	now := bson.NewDateTimeFromTime(time.Now().UTC())
 	_, err := r.coll.UpdateOne(ctx,
 		bson.M{"tokenHash": tokenHash},
-		bson.M{"$set": bson.M{"revoked": true}},
+		bson.M{"$set": bson.M{"revoked": true, "revokedAt": now}},
 	)
 	if err != nil {
 		return fmt.Errorf("revoke refresh token: %w", err)

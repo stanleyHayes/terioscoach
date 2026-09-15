@@ -36,6 +36,9 @@ export interface AgreementSignature {
   /** Exactly what the client typed. */
   signedName: string;
   bookingId?: string;
+  requiresCountersignature?: boolean;
+  practitionerSignedName?: string;
+  practitionerSignedAt?: string;
   signedAt: string;
 }
 
@@ -95,6 +98,21 @@ export const agreementsApi = {
       callbacks,
     );
     return items;
+  },
+
+  async countersign(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    signatureId: string,
+    practitionerSignedName: string,
+  ): Promise<AgreementSignature> {
+    const { signature } = await authedRequest<{ signature: AgreementSignature }>(
+      `/v1/admin/signatures/${signatureId}/countersign`,
+      session,
+      callbacks,
+      { method: "POST", body: { practitionerSignedName } },
+    );
+    return signature;
   },
 };
 

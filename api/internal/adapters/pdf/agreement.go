@@ -18,7 +18,8 @@ import (
 // to keep in sync and nothing that can drift away from the record.
 func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 	blocks := []Block{
-		{Text: "Terios Wellness Spa", Style: Bold, Size: 11, SpaceAfter: 22},
+		{Text: "TERIOS WELLNESS SPA", Style: Bold, Size: 13, SpaceAfter: 4},
+		{Text: "Holistic Health & Wellness Practice", Style: Italic, Size: 9, SpaceAfter: 20},
 		Title(a.Title),
 	}
 
@@ -43,20 +44,44 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 
 	blocks = append(blocks,
 		Spacer(18),
-		Heading("Signature"),
-		Label("SIGNED BY"),
-		Block{Text: sig.SignedName, Size: 15, SpaceAfter: 12},
+		Heading("Signatures & Execution"),
+		Label("CLIENT SIGNATURE"),
+		Block{Text: sig.SignedName, Style: Italic, Size: 15, SpaceAfter: 10},
 		Label("CLIENT ON FILE"),
 		Paragraph(clientLine(sig)),
 		Label("SIGNED AT"),
 		Paragraph(sig.SignedAt.Format("2 January 2006 at 15:04 MST")),
+	)
+
+	if sig.PractitionerSignedName != "" {
+		blocks = append(blocks,
+			Spacer(8),
+			Label("PRACTITIONER / COACH COUNTERSIGNATURE"),
+			Block{Text: sig.PractitionerSignedName, Style: Italic, Size: 15, SpaceAfter: 10},
+		)
+		if sig.PractitionerSignedAt != nil {
+			blocks = append(blocks,
+				Label("COUNTERSIGNED AT"),
+				Paragraph(sig.PractitionerSignedAt.Format("2 January 2006 at 15:04 MST")),
+			)
+		}
+	} else if a.RequiresCountersignature || sig.RequiresCountersignature {
+		blocks = append(blocks,
+			Spacer(8),
+			Label("PRACTITIONER / COACH COUNTERSIGNATURE"),
+			Block{Text: "[Pending Practitioner Countersignature]", Style: Italic, Size: 12, SpaceAfter: 10},
+		)
+	}
+
+	blocks = append(blocks,
+		Spacer(10),
 		Label("AGREEMENT VERSION"),
 		Paragraph(fmt.Sprintf("Version %d", sig.AgreementVersion)),
 		Spacer(10),
 		Block{
-			Text: "This agreement was accepted electronically. The name above " +
-				"was typed by the client as their signature, and is recorded " +
-				"against the version of the wording shown in this document.",
+			Text: "This agreement was accepted electronically. Signatures recorded above " +
+				"were executed in italics per electronic signature formatting standards and " +
+				"recorded against the version of the wording shown in this document.",
 			Size: 9, SpaceAfter: 0,
 		},
 	)

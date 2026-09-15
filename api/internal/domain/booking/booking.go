@@ -167,9 +167,8 @@ func (b *Booking) Reschedule(startAt time.Time, now time.Time) error {
 }
 
 // DefaultCutoff is how long before an appointment a client may still
-// reschedule or cancel. It is a per-practice setting; 24h is the platform
-// default.
-const DefaultCutoff = 24 * time.Hour
+// reschedule or cancel. 48 hours is the practice policy.
+const DefaultCutoff = 48 * time.Hour
 
 // ReschedulePolicy carries the per-practice modification rules.
 type ReschedulePolicy struct {

@@ -139,7 +139,7 @@ const ICE_DISCONNECTED_GRACE_MS = 5000;
 const STATS_INTERVAL_MS = 3000;
 
 export function useVideoRoom(bookingId: string): VideoRoom {
-  const { session, onTokensRefreshed } = useAuth();
+  const { session, onTokensRefreshed, touchActivity } = useAuth();
 
   const [state, setState] = useState<RoomState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -368,6 +368,7 @@ export function useVideoRoom(bookingId: string): VideoRoom {
 
   /** Samples the selected pair's RTT and inbound loss into a quality score. */
   function sampleStats(peer: RTCPeerConnection) {
+    touchActivity();
     void peer
       .getStats()
       .then((report) => {

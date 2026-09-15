@@ -175,16 +175,48 @@ function BookingFlow() {
 
   const needsAgreement = Boolean(agreement?.required && !agreement.signed);
 
+  const unsignedAgreements = useMemo(() => {
+    if (!agreement?.required || agreement.signed) return [];
+    if (agreement.agreements && agreement.agreements.length > 0) {
+      return agreement.agreements.filter(
+        (a) => a.required && !a.signed && a.agreement,
+      );
+    }
+    if (agreement.agreement && !agreement.signed) {
+      return [agreement];
+    }
+    return [];
+  }, [agreement]);
+
+  const totalAgreementsCount =
+    agreement?.agreements && agreement.agreements.length > 0
+      ? agreement.agreements.length
+      : agreement?.agreement
+        ? 1
+        : 0;
+  const signedAgreementsCount = Math.max(
+    0,
+    totalAgreementsCount - unsignedAgreements.length,
+  );
+  const currentUnsigned = unsignedAgreements[0] ?? null;
+
   async function signAgreement(signedName: string) {
-    if (!agreement?.agreement || !session) return;
-    const signature = await agreementsApi.sign(
+    if (!currentUnsigned?.agreement || !session || !serviceId) return;
+    await agreementsApi.sign(
       session,
       { onTokensRefreshed },
-      agreement.agreement.id,
+      currentUnsigned.agreement.id,
       signedName,
     );
-    setAgreement({ ...agreement, signed: true, signature });
-    setStep("review");
+    const updated = await agreementsApi.forService(
+      session,
+      { onTokensRefreshed },
+      serviceId,
+    );
+    setAgreement(updated);
+    if (!updated.required || updated.signed) {
+      setStep("review");
+    }
   }
 
   async function handleConfirm() {
@@ -323,7 +355,7 @@ function BookingFlow() {
             <p className="mt-4 max-w-[48ch] text-sm leading-[1.55] text-ink-muted">
               {booking.status === "pending_payment"
                 ? "Your appointment is not booked yet. It will only be confirmed and placed on the practice calendar after payment is successful."
-                : "A confirmation is on its way to your inbox. Your session lives in your portal now — you can reschedule or cancel there up to 24 hours before."}
+                : "A confirmation is on its way to your inbox. Your session lives in your portal now — you can reschedule or cancel there up to 48 hours before."}
             </p>
             {checkoutDeferred ? (
               <p
@@ -481,11 +513,19 @@ function BookingFlow() {
         </div>
       ) : null}
 
-      {step === "agreement" && agreement?.agreement ? (
+      {step === "agreement" && currentUnsigned?.agreement ? (
         <div className="mx-auto w-full max-w-[720px]">
           <AgreementStep
-            agreement={agreement.agreement}
+            agreement={currentUnsigned.agreement}
             clientName={user?.name ?? ""}
+            stepInfo={
+              totalAgreementsCount > 1
+                ? {
+                    current: signedAgreementsCount + 1,
+                    total: totalAgreementsCount,
+                  }
+                : undefined
+            }
             onSigned={signAgreement}
             onBack={() => setStep("time")}
           />
@@ -529,7 +569,7 @@ function BookingFlow() {
               </div>
             </dl>
             <p className="mx-6 mb-6 rounded-xl bg-surface-sunken px-4 py-3 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-muted">
-              Free rescheduling up to 24 hours before your session.
+              Free rescheduling up to 48 hours before your session.
             </p>
           </Card>
 

@@ -62,10 +62,8 @@ func (s Status) Valid() bool {
 }
 
 // DefaultReminderLead is how far ahead of an appointment the reminder goes
-// out. It is a per-practice setting; 24 hours is the platform default and
-// deliberately matches the reschedule cutoff, so the reminder is the last
-// moment a client can still move the session themselves.
-const DefaultReminderLead = 24 * time.Hour
+// out (10 minutes).
+const DefaultReminderLead = 10 * time.Minute
 
 // Job is one message waiting to be delivered. Data carries the already
 // resolved, presentation-ready template values (names, formatted times,

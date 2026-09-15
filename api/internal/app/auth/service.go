@@ -367,6 +367,7 @@ func (s *Service) recordFailure(ctx context.Context, identifier string) error {
 }
 
 // Refresh rotates a session: validate the presented token, revoke it, then
+// Refresh rotates a session: validate the presented token, revoke it, then
 // issue a fresh pair. A revoked or unknown token is ErrTokenInvalid; a
 // well-formed but stale one is ErrTokenExpired.
 //

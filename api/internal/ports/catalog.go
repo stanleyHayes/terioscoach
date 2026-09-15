@@ -8,27 +8,31 @@ import (
 
 // ServiceInput carries what a service is created with.
 type ServiceInput struct {
-	Name            string
-	Description     string
-	ImageURL        string
-	AgreementID     string
-	DurationMinutes int
-	PriceKobo       int64
-	Currency        string // empty defaults to catalog.DefaultCurrency
-	SortOrder       int
+	Name                  string
+	Description           string
+	ImageURL              string
+	AgreementID           string
+	AgreementIDs          []string
+	AgreementCollectionID string
+	DurationMinutes       int
+	PriceKobo             int64
+	Currency              string // empty defaults to catalog.DefaultCurrency
+	SortOrder             int
 }
 
 // ServicePatch is a partial update: nil fields stay untouched.
 type ServicePatch struct {
-	Name            *string
-	Description     *string
-	ImageURL        *string
-	AgreementID     *string
-	DurationMinutes *int
-	PriceKobo       *int64
-	Currency        *string
-	Active          *bool
-	SortOrder       *int
+	Name                  *string
+	Description           *string
+	ImageURL              *string
+	AgreementID           *string
+	AgreementIDs          *[]string
+	AgreementCollectionID *string
+	DurationMinutes       *int
+	PriceKobo             *int64
+	Currency              *string
+	Active                *bool
+	SortOrder             *int
 }
 
 // CatalogService is the inbound port for the services slice.

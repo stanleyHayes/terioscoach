@@ -21,15 +21,23 @@ var seedFS embed.FS
 
 // SeedAgreement is one starting agreement.
 type SeedAgreement struct {
-	Key   string
-	Title string
-	File  string
+	Key                      string
+	Title                    string
+	File                     string
+	RequiresCountersignature bool
 }
 
 // SeedAgreements is what a fresh practice starts with.
 var SeedAgreements = []SeedAgreement{
-	{Key: "holistic_coaching", Title: "Holistic Coaching Agreement", File: "seed/holistic-coaching.txt"},
-	{Key: "nurse_coaching", Title: "Nurse Coaching Agreement", File: "seed/nurse-coaching.txt"},
+	{Key: "holistic_coaching", Title: "Holistic Coaching Agreement", File: "seed/holistic-coaching.txt", RequiresCountersignature: true},
+	{Key: "holistic_sow", Title: "Holistic Coaching Statement of Work", File: "seed/holistic-statement-of-work.txt", RequiresCountersignature: true},
+	{Key: "holistic_confidentiality_hipaa", Title: "Holistic Coaching Confidentiality and HIPAA Consent", File: "seed/holistic-confidentiality-hipaa.txt", RequiresCountersignature: false},
+	{Key: "holistic_liability_release", Title: "Holistic Coaching Liability Release", File: "seed/holistic-liability-release.txt", RequiresCountersignature: false},
+
+	{Key: "nurse_coaching", Title: "Nurse Coaching Agreement", File: "seed/nurse-coaching.txt", RequiresCountersignature: true},
+	{Key: "nurse_sow", Title: "Nurse Coaching Statement of Work", File: "seed/nurse-statement-of-work.txt", RequiresCountersignature: true},
+	{Key: "nurse_confidentiality_hipaa", Title: "Nurse Coaching Confidentiality and HIPAA Consent", File: "seed/nurse-confidentiality-hipaa.txt", RequiresCountersignature: false},
+	{Key: "nurse_liability_release", Title: "Nurse Coaching Liability Release", File: "seed/nurse-liability-release.txt", RequiresCountersignature: false},
 }
 
 // Seed creates any of the starting agreements the practice does not have
@@ -51,7 +59,7 @@ func (s *Service) Seed(ctx context.Context, practitionerID string) ([]agreement.
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", seed.File, err)
 		}
-		a, err := agreement.New(practitionerID, seed.Key, seed.Title, strings.TrimSpace(string(body)), s.now())
+		a, err := agreement.New(practitionerID, seed.Key, seed.Title, strings.TrimSpace(string(body)), seed.RequiresCountersignature, s.now())
 		if err != nil {
 			return nil, fmt.Errorf("build %s: %w", seed.Key, err)
 		}

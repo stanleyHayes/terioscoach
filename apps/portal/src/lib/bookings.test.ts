@@ -196,11 +196,11 @@ describe("cancelBooking", () => {
 });
 
 describe("cutoffPassed", () => {
-  it("is true inside the 24-hour window and false before it", () => {
-    const now = new Date("2026-08-19T09:00:00Z");
-    expect(cutoffPassed("2026-08-20T08:59:59Z", now)).toBe(true); // < 24h away
-    expect(cutoffPassed("2026-08-20T09:00:00Z", now)).toBe(true); // exactly 24h → closed
-    expect(cutoffPassed("2026-08-20T09:00:01Z", now)).toBe(false); // > 24h away
+  it("is true inside the 48-hour window and false before it", () => {
+    const now = new Date("2026-08-18T09:00:00Z");
+    expect(cutoffPassed("2026-08-20T08:59:59Z", now)).toBe(true); // < 48h away
+    expect(cutoffPassed("2026-08-20T09:00:00Z", now)).toBe(true); // exactly 48h → closed
+    expect(cutoffPassed("2026-08-20T09:00:01Z", now)).toBe(false); // > 48h away
     expect(cutoffPassed("2026-08-18T09:00:00Z", now)).toBe(true); // already past
   });
 });

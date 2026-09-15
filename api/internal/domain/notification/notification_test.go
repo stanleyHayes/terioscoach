@@ -176,7 +176,7 @@ func TestReminderDueAt(t *testing.T) {
 		t.Errorf("due = %v, want one lead time before %v", due, start)
 	}
 
-	if _, ok := ReminderDueAt(fixedNow.Add(2*time.Hour), DefaultReminderLead, fixedNow); ok {
+	if _, ok := ReminderDueAt(fixedNow.Add(5*time.Minute), DefaultReminderLead, fixedNow); ok {
 		t.Error("scheduled a reminder for a session inside the lead time — it would arrive with the confirmation")
 	}
 	if _, ok := ReminderDueAt(fixedNow.Add(DefaultReminderLead), DefaultReminderLead, fixedNow); ok {

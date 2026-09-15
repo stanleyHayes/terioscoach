@@ -71,10 +71,20 @@ func (f *fakeRepo) CreateSignature(_ context.Context, sig agreement.Signature) (
 	if existing, ok := f.signatures[key]; ok {
 		return existing, nil
 	}
-	sig.ID = "sig-1"
+	sig.ID = fmt.Sprintf("sig-%d", len(f.signatures)+1)
 	f.signatures[key] = sig
 	f.created++
 	return sig, nil
+}
+
+func (f *fakeRepo) UpdateSignature(_ context.Context, sig agreement.Signature) (agreement.Signature, error) {
+	for k, s := range f.signatures {
+		if s.ID == sig.ID {
+			f.signatures[k] = sig
+			return sig, nil
+		}
+	}
+	return agreement.Signature{}, agreement.ErrSignatureNotFound
 }
 
 func (f *fakeRepo) SignatureFor(_ context.Context, clientID, agreementID string) (agreement.Signature, error) {
@@ -155,16 +165,24 @@ type rig struct {
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	repo := newFakeRepo()
-	a, err := agreement.New("prac-1", "holistic", "Holistic Coaching Agreement", "Terms.", fixedNow)
+	a, err := agreement.New("prac-1", "holistic", "Holistic Coaching Agreement", "Terms.", false, fixedNow)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	a.ID = "agr-holistic"
 	repo.agreements[a.ID] = a
 
+	a2, err := agreement.New("prac-1", "sow", "Statement of Work", "SOW Terms.", true, fixedNow)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	a2.ID = "agr-sow"
+	repo.agreements[a2.ID] = a2
+
 	services := &fakeServices{items: map[string]catalog.Service{
 		"svc-holistic":         {ID: "svc-holistic", AgreementID: "agr-holistic"},
 		"svc-holistic-initial": {ID: "svc-holistic-initial", AgreementID: "agr-holistic"},
+		"svc-multi":            {ID: "svc-multi", AgreementIDs: []string{"agr-holistic", "agr-sow"}},
 		"svc-intro":            {ID: "svc-intro"},
 		"svc-dangling":         {ID: "svc-dangling", AgreementID: "agr-deleted"},
 	}}
@@ -429,6 +447,75 @@ func TestSignRejectsAnEmptyName(t *testing.T) {
 	})
 	if !errors.Is(err, agreement.ErrInvalidSignedName) {
 		t.Errorf("err = %v, want ErrInvalidSignedName", err)
+	}
+}
+
+func TestMultiAgreementServiceRequiresAllSigned(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+
+	// Initial check - requires first agreement
+	err := r.svc.RequireSigned(ctx, "client-1", "svc-multi")
+	if !errors.Is(err, agreement.ErrAgreementRequired) {
+		t.Fatalf("err = %v, want ErrAgreementRequired", err)
+	}
+
+	// Sign first agreement
+	if _, err := r.svc.Sign(ctx, ports.SignRequest{
+		AgreementID: "agr-holistic", ClientID: "client-1",
+		ClientName: "Daniel", SignedName: "Daniel Baah",
+	}); err != nil {
+		t.Fatalf("Sign 1: %v", err)
+	}
+
+	// Still requires second agreement
+	err = r.svc.RequireSigned(ctx, "client-1", "svc-multi")
+	if !errors.Is(err, agreement.ErrAgreementRequired) {
+		t.Fatalf("err = %v, want ErrAgreementRequired for 2nd agreement", err)
+	}
+
+	// Sign second agreement
+	if _, err := r.svc.Sign(ctx, ports.SignRequest{
+		AgreementID: "agr-sow", ClientID: "client-1",
+		ClientName: "Daniel", SignedName: "Daniel Baah",
+	}); err != nil {
+		t.Fatalf("Sign 2: %v", err)
+	}
+
+	// Now both are signed
+	if err := r.svc.RequireSigned(ctx, "client-1", "svc-multi"); err != nil {
+		t.Errorf("RequireSigned = %v, want nil", err)
+	}
+}
+
+func TestCountersignAgreement(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+
+	sig, err := r.svc.Sign(ctx, ports.SignRequest{
+		AgreementID: "agr-sow", ClientID: "client-1",
+		ClientName: "Daniel", SignedName: "Daniel Baah",
+	})
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	// Client cannot countersign
+	_, err = r.svc.Countersign(ctx, identity.Identity{UserID: "client-1", Role: identity.RoleClient}, sig.ID, "Dr. Stanley Hayes")
+	if !errors.Is(err, agreement.ErrAgreementNotFound) {
+		t.Errorf("expected error for client countersign, got %v", err)
+	}
+
+	// Practitioner countersigns
+	countersigned, err := r.svc.Countersign(ctx, identity.Identity{UserID: "prac-1", Role: identity.RolePractitioner}, sig.ID, "Dr. Stanley Hayes")
+	if err != nil {
+		t.Fatalf("Countersign: %v", err)
+	}
+	if countersigned.PractitionerSignedName != "Dr. Stanley Hayes" {
+		t.Errorf("PractitionerSignedName = %q, want Dr. Stanley Hayes", countersigned.PractitionerSignedName)
+	}
+	if countersigned.PractitionerSignedAt == nil {
+		t.Error("PractitionerSignedAt should be set")
 	}
 }
 

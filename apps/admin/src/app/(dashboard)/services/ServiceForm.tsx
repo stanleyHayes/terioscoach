@@ -44,13 +44,20 @@ export function ServiceForm({
   onSubmit: (draft: ServiceDraft, service: Service | null) => Promise<void>;
 }) {
   const editing = service !== null;
+  const initialAgreementIds =
+    service?.agreementIds && service.agreementIds.length > 0
+      ? service.agreementIds
+      : service?.agreementId
+        ? [service.agreementId]
+        : [];
+
   const initial = {
     name: service?.name ?? "",
     description: service?.description ?? "",
     imageUrl: service?.imageUrl ?? "",
     duration: service ? String(service.durationMinutes) : "",
     price: service ? minorToMajorString(service.priceKobo) : "",
-    agreementId: service?.agreementId ?? "",
+    agreementIds: initialAgreementIds,
   };
 
   const [name, setName] = useState(initial.name);
@@ -58,7 +65,7 @@ export function ServiceForm({
   const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [duration, setDuration] = useState(initial.duration);
   const [price, setPrice] = useState(initial.price);
-  const [agreementId, setAgreementId] = useState(initial.agreementId);
+  const [agreementIds, setAgreementIds] = useState<string[]>(initial.agreementIds);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +76,7 @@ export function ServiceForm({
     imageUrl !== initial.imageUrl ||
     duration !== initial.duration ||
     price !== initial.price ||
-    agreementId !== initial.agreementId;
+    JSON.stringify(agreementIds) !== JSON.stringify(initial.agreementIds);
 
   const [confirmLeave, setConfirmLeave] = useState(false);
   useEffect(() => {
@@ -122,7 +129,8 @@ export function ServiceForm({
       priceKobo: parseMajorToMinor(price)!,
       // Currency is fixed to USD for this US-based practice.
       currency: "USD",
-      agreementId,
+      agreementId: agreementIds[0] ?? "",
+      agreementIds: agreementIds,
     };
 
     setSubmitting(true);
@@ -225,27 +233,51 @@ export function ServiceForm({
           >
             Booking details
           </h2>
-          {/* One agreement covers however many services point at it: a client
-            signs it once, and every one of them is open from then on. */}
-          <div className="flex flex-col gap-1.5">
-            <BrandedSelect
-              label="Agreement the client must sign first"
-              value={agreementId}
-              placeholder="No agreement needed"
-              options={[
-                { value: "", label: "No agreement needed" },
-                ...agreements
-                  .filter((item) => item.active || item.id === agreementId)
-                  .map((item) => ({
-                    value: item.id,
-                    label: item.active ? item.title : `${item.title} (retired)`,
-                  })),
-              ]}
-              onChange={setAgreementId}
-            />
+          {/* Agreements required for this service: supports multiple documents. */}
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-ink">
+              Required Agreements (Multi-document selection)
+            </span>
+            <div className="flex flex-col gap-2 rounded-xl border border-border p-3 bg-surface-sunken">
+              {agreements.length === 0 ? (
+                <span className="text-xs text-ink-muted">No agreements created yet.</span>
+              ) : (
+                agreements
+                  .filter((item) => item.active || agreementIds.includes(item.id))
+                  .map((item) => {
+                    const checked = agreementIds.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-primary transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAgreementIds((prev) => [...prev, item.id]);
+                            } else {
+                              setAgreementIds((prev) =>
+                                prev.filter((id) => id !== item.id),
+                              );
+                            }
+                          }}
+                          className="rounded border-border text-primary focus:ring-primary size-4"
+                        />
+                        <span>
+                          {item.title}{" "}
+                          {!item.active ? (
+                            <span className="text-xs text-ink-faint">(retired)</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })
+              )}
+            </div>
             <span className="text-xs leading-relaxed text-ink-muted">
-              Clients sign this once, before their first booking of any service
-              that uses it. Later bookings never ask again.
+              Clients will sequentially read and sign all selected agreements before their first booking.
             </span>
           </div>
           <div className="grid grid-cols-2 gap-4">

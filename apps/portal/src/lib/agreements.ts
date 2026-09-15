@@ -42,6 +42,7 @@ export interface AgreementStatus {
   signed: boolean;
   agreement?: Agreement;
   signature?: AgreementSignature;
+  agreements?: AgreementStatus[];
 }
 
 export const agreementsApi = {

@@ -95,7 +95,7 @@ func NewRenderer(opts Options) *Renderer {
 		"joinUrl":           portal + "/sessions",
 		"bookUrl":           portal + "/book",
 		"dashboardUrl":      dashboard,
-		"rescheduleCutoff":  "24 hours",
+		"rescheduleCutoff":  "48 hours",
 		"joinWindowMinutes": "10",
 	}}
 }

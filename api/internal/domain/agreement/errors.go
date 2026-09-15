@@ -25,4 +25,10 @@ var (
 	ErrInvalidClient     = errors.New("a client is required")
 	ErrInvalidSignedName = errors.New("type your full name to sign")
 	ErrSignedNameTooLong = errors.New("that name is too long")
+
+	// Countersignature & Collections
+	ErrAlreadyCountersigned = errors.New("this agreement has already been countersigned")
+	ErrSignatureNotFound    = errors.New("signature not found")
+	ErrCollectionNotFound   = errors.New("agreement collection not found")
+	ErrInvalidCollection    = errors.New("invalid agreement collection")
 )

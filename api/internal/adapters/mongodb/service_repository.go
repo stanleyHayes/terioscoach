@@ -32,20 +32,22 @@ func NewServiceRepository(db *mongo.Database) *ServiceRepository {
 
 // serviceDoc is the storage shape; kept separate from the domain entity.
 type serviceDoc struct {
-	ID             bson.ObjectID  `bson:"_id,omitempty"`
-	PractitionerID bson.ObjectID  `bson:"practitionerId"`
-	Name           string         `bson:"name"`
-	Description    string         `bson:"description"`
-	ImageURL       string         `bson:"imageUrl,omitempty"`
-	AgreementID    string         `bson:"agreementId,omitempty"`
-	DurationMin    int            `bson:"durationMin"`
-	PriceKobo      int64          `bson:"priceKobo"`
-	Currency       string         `bson:"currency"`
-	Active         bool           `bson:"active"`
-	SortOrder      int            `bson:"sortOrder"`
-	CreatedAt      bson.DateTime  `bson:"createdAt"`
-	UpdatedAt      bson.DateTime  `bson:"updatedAt"`
-	DeletedAt      *bson.DateTime `bson:"deletedAt,omitempty"`
+	ID                    bson.ObjectID  `bson:"_id,omitempty"`
+	PractitionerID        bson.ObjectID  `bson:"practitionerId"`
+	Name                  string         `bson:"name"`
+	Description           string         `bson:"description"`
+	ImageURL              string         `bson:"imageUrl,omitempty"`
+	AgreementID           string         `bson:"agreementId,omitempty"`
+	AgreementIDs          []string       `bson:"agreementIds,omitempty"`
+	AgreementCollectionID string         `bson:"agreementCollectionId,omitempty"`
+	DurationMin           int            `bson:"durationMin"`
+	PriceKobo             int64          `bson:"priceKobo"`
+	Currency              string         `bson:"currency"`
+	Active                bool           `bson:"active"`
+	SortOrder             int            `bson:"sortOrder"`
+	CreatedAt             bson.DateTime  `bson:"createdAt"`
+	UpdatedAt             bson.DateTime  `bson:"updatedAt"`
+	DeletedAt             *bson.DateTime `bson:"deletedAt,omitempty"`
 }
 
 // Create inserts a new service, assigning its ID.
@@ -178,18 +180,20 @@ func newServiceDoc(svc catalog.Service) (serviceDoc, error) {
 		return serviceDoc{}, fmt.Errorf("service practitionerId %q is not an ObjectID: %w", svc.PractitionerID, err)
 	}
 	doc := serviceDoc{
-		PractitionerID: practitionerOID,
-		Name:           svc.Name,
-		Description:    svc.Description,
-		ImageURL:       svc.ImageURL,
-		AgreementID:    svc.AgreementID,
-		DurationMin:    svc.DurationMinutes,
-		PriceKobo:      svc.PriceKobo,
-		Currency:       svc.Currency,
-		Active:         svc.Active,
-		SortOrder:      svc.SortOrder,
-		CreatedAt:      bson.NewDateTimeFromTime(svc.CreatedAt),
-		UpdatedAt:      bson.NewDateTimeFromTime(svc.UpdatedAt),
+		PractitionerID:        practitionerOID,
+		Name:                  svc.Name,
+		Description:           svc.Description,
+		ImageURL:              svc.ImageURL,
+		AgreementID:           svc.AgreementID,
+		AgreementIDs:          svc.AgreementIDs,
+		AgreementCollectionID: svc.AgreementCollectionID,
+		DurationMin:           svc.DurationMinutes,
+		PriceKobo:             svc.PriceKobo,
+		Currency:              svc.Currency,
+		Active:                svc.Active,
+		SortOrder:             svc.SortOrder,
+		CreatedAt:             bson.NewDateTimeFromTime(svc.CreatedAt),
+		UpdatedAt:             bson.NewDateTimeFromTime(svc.UpdatedAt),
 	}
 	if svc.ID != "" {
 		oid, err := bson.ObjectIDFromHex(svc.ID)
@@ -207,19 +211,21 @@ func newServiceDoc(svc catalog.Service) (serviceDoc, error) {
 
 func serviceFromDoc(doc serviceDoc) catalog.Service {
 	svc := catalog.Service{
-		ID:              doc.ID.Hex(),
-		PractitionerID:  doc.PractitionerID.Hex(),
-		Name:            doc.Name,
-		Description:     doc.Description,
-		ImageURL:        doc.ImageURL,
-		AgreementID:     doc.AgreementID,
-		DurationMinutes: doc.DurationMin,
-		PriceKobo:       doc.PriceKobo,
-		Currency:        doc.Currency,
-		Active:          doc.Active,
-		SortOrder:       doc.SortOrder,
-		CreatedAt:       doc.CreatedAt.Time(),
-		UpdatedAt:       doc.UpdatedAt.Time(),
+		ID:                    doc.ID.Hex(),
+		PractitionerID:        doc.PractitionerID.Hex(),
+		Name:                  doc.Name,
+		Description:           doc.Description,
+		ImageURL:              doc.ImageURL,
+		AgreementID:           doc.AgreementID,
+		AgreementIDs:          doc.AgreementIDs,
+		AgreementCollectionID: doc.AgreementCollectionID,
+		DurationMinutes:       doc.DurationMin,
+		PriceKobo:             doc.PriceKobo,
+		Currency:              doc.Currency,
+		Active:                doc.Active,
+		SortOrder:             doc.SortOrder,
+		CreatedAt:             doc.CreatedAt.Time(),
+		UpdatedAt:             doc.UpdatedAt.Time(),
 	}
 	if svc.Currency == "" {
 		// Rows written before the currency field existed (early seeds).

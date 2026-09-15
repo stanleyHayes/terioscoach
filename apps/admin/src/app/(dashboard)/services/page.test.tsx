@@ -202,6 +202,7 @@ describe("ServicesPage", () => {
       currency: "USD",
       // No agreement chosen: the service is open to anyone.
       agreementId: "",
+      agreementIds: [],
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(push).toHaveBeenCalledWith("/services");

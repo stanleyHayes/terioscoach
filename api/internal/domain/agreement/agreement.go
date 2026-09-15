@@ -38,22 +38,37 @@ const (
 // rendered by the client, never as HTML from the server, so the text can
 // never carry markup into a page.
 type Agreement struct {
-	ID             string
-	PractitionerID string
+	ID                       string
+	PractitionerID           string
 	/** Stable machine name, e.g. "holistic_coaching". Services point at the
 	 * ID, but the key is what seeds and fixtures refer to. */
-	Key     string
-	Title   string
-	Body    string
-	Version int
-	Active  bool
+	Key                      string
+	Title                    string
+	Body                     string
+	RequiresCountersignature bool
+	CollectionID             string
+	Version                  int
+	Active                   bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
+// AgreementCollection groups multiple agreements into a bundle (e.g. Holistic Coaching Agreement Collection).
+type AgreementCollection struct {
+	ID             string
+	PractitionerID string
+	Key            string
+	Title          string
+	Description    string
+	AgreementIDs   []string
+	Active         bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 // New builds an active agreement at version 1.
-func New(practitionerID, key, title, body string, now time.Time) (Agreement, error) {
+func New(practitionerID, key, title, body string, requiresCountersignature bool, now time.Time) (Agreement, error) {
 	key = strings.TrimSpace(key)
 	title = strings.TrimSpace(title)
 	body = strings.TrimSpace(body)
@@ -68,14 +83,15 @@ func New(practitionerID, key, title, body string, now time.Time) (Agreement, err
 	}
 	now = now.UTC()
 	return Agreement{
-		PractitionerID: practitionerID,
-		Key:            key,
-		Title:          title,
-		Body:           body,
-		Version:        1,
-		Active:         true,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		PractitionerID:           practitionerID,
+		Key:                      key,
+		Title:                    title,
+		Body:                     body,
+		RequiresCountersignature: requiresCountersignature,
+		Version:                  1,
+		Active:                   true,
+		CreatedAt:                now,
+		UpdatedAt:                now,
 	}, nil
 }
 
@@ -83,9 +99,11 @@ func New(practitionerID, key, title, body string, now time.Time) (Agreement, err
 // version; a change to the title or the active flag alone does not, because
 // neither alters what a past signatory agreed to.
 type Patch struct {
-	Title  *string
-	Body   *string
-	Active *bool
+	Title                    *string
+	Body                     *string
+	RequiresCountersignature *bool
+	CollectionID             *string
+	Active                   *bool
 }
 
 // Apply validates and applies p, returning the updated agreement.
@@ -109,6 +127,12 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 			a.Version++
 		}
 	}
+	if p.RequiresCountersignature != nil {
+		a.RequiresCountersignature = *p.RequiresCountersignature
+	}
+	if p.CollectionID != nil {
+		a.CollectionID = strings.TrimSpace(*p.CollectionID)
+	}
 	if p.Active != nil {
 		a.Active = *p.Active
 	}
@@ -122,25 +146,64 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 // signature — and is never normalised or corrected to the name on the
 // account, which is stored alongside it so the two can be compared later.
 type Signature struct {
-	ID               string
-	AgreementID      string
-	AgreementKey     string
-	AgreementTitle   string
-	AgreementVersion int
+	ID                       string
+	AgreementID              string
+	AgreementKey             string
+	AgreementTitle           string
+	AgreementVersion         int
 	/** The wording as it stood when this was signed. Snapshotted, not
 	 * looked up: an agreement edited later must not silently change what a
 	 * past signatory is recorded as having accepted. */
-	AgreementBody string
-	ClientID      string
+	AgreementBody            string
+	ClientID                 string
 	/** The name on the account when the signature was given. */
-	ClientName  string
-	ClientEmail string
-	SignedName  string
+	ClientName               string
+	ClientEmail              string
+	SignedName               string
+	RequiresCountersignature bool
+	PractitionerSignedName   string
+	PractitionerSignedAt     *time.Time
+	SharedWithClient         bool
 	/** The booking being made when the agreement was presented, when there
 	 * was one. Kept for the audit trail, never for coverage: coverage is by
 	 * agreement, so this booking is simply the first one. */
 	BookingID string
 	SignedAt  time.Time
+}
+
+// NewCollection builds an active collection.
+func NewCollection(practitionerID, key, title, description string, agreementIDs []string, now time.Time) (AgreementCollection, error) {
+	key = strings.TrimSpace(key)
+	title = strings.TrimSpace(title)
+	if practitionerID == "" || key == "" || title == "" {
+		return AgreementCollection{}, ErrInvalidCollection
+	}
+	now = now.UTC()
+	return AgreementCollection{
+		PractitionerID: practitionerID,
+		Key:            key,
+		Title:          title,
+		Description:    strings.TrimSpace(description),
+		AgreementIDs:   agreementIDs,
+		Active:         true,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}, nil
+}
+
+// Countersign records the practitioner countersigning the agreement.
+func (s Signature) Countersign(practitionerName string, now time.Time) (Signature, error) {
+	if s.PractitionerSignedAt != nil {
+		return s, ErrAlreadyCountersigned
+	}
+	practitionerName = strings.TrimSpace(practitionerName)
+	if err := ValidateSignedName(practitionerName); err != nil {
+		return s, err
+	}
+	t := now.UTC()
+	s.PractitionerSignedName = practitionerName
+	s.PractitionerSignedAt = &t
+	return s, nil
 }
 
 // Sign builds a signature of a against the wording a currently carries.
@@ -156,17 +219,18 @@ func (a Agreement) Sign(clientID, clientName, clientEmail, signedName, bookingID
 		return Signature{}, ErrAgreementInactive
 	}
 	return Signature{
-		AgreementID:      a.ID,
-		AgreementKey:     a.Key,
-		AgreementTitle:   a.Title,
-		AgreementVersion: a.Version,
-		AgreementBody:    a.Body,
-		ClientID:         clientID,
-		ClientName:       strings.TrimSpace(clientName),
-		ClientEmail:      strings.TrimSpace(clientEmail),
-		SignedName:       signedName,
-		BookingID:        strings.TrimSpace(bookingID),
-		SignedAt:         now.UTC(),
+		AgreementID:              a.ID,
+		AgreementKey:             a.Key,
+		AgreementTitle:           a.Title,
+		AgreementVersion:         a.Version,
+		AgreementBody:            a.Body,
+		ClientID:                 clientID,
+		ClientName:               strings.TrimSpace(clientName),
+		ClientEmail:              strings.TrimSpace(clientEmail),
+		SignedName:               signedName,
+		RequiresCountersignature: a.RequiresCountersignature,
+		BookingID:                strings.TrimSpace(bookingID),
+		SignedAt:                 now.UTC(),
 	}, nil
 }
 

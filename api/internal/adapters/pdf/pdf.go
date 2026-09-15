@@ -25,19 +25,24 @@ const (
 	textWidth  = pageWidth - 2*margin
 )
 
-// Style is one of the two faces a line can be set in.
+// Style is one of the faces a line can be set in.
 type Style int
 
 const (
 	Regular Style = iota
 	Bold
+	Italic
 )
 
 func (s Style) fontRef() string {
-	if s == Bold {
+	switch s {
+	case Bold:
 		return "/F2"
+	case Italic:
+		return "/F3"
+	default:
+		return "/F1"
 	}
-	return "/F1"
 }
 
 // Block is one run of text to lay out: a heading, a paragraph, or a spacer.
@@ -302,10 +307,10 @@ func content(lines []placedLine) string {
 // write assembles the object graph, the cross-reference table and the
 // trailer into the finished file.
 func write(pages [][]placedLine) []byte {
-	// Object numbering: 1 catalog, 2 pages, 3 and 4 the two fonts, then a
+	// Object numbering: 1 catalog, 2 pages, 3, 4, and 5 fonts, then a
 	// page object and a content stream for each page.
-	const firstPageObj = 5
-	total := 4 + 2*len(pages)
+	const firstPageObj = 6
+	total := 5 + 2*len(pages)
 
 	var buf bytes.Buffer
 	offsets := make([]int, total+1)
@@ -328,13 +333,14 @@ func write(pages [][]placedLine) []byte {
 	object(2, fmt.Sprintf("<< /Type /Pages /Count %d /Kids [%s] >>", len(pages), strings.TrimSpace(kids.String())))
 	object(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
 	object(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
+	object(5, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>")
 
 	for i, page := range pages {
 		pageObj := firstPageObj + 2*i
 		streamObj := pageObj + 1
 		object(pageObj, fmt.Sprintf(
 			"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] "+
-				"/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>",
+				"/Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents %d 0 R >>",
 			pageWidth, pageHeight, streamObj))
 
 		stream := content(page)

@@ -73,10 +73,11 @@ func (s *Service) Get(ctx context.Context, id string) (agreement.Agreement, erro
 }
 
 func (s *Service) Create(ctx context.Context, practitionerID string, draft ports.AgreementDraft) (agreement.Agreement, error) {
-	a, err := agreement.New(practitionerID, draft.Key, draft.Title, draft.Body, s.now())
+	a, err := agreement.New(practitionerID, draft.Key, draft.Title, draft.Body, draft.RequiresCountersignature, s.now())
 	if err != nil {
 		return agreement.Agreement{}, err
 	}
+	a.CollectionID = draft.CollectionID
 	return s.repo.Create(ctx, a)
 }
 
@@ -86,9 +87,11 @@ func (s *Service) Update(ctx context.Context, id string, patch ports.AgreementPa
 		return agreement.Agreement{}, err
 	}
 	updated, err := current.Apply(agreement.Patch{
-		Title:  patch.Title,
-		Body:   patch.Body,
-		Active: patch.Active,
+		Title:                    patch.Title,
+		Body:                     patch.Body,
+		RequiresCountersignature: patch.RequiresCountersignature,
+		CollectionID:             patch.CollectionID,
+		Active:                   patch.Active,
 	}, s.now())
 	if err != nil {
 		return agreement.Agreement{}, err
@@ -96,61 +99,94 @@ func (s *Service) Update(ctx context.Context, id string, patch ports.AgreementPa
 	return s.repo.Update(ctx, updated)
 }
 
-// StatusForService reports the agreement a service requires and whether
-// this client has signed it.
-//
-// A service with no agreement, and an agreement that has been retired,
-// both come back as "nothing to sign": a contract the practice has
-// withdrawn must not block a booking on a signature it will not accept.
-func (s *Service) StatusForService(ctx context.Context, clientID, serviceID string) (ports.AgreementStatus, error) {
+// StatusesForService returns the agreement statuses for all agreements required by the service.
+func (s *Service) StatusesForService(ctx context.Context, clientID, serviceID string) ([]ports.AgreementStatus, error) {
 	svc, err := s.services.FindByID(ctx, serviceID)
 	if err != nil {
+		return nil, err
+	}
+
+	agreementIDs := svc.RequiredAgreementIDs()
+	if len(agreementIDs) == 0 {
+		return nil, nil
+	}
+
+	var results []ports.AgreementStatus
+	for _, aid := range agreementIDs {
+		a, err := s.repo.GetByID(ctx, aid)
+		if err != nil {
+			if errors.Is(err, agreement.ErrAgreementNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		if !a.Active {
+			continue
+		}
+
+		status := ports.AgreementStatus{Agreement: &a}
+		if clientID != "" {
+			sig, err := s.repo.SignatureFor(ctx, clientID, a.ID)
+			if err != nil {
+				if !errors.Is(err, agreement.ErrAgreementNotFound) {
+					return nil, err
+				}
+			} else {
+				status.Signature = &sig
+			}
+		}
+		results = append(results, status)
+	}
+	return results, nil
+}
+
+// StatusForService reports the next unsigned agreement a service requires,
+// or the last signed agreement if all are signed, or empty if none required.
+func (s *Service) StatusForService(ctx context.Context, clientID, serviceID string) (ports.AgreementStatus, error) {
+	statuses, err := s.StatusesForService(ctx, clientID, serviceID)
+	if err != nil {
 		return ports.AgreementStatus{}, err
 	}
-	if strings.TrimSpace(svc.AgreementID) == "" {
+	if len(statuses) == 0 {
 		return ports.AgreementStatus{}, nil
 	}
-
-	a, err := s.repo.GetByID(ctx, svc.AgreementID)
-	if err != nil {
-		// A service pointing at an agreement that no longer exists is a
-		// configuration fault, not a reason to refuse the client a booking.
-		if errors.Is(err, agreement.ErrAgreementNotFound) {
-			return ports.AgreementStatus{}, nil
+	for _, st := range statuses {
+		if !st.Signed() {
+			return st, nil
 		}
-		return ports.AgreementStatus{}, err
 	}
-	if !a.Active {
-		return ports.AgreementStatus{}, nil
-	}
-
-	status := ports.AgreementStatus{Agreement: &a}
-	if clientID == "" {
-		return status, nil
-	}
-
-	sig, err := s.repo.SignatureFor(ctx, clientID, a.ID)
-	if err != nil {
-		if errors.Is(err, agreement.ErrAgreementNotFound) {
-			return status, nil
-		}
-		return ports.AgreementStatus{}, err
-	}
-	status.Signature = &sig
-	return status, nil
+	return statuses[0], nil
 }
 
 // RequireSigned is the booking gate. It returns ErrAgreementRequired when
 // the service is covered by an agreement this client has not signed.
 func (s *Service) RequireSigned(ctx context.Context, clientID, serviceID string) error {
-	status, err := s.StatusForService(ctx, clientID, serviceID)
+	statuses, err := s.StatusesForService(ctx, clientID, serviceID)
 	if err != nil {
 		return err
 	}
-	if !status.Signed() {
-		return fmt.Errorf("%w: %s", agreement.ErrAgreementRequired, status.Agreement.Title)
+	for _, st := range statuses {
+		if !st.Signed() {
+			return fmt.Errorf("%w: %s", agreement.ErrAgreementRequired, st.Agreement.Title)
+		}
 	}
 	return nil
+}
+
+// Countersign records the practitioner countersigning a client's signature.
+func (s *Service) Countersign(ctx context.Context, id identity.Identity, signatureID string, signedName string) (agreement.Signature, error) {
+	if id.Role != identity.RolePractitioner {
+		return agreement.Signature{}, agreement.ErrAgreementNotFound
+	}
+	sig, err := s.repo.SignatureByID(ctx, signatureID)
+	if err != nil {
+		return agreement.Signature{}, err
+	}
+	countersigned, err := sig.Countersign(signedName, s.now())
+	if err != nil {
+		return agreement.Signature{}, err
+	}
+	return s.repo.UpdateSignature(ctx, countersigned)
 }
 
 // Sign records the client's acceptance. It is idempotent: signing an

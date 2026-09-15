@@ -19,6 +19,8 @@ export interface Service {
   imageUrl?: string;
   /** The agreement a client must sign before booking this. Empty = none. */
   agreementId?: string;
+  agreementIds?: string[];
+  agreementCollectionId?: string;
   durationMinutes: number;
   priceKobo: number;
   currency: string;
@@ -34,6 +36,8 @@ export interface ServiceDraft {
   description: string;
   imageUrl?: string;
   agreementId?: string;
+  agreementIds?: string[];
+  agreementCollectionId?: string;
   durationMinutes: number;
   priceKobo: number;
   currency?: string;

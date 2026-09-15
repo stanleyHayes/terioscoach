@@ -30,6 +30,8 @@ import {
 import { authApi, resetTokenRotation, type AuthTokens, type User } from "@/lib/api";
 
 export const REFRESH_TOKEN_KEY = "terios.web.refreshToken";
+export const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+export const PROACTIVE_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -43,6 +45,8 @@ export interface AuthContextValue {
   /** Persists rotated tokens after an automatic refresh — the
    * `RefreshCallbacks` half of `authedRequest`. */
   onTokensRefreshed: (tokens: AuthTokens) => void;
+  /** Resets inactivity timer (called on user interaction or inside active meeting). */
+  touchActivity: () => void;
   /** Throws ApiError on failure (e.g. code "invalid_credentials"). */
   login: (email: string, password: string) => Promise<void>;
   /** Registers and signs in (201 returns tokens). Throws ApiError on failure
@@ -61,6 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   // Guards against the mount effect running twice in React StrictMode.
   const restoredRef = useRef(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastRefreshRef = useRef<number>(Date.now());
+
+  const touchActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
 
   const clearSession = useCallback(() => {
     setTokens(null);
@@ -80,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(nextTokens);
     setUser(nextUser);
     setStatus("authenticated");
+    lastActivityRef.current = Date.now();
+    lastRefreshRef.current = Date.now();
     // These are now the newest tokens in play; tell the shared rotation so a
     // request still holding the pre-sign-in set doesn't present it.
     resetTokenRotation(nextTokens);
@@ -157,6 +169,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Track user activity to prevent idle logout and proactively refresh tokens.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener("pointerdown", handleActivity, { passive: true });
+    window.addEventListener("keydown", handleActivity, { passive: true });
+    window.addEventListener("scroll", handleActivity, { passive: true });
+    window.addEventListener("touchstart", handleActivity, { passive: true });
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const idleTime = now - lastActivityRef.current;
+      if (idleTime > INACTIVITY_TIMEOUT_MS) {
+        void logout();
+        return;
+      }
+      if (
+        tokens?.refreshToken &&
+        now - lastRefreshRef.current > PROACTIVE_REFRESH_INTERVAL_MS
+      ) {
+        lastRefreshRef.current = now;
+        authApi
+          .refresh(tokens.refreshToken)
+          .then((next) => {
+            onTokensRefreshed(next);
+          })
+          .catch(() => {
+            // Handled on next request if needed.
+          });
+      }
+    }, 30 * 1000);
+
+    return () => {
+      window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("scroll", handleActivity);
+      window.removeEventListener("touchstart", handleActivity);
+      clearInterval(interval);
+    };
+  }, [status, tokens?.refreshToken, logout, onTokensRefreshed]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -164,12 +221,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken: tokens?.accessToken ?? null,
       session: tokens,
       onTokensRefreshed,
+      touchActivity,
       login,
       register,
       setUserProfile,
       logout,
     }),
-    [status, user, tokens, onTokensRefreshed, login, register, logout, setUserProfile],
+    [status, user, tokens, onTokensRefreshed, touchActivity, login, register, logout, setUserProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -109,11 +109,17 @@ func (s *Service) BookingConfirmed(ctx context.Context, notice ports.BookingNoti
 	now := s.now()
 	data := s.bookingData(notice)
 	s.queue(ctx, notification.KindBookingConfirmation, notice.ClientEmail, notice.BookingID, data, now)
+	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingConfirmation, s.practiceEmail, notice.BookingID, data, now)
+	}
 
 	if dueAt, ok := notification.ReminderDueAt(notice.StartAt, s.lead, now); ok {
 		reminderData := s.bookingData(notice)
 		reminderData["timeUntil"] = humanLead(s.lead)
 		s.queue(ctx, notification.KindSessionReminder, notice.ClientEmail, notice.BookingID, reminderData, dueAt)
+		if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
+			s.queue(ctx, notification.KindSessionReminder, s.practiceEmail, notice.BookingID, reminderData, dueAt)
+		}
 	}
 }
 
@@ -125,12 +131,18 @@ func (s *Service) BookingRescheduled(ctx context.Context, notice ports.BookingNo
 	data["oldStartTime"] = s.formatTime(notice.PreviousStartAt, notice.Timezone)
 	data["newStartTime"] = data["startTime"]
 	s.queue(ctx, notification.KindBookingRescheduled, notice.ClientEmail, notice.BookingID, data, now)
+	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingRescheduled, s.practiceEmail, notice.BookingID, data, now)
+	}
 
 	s.cancelReminders(ctx, notice.BookingID)
 	if dueAt, ok := notification.ReminderDueAt(notice.StartAt, s.lead, now); ok {
 		reminderData := s.bookingData(notice)
 		reminderData["timeUntil"] = humanLead(s.lead)
 		s.queue(ctx, notification.KindSessionReminder, notice.ClientEmail, notice.BookingID, reminderData, dueAt)
+		if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
+			s.queue(ctx, notification.KindSessionReminder, s.practiceEmail, notice.BookingID, reminderData, dueAt)
+		}
 	}
 }
 
@@ -139,6 +151,10 @@ func (s *Service) BookingRescheduled(ctx context.Context, notice ports.BookingNo
 func (s *Service) BookingCancelled(ctx context.Context, notice ports.BookingNotice) {
 	s.queue(ctx, notification.KindBookingCancelled, notice.ClientEmail, notice.BookingID,
 		s.bookingData(notice), s.now())
+	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingCancelled, s.practiceEmail, notice.BookingID,
+			s.bookingData(notice), s.now())
+	}
 	s.cancelReminders(ctx, notice.BookingID)
 }
 
@@ -358,6 +374,8 @@ func humanLead(lead time.Duration) string {
 		return "tomorrow"
 	case lead >= 2*time.Hour:
 		return fmt.Sprintf("in %d hours", int(lead.Hours()))
+	case lead >= time.Minute:
+		return fmt.Sprintf("in %d minutes", int(lead.Minutes()))
 	default:
 		return "coming up"
 	}

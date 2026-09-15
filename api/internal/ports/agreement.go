@@ -9,16 +9,20 @@ import (
 
 // AgreementDraft is the input for creating an agreement.
 type AgreementDraft struct {
-	Key   string
-	Title string
-	Body  string
+	Key                      string
+	Title                    string
+	Body                     string
+	RequiresCountersignature bool
+	CollectionID             string
 }
 
 // AgreementPatch is a partial edit. Body changes bump the version.
 type AgreementPatch struct {
-	Title  *string
-	Body   *string
-	Active *bool
+	Title                    *string
+	Body                     *string
+	RequiresCountersignature *bool
+	CollectionID             *string
+	Active                   *bool
 }
 
 // SignRequest is one client accepting one agreement.
@@ -56,7 +60,9 @@ type AgreementService interface {
 	// StatusForService is what the booking flow asks before showing the
 	// agreement step, and what booking creation asks before accepting.
 	StatusForService(ctx context.Context, clientID, serviceID string) (AgreementStatus, error)
+	StatusesForService(ctx context.Context, clientID, serviceID string) ([]AgreementStatus, error)
 	Sign(ctx context.Context, req SignRequest) (agreement.Signature, error)
+	Countersign(ctx context.Context, id identity.Identity, signatureID string, signedName string) (agreement.Signature, error)
 	SignaturesForClient(ctx context.Context, clientID string) ([]agreement.Signature, error)
 
 	// SignedDocument renders one signature as a PDF, for whoever is
@@ -81,6 +87,7 @@ type AgreementRepository interface {
 	// CreateSignature is idempotent by (clientID, agreementID): a repeat
 	// returns the signature already on file rather than a second one.
 	CreateSignature(ctx context.Context, sig agreement.Signature) (agreement.Signature, error)
+	UpdateSignature(ctx context.Context, sig agreement.Signature) (agreement.Signature, error)
 	SignatureFor(ctx context.Context, clientID, agreementID string) (agreement.Signature, error)
 	SignatureByID(ctx context.Context, id string) (agreement.Signature, error)
 	SignaturesForClient(ctx context.Context, clientID string) ([]agreement.Signature, error)

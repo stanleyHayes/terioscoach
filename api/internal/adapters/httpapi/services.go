@@ -44,36 +44,40 @@ type catalogHandler struct {
 
 // serviceBody is the contract service shape.
 type serviceBody struct {
-	ID              string    `json:"id"`
-	PractitionerID  string    `json:"practitionerId"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	ImageURL        string    `json:"imageUrl"`
-	AgreementID     string    `json:"agreementId,omitempty"`
-	DurationMinutes int       `json:"durationMinutes"`
-	PriceKobo       int64     `json:"priceKobo"`
-	Currency        string    `json:"currency"`
-	Active          bool      `json:"active"`
-	SortOrder       int       `json:"sortOrder"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID                    string    `json:"id"`
+	PractitionerID        string    `json:"practitionerId"`
+	Name                  string    `json:"name"`
+	Description           string    `json:"description"`
+	ImageURL              string    `json:"imageUrl"`
+	AgreementID           string    `json:"agreementId,omitempty"`
+	AgreementIDs          []string  `json:"agreementIds,omitempty"`
+	AgreementCollectionID string    `json:"agreementCollectionId,omitempty"`
+	DurationMinutes       int       `json:"durationMinutes"`
+	PriceKobo             int64     `json:"priceKobo"`
+	Currency              string    `json:"currency"`
+	Active                bool      `json:"active"`
+	SortOrder             int       `json:"sortOrder"`
+	CreatedAt             time.Time `json:"createdAt"`
+	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
 func newServiceBody(s catalog.Service) serviceBody {
 	return serviceBody{
-		ID:              s.ID,
-		PractitionerID:  s.PractitionerID,
-		Name:            s.Name,
-		Description:     s.Description,
-		ImageURL:        s.ImageURL,
-		AgreementID:     s.AgreementID,
-		DurationMinutes: s.DurationMinutes,
-		PriceKobo:       s.PriceKobo,
-		Currency:        s.Currency,
-		Active:          s.Active,
-		SortOrder:       s.SortOrder,
-		CreatedAt:       s.CreatedAt,
-		UpdatedAt:       s.UpdatedAt,
+		ID:                    s.ID,
+		PractitionerID:        s.PractitionerID,
+		Name:                  s.Name,
+		Description:           s.Description,
+		ImageURL:              s.ImageURL,
+		AgreementID:           s.AgreementID,
+		AgreementIDs:          s.AgreementIDs,
+		AgreementCollectionID: s.AgreementCollectionID,
+		DurationMinutes:       s.DurationMinutes,
+		PriceKobo:             s.PriceKobo,
+		Currency:              s.Currency,
+		Active:                s.Active,
+		SortOrder:             s.SortOrder,
+		CreatedAt:             s.CreatedAt,
+		UpdatedAt:             s.UpdatedAt,
 	}
 }
 
@@ -119,27 +123,31 @@ func (h *catalogHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name            string `json:"name"`
-		Description     string `json:"description"`
-		ImageURL        string `json:"imageUrl"`
-		AgreementID     string `json:"agreementId"`
-		DurationMinutes int    `json:"durationMinutes"`
-		PriceKobo       int64  `json:"priceKobo"`
-		Currency        string `json:"currency"`
-		SortOrder       int    `json:"sortOrder"`
+		Name                  string   `json:"name"`
+		Description           string   `json:"description"`
+		ImageURL              string   `json:"imageUrl"`
+		AgreementID           string   `json:"agreementId"`
+		AgreementIDs          []string `json:"agreementIds"`
+		AgreementCollectionID string   `json:"agreementCollectionId"`
+		DurationMinutes       int      `json:"durationMinutes"`
+		PriceKobo             int64    `json:"priceKobo"`
+		Currency              string   `json:"currency"`
+		SortOrder             int      `json:"sortOrder"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	svc, err := h.svc.CreateService(r.Context(), id.UserID, ports.ServiceInput{
-		Name:            req.Name,
-		Description:     req.Description,
-		ImageURL:        req.ImageURL,
-		AgreementID:     req.AgreementID,
-		DurationMinutes: req.DurationMinutes,
-		PriceKobo:       req.PriceKobo,
-		Currency:        req.Currency,
-		SortOrder:       req.SortOrder,
+		Name:                  req.Name,
+		Description:           req.Description,
+		ImageURL:              req.ImageURL,
+		AgreementID:           req.AgreementID,
+		AgreementIDs:          req.AgreementIDs,
+		AgreementCollectionID: req.AgreementCollectionID,
+		DurationMinutes:       req.DurationMinutes,
+		PriceKobo:             req.PriceKobo,
+		Currency:              req.Currency,
+		SortOrder:             req.SortOrder,
 	})
 	if err != nil {
 		writeDomainError(w, err)
@@ -157,29 +165,33 @@ func (h *catalogHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name            *string `json:"name"`
-		Description     *string `json:"description"`
-		ImageURL        *string `json:"imageUrl"`
-		AgreementID     *string `json:"agreementId"`
-		DurationMinutes *int    `json:"durationMinutes"`
-		PriceKobo       *int64  `json:"priceKobo"`
-		Currency        *string `json:"currency"`
-		Active          *bool   `json:"active"`
-		SortOrder       *int    `json:"sortOrder"`
+		Name                  *string   `json:"name"`
+		Description           *string   `json:"description"`
+		ImageURL              *string   `json:"imageUrl"`
+		AgreementID           *string   `json:"agreementId"`
+		AgreementIDs          *[]string `json:"agreementIds"`
+		AgreementCollectionID *string   `json:"agreementCollectionId"`
+		DurationMinutes       *int      `json:"durationMinutes"`
+		PriceKobo             *int64    `json:"priceKobo"`
+		Currency              *string   `json:"currency"`
+		Active                *bool     `json:"active"`
+		SortOrder             *int      `json:"sortOrder"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	svc, err := h.svc.UpdateService(r.Context(), "", chi.URLParam(r, "id"), ports.ServicePatch{
-		Name:            req.Name,
-		Description:     req.Description,
-		ImageURL:        req.ImageURL,
-		AgreementID:     req.AgreementID,
-		DurationMinutes: req.DurationMinutes,
-		PriceKobo:       req.PriceKobo,
-		Currency:        req.Currency,
-		Active:          req.Active,
-		SortOrder:       req.SortOrder,
+		Name:                  req.Name,
+		Description:           req.Description,
+		ImageURL:              req.ImageURL,
+		AgreementID:           req.AgreementID,
+		AgreementIDs:          req.AgreementIDs,
+		AgreementCollectionID: req.AgreementCollectionID,
+		DurationMinutes:       req.DurationMinutes,
+		PriceKobo:             req.PriceKobo,
+		Currency:              req.Currency,
+		Active:                req.Active,
+		SortOrder:             req.SortOrder,
 	})
 	if err != nil {
 		writeDomainError(w, err)

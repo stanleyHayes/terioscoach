@@ -218,7 +218,9 @@ func (f *FakeRefreshTokenRepository) Revoke(_ context.Context, tokenHash string)
 	if !ok {
 		return nil
 	}
+	now := time.Now().UTC()
 	token.Revoked = true
+	token.RevokedAt = &now
 	f.byHash[tokenHash] = token
 	return nil
 }

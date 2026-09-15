@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CircleAlert, FileText, FolderOpen } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   NotesComposer,
   isMissingNote,
@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "@/components/content/states";
 import { ClientAgreements } from "@/components/clients/ClientAgreements";
 import { ClientDocuments } from "@/components/clients/ClientDocuments";
+import { ClientForms } from "@/components/clients/ClientForms";
 import { RecordingPlayer } from "@/components/schedule/RecordingPlayer";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -81,9 +82,30 @@ export default function ClientRecordPage() {
   const [phone, setPhone] = useState<string | null>(null);
   const [practiceNotes, setPracticeNotes] = useState<string | null>(null);
   const [tags, setTags] = useState<string | null>(null);
+  const [sessionFilter, setSessionFilter] = useState<
+    "all" | "upcoming" | "completed" | "cancelled" | "no_show"
+  >("all");
 
   const data = record.data;
   const { upcoming, past } = splitClientBookings(data?.recentBookings ?? []);
+
+  const filteredBookings = useMemo(() => {
+    if (!data?.recentBookings) return [];
+    if (sessionFilter === "all") return [...upcoming, ...past];
+    if (sessionFilter === "upcoming") return upcoming;
+    return past.filter((b) => b.status === sessionFilter);
+  }, [data, sessionFilter, upcoming, past]);
+
+  const counts = useMemo(() => {
+    const list = data?.recentBookings ?? [];
+    return {
+      all: list.length,
+      upcoming: upcoming.length,
+      completed: past.filter((b) => b.status === "completed").length,
+      cancelled: past.filter((b) => b.status === "cancelled").length,
+      no_show: past.filter((b) => b.status === "no_show").length,
+    };
+  }, [data, upcoming, past]);
 
   /** Opens a session's notes. A 404 is the normal "nothing written yet"
    * state, not an error worth showing. */
@@ -203,11 +225,21 @@ export default function ClientRecordPage() {
         </div>
       ) : (
         <>
-          <header>
-            <h1 className="font-display text-[1.75rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink">
-              {data.name}
-            </h1>
-            <p className="mt-1.5 text-sm text-ink-muted">{data.email}</p>
+          <header className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h1 className="font-display text-[1.75rem] leading-[1.2] font-medium tracking-[-0.01em] text-ink">
+                {data.name}
+              </h1>
+              {data.profileCreatedAt ? (
+                <span className="text-xs text-ink-muted">
+                  Client since {new Date(data.profileCreatedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-sm text-ink-muted flex flex-wrap items-center gap-3">
+              <span>{data.email}</span>
+              {data.phone ? <span>· {data.phone}</span> : null}
+            </p>
           </header>
 
           {/* Rollups. */}
@@ -247,29 +279,66 @@ export default function ClientRecordPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
             {/* Sessions and their notes. */}
             <section
               aria-labelledby="sessions-heading"
               className="flex flex-col gap-4"
             >
-              <h2
-                id="sessions-heading"
-                className="font-display text-xl font-medium text-ink"
-              >
-                Sessions
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2
+                  id="sessions-heading"
+                  className="font-display text-xl font-medium text-ink"
+                >
+                  Sessions
+                </h2>
 
-              {data.recentBookings.length === 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5" role="tablist">
+                  {(
+                    [
+                      { id: "all", label: "All", count: counts.all },
+                      { id: "upcoming", label: "Upcoming", count: counts.upcoming },
+                      { id: "completed", label: "Completed", count: counts.completed },
+                      { id: "cancelled", label: "Cancelled", count: counts.cancelled },
+                      { id: "no_show", label: "No show", count: counts.no_show },
+                    ] as const
+                  ).map((tab) => {
+                    const active = sessionFilter === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setSessionFilter(tab.id)}
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                          active
+                            ? "bg-primary text-on-primary"
+                            : "bg-surface-sunken text-ink-muted hover:bg-surface-raised hover:text-ink",
+                        )}
+                      >
+                        {tab.label} ({tab.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {filteredBookings.length === 0 ? (
                 <EmptyState
                   compact
                   icon={<FolderOpen size={24} />}
-                  title="No sessions on file yet"
+                  title={
+                    sessionFilter === "all"
+                      ? "No sessions on file yet"
+                      : `No ${sessionFilter.replace("_", " ")} sessions`
+                  }
                   body="The client's booking history and session notes will appear here."
                 />
               ) : (
                 <ul className="flex flex-col gap-3">
-                  {[...upcoming, ...past].map((booking) => {
+                  {filteredBookings.map((booking) => {
                     const open = selectedBooking === booking.id;
                     return (
                       <li
@@ -380,11 +449,11 @@ export default function ClientRecordPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-border bg-surface-raised p-5">
+              <section className="rounded-lg border border-border bg-surface-raised p-5 flex flex-col gap-5">
                 <h2 className="text-base font-semibold text-ink">
                   Files and forms
                 </h2>
-                <ul className="mt-3 flex flex-col gap-2 text-sm text-ink-muted">
+                <ul className="flex flex-col gap-2 text-sm text-ink-muted">
                   <li className="flex items-center gap-2">
                     <FolderOpen
                       size={16}
@@ -405,17 +474,19 @@ export default function ClientRecordPage() {
                   </li>
                 </ul>
 
-                <div className="mt-4 border-t border-border pt-4">
+                <div className="border-t border-border pt-4">
+                  <ClientForms clientId={clientId} clientName={data.name} />
+                </div>
+
+                <div className="border-t border-border pt-4">
                   <ClientDocuments clientId={clientId} clientName={data.name} />
                 </div>
 
-                <div className="mt-5 border-t border-border pt-4">
-                  <h3 className="text-xs font-semibold tracking-[0.04em] text-ink-muted uppercase">
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-xs font-semibold tracking-[0.04em] text-ink-muted uppercase mb-3">
                     Signed agreements
                   </h3>
-                  <div className="mt-3">
-                    <ClientAgreements clientId={clientId} />
-                  </div>
+                  <ClientAgreements clientId={clientId} />
                 </div>
               </section>
             </aside>

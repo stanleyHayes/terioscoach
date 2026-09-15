@@ -19,6 +19,7 @@ import (
 //	POST  /v1/admin/agreements          → {agreement}
 //	PATCH /v1/admin/agreements/{id}     → {agreement}
 //	GET   /v1/admin/clients/{id}/agreements → {items}
+//	POST  /v1/admin/signatures/{id}/countersign → {signature}
 func WithAgreements(svc ports.AgreementService, auth ports.AuthService) Option {
 	return func(s *Server) {
 		if svc == nil {
@@ -42,6 +43,7 @@ func WithAgreements(svc ports.AgreementService, auth ports.AuthService) Option {
 			r.Post("/v1/admin/agreements", h.create)
 			r.Patch("/v1/admin/agreements/{id}", h.update)
 			r.Get("/v1/admin/clients/{id}/agreements", h.forClient)
+			r.Post("/v1/admin/signatures/{id}/countersign", h.countersign)
 		})
 	}
 }
@@ -56,78 +58,158 @@ type agreementHandler struct {
 }
 
 type agreementBody struct {
-	ID      string    `json:"id"`
-	Key     string    `json:"key"`
-	Title   string    `json:"title"`
-	Body    string    `json:"body"`
-	Version int       `json:"version"`
-	Active  bool      `json:"active"`
-	Updated time.Time `json:"updatedAt"`
+	ID                       string    `json:"id"`
+	Key                      string    `json:"key"`
+	Title                    string    `json:"title"`
+	Body                     string    `json:"body"`
+	RequiresCountersignature bool      `json:"requiresCountersignature"`
+	CollectionID             string    `json:"collectionId,omitempty"`
+	Version                  int       `json:"version"`
+	Active                   bool      `json:"active"`
+	Updated                  time.Time `json:"updatedAt"`
 }
 
 func newAgreementBody(a agreement.Agreement) agreementBody {
 	return agreementBody{
-		ID:      a.ID,
-		Key:     a.Key,
-		Title:   a.Title,
-		Body:    a.Body,
-		Version: a.Version,
-		Active:  a.Active,
-		Updated: a.UpdatedAt,
+		ID:                       a.ID,
+		Key:                      a.Key,
+		Title:                    a.Title,
+		Body:                     a.Body,
+		RequiresCountersignature: a.RequiresCountersignature,
+		CollectionID:             a.CollectionID,
+		Version:                  a.Version,
+		Active:                   a.Active,
+		Updated:                  a.UpdatedAt,
 	}
 }
 
 type agreementSignatureBody struct {
-	ID               string    `json:"id"`
-	AgreementID      string    `json:"agreementId"`
-	AgreementTitle   string    `json:"agreementTitle"`
-	AgreementVersion int       `json:"agreementVersion"`
-	ClientID         string    `json:"clientId"`
-	ClientName       string    `json:"clientName"`
-	SignedName       string    `json:"signedName"`
-	BookingID        string    `json:"bookingId,omitempty"`
-	SignedAt         time.Time `json:"signedAt"`
+	ID                       string     `json:"id"`
+	AgreementID              string     `json:"agreementId"`
+	AgreementTitle           string     `json:"agreementTitle"`
+	AgreementVersion         int        `json:"agreementVersion"`
+	ClientID                 string     `json:"clientId"`
+	ClientName               string     `json:"clientName"`
+	ClientEmail              string     `json:"clientEmail"`
+	SignedName               string     `json:"signedName"`
+	RequiresCountersignature bool       `json:"requiresCountersignature"`
+	PractitionerSignedName   string     `json:"practitionerSignedName,omitempty"`
+	PractitionerSignedAt     *time.Time `json:"practitionerSignedAt,omitempty"`
+	Countersigned            bool       `json:"countersigned"`
+	BookingID                string     `json:"bookingId,omitempty"`
+	SignedAt                 time.Time  `json:"signedAt"`
 }
 
 func newAgreementSignatureBody(s agreement.Signature) agreementSignatureBody {
 	return agreementSignatureBody{
-		ID:               s.ID,
-		AgreementID:      s.AgreementID,
-		AgreementTitle:   s.AgreementTitle,
-		AgreementVersion: s.AgreementVersion,
-		ClientID:         s.ClientID,
-		ClientName:       s.ClientName,
-		SignedName:       s.SignedName,
-		BookingID:        s.BookingID,
-		SignedAt:         s.SignedAt,
+		ID:                       s.ID,
+		AgreementID:              s.AgreementID,
+		AgreementTitle:           s.AgreementTitle,
+		AgreementVersion:         s.AgreementVersion,
+		ClientID:                 s.ClientID,
+		ClientName:               s.ClientName,
+		ClientEmail:              s.ClientEmail,
+		SignedName:               s.SignedName,
+		RequiresCountersignature: s.RequiresCountersignature,
+		PractitionerSignedName:   s.PractitionerSignedName,
+		PractitionerSignedAt:     s.PractitionerSignedAt,
+		Countersigned:            s.PractitionerSignedAt != nil,
+		BookingID:                s.BookingID,
+		SignedAt:                 s.SignedAt,
 	}
+}
+
+type agreementStatusItem struct {
+	Required  bool                    `json:"required"`
+	Signed    bool                    `json:"signed"`
+	Agreement *agreementBody          `json:"agreement,omitempty"`
+	Signature *agreementSignatureBody `json:"signature,omitempty"`
 }
 
 // forService answers the booking wizard's question: is there an agreement
 // in the way of this service, and has this client already signed it?
-//
-// The response is deliberately complete — the agreement's full text comes
-// back with it — so the portal can render the step without a second call
-// and, crucially, so the text shown is the text the signature is recorded
-// against.
 func (h *agreementHandler) forService(w http.ResponseWriter, r *http.Request) {
 	id, ok := identityOr401(w, r)
 	if !ok {
 		return
 	}
-	status, err := h.svc.StatusForService(r.Context(), id.UserID, chi.URLParam(r, "id"))
+	statuses, err := h.svc.StatusesForService(r.Context(), id.UserID, chi.URLParam(r, "id"))
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	out := map[string]any{"required": status.Agreement != nil, "signed": status.Signed()}
-	if status.Agreement != nil {
-		out["agreement"] = newAgreementBody(*status.Agreement)
+	if len(statuses) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"required":   false,
+			"signed":     true,
+			"agreements": []agreementStatusItem{},
+		})
+		return
 	}
-	if status.Signature != nil {
-		out["signature"] = newAgreementSignatureBody(*status.Signature)
+
+	allSigned := true
+	var pendingStatus *ports.AgreementStatus
+	items := make([]agreementStatusItem, 0, len(statuses))
+	for i := range statuses {
+		st := &statuses[i]
+		signed := st.Signed()
+		if !signed {
+			allSigned = false
+			if pendingStatus == nil {
+				pendingStatus = st
+			}
+		}
+		item := agreementStatusItem{
+			Required: st.Agreement != nil,
+			Signed:   signed,
+		}
+		if st.Agreement != nil {
+			ab := newAgreementBody(*st.Agreement)
+			item.Agreement = &ab
+		}
+		if st.Signature != nil {
+			sb := newAgreementSignatureBody(*st.Signature)
+			item.Signature = &sb
+		}
+		items = append(items, item)
+	}
+
+	activeStatus := pendingStatus
+	if activeStatus == nil {
+		activeStatus = &statuses[0]
+	}
+
+	out := map[string]any{
+		"required":   true,
+		"signed":     allSigned,
+		"agreements": items,
+	}
+	if activeStatus.Agreement != nil {
+		out["agreement"] = newAgreementBody(*activeStatus.Agreement)
+	}
+	if activeStatus.Signature != nil {
+		out["signature"] = newAgreementSignatureBody(*activeStatus.Signature)
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+func (h *agreementHandler) countersign(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		SignedName string `json:"signedName"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	sig, err := h.svc.Countersign(r.Context(), id, chi.URLParam(r, "id"), req.SignedName)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]agreementSignatureBody{"signature": newAgreementSignatureBody(sig)})
 }
 
 // sign records the caller's acceptance. The caller is always the signatory:

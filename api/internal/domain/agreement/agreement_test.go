@@ -11,7 +11,7 @@ var fixedNow = time.Date(2026, 9, 11, 10, 0, 0, 0, time.UTC)
 
 func newFixture(t *testing.T) Agreement {
 	t.Helper()
-	a, err := New("prac-1", "holistic_coaching", "Holistic Coaching Agreement", "## Terms\n\nBe punctual.", fixedNow)
+	a, err := New("prac-1", "holistic_coaching", "Holistic Coaching Agreement", "## Terms\n\nBe punctual.", false, fixedNow)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestNewRejectsEmptyInput(t *testing.T) {
 		"body too long":   {"p", "k", "T", strings.Repeat("a", MaxBodyLen+1), ErrBodyTooLong},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := New(tc.practitioner, tc.key, tc.title, tc.body, fixedNow); !errors.Is(err, tc.want) {
+			if _, err := New(tc.practitioner, tc.key, tc.title, tc.body, false, fixedNow); !errors.Is(err, tc.want) {
 				t.Errorf("err = %v, want %v", err, tc.want)
 			}
 		})
@@ -155,3 +155,43 @@ func TestInactiveAgreementCannotBeSigned(t *testing.T) {
 		t.Errorf("err = %v, want ErrAgreementInactive", err)
 	}
 }
+
+func TestCountersign(t *testing.T) {
+	a := newFixture(t)
+	sig, err := a.Sign("client-1", "Daniel Baah", "daniel@example.com", "Daniel Baah", "booking-9", fixedNow)
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	if sig.PractitionerSignedAt != nil {
+		t.Error("expected practitioner signature to be nil initially")
+	}
+
+	countersigned, err := sig.Countersign("Dr. Stanley Hayes", fixedNow.Add(time.Minute))
+	if err != nil {
+		t.Fatalf("Countersign: %v", err)
+	}
+	if countersigned.PractitionerSignedName != "Dr. Stanley Hayes" {
+		t.Errorf("got %q, want %q", countersigned.PractitionerSignedName, "Dr. Stanley Hayes")
+	}
+	if countersigned.PractitionerSignedAt == nil {
+		t.Error("expected practitioner signature timestamp to be set")
+	}
+
+	// Double countersign
+	_, err = countersigned.Countersign("Dr. Stanley Hayes", fixedNow.Add(time.Minute*2))
+	if !errors.Is(err, ErrAlreadyCountersigned) {
+		t.Errorf("got %v, want ErrAlreadyCountersigned", err)
+	}
+}
+
+func TestAgreementCollection(t *testing.T) {
+	c, err := NewCollection("prac-1", "holistic_bundle", "Holistic Coaching Bundle", "Standard onboarding packet", []string{"agr-1", "agr-2"}, fixedNow)
+	if err != nil {
+		t.Fatalf("NewCollection: %v", err)
+	}
+	if c.Key != "holistic_bundle" || len(c.AgreementIDs) != 2 {
+		t.Errorf("unexpected collection: %+v", c)
+	}
+}
+

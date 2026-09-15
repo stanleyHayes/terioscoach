@@ -34,30 +34,36 @@ func NewAgreementRepository(db *mongo.Database) *AgreementRepository {
 }
 
 type agreementDoc struct {
-	ID             bson.ObjectID `bson:"_id,omitempty"`
-	PractitionerID bson.ObjectID `bson:"practitionerId"`
-	Key            string        `bson:"key"`
-	Title          string        `bson:"title"`
-	Body           string        `bson:"body"`
-	Version        int           `bson:"version"`
-	Active         bool          `bson:"active"`
-	CreatedAt      bson.DateTime `bson:"createdAt"`
-	UpdatedAt      bson.DateTime `bson:"updatedAt"`
+	ID                       bson.ObjectID `bson:"_id,omitempty"`
+	PractitionerID           bson.ObjectID `bson:"practitionerId"`
+	Key                      string        `bson:"key"`
+	Title                    string        `bson:"title"`
+	Body                     string        `bson:"body"`
+	RequiresCountersignature bool          `bson:"requiresCountersignature"`
+	CollectionID             string        `bson:"collectionId,omitempty"`
+	Version                  int           `bson:"version"`
+	Active                   bool          `bson:"active"`
+	CreatedAt                bson.DateTime `bson:"createdAt"`
+	UpdatedAt                bson.DateTime `bson:"updatedAt"`
 }
 
 type agreementSignatureDoc struct {
-	ID               bson.ObjectID `bson:"_id,omitempty"`
-	AgreementID      bson.ObjectID `bson:"agreementId"`
-	AgreementKey     string        `bson:"agreementKey"`
-	AgreementTitle   string        `bson:"agreementTitle"`
-	AgreementVersion int           `bson:"agreementVersion"`
-	AgreementBody    string        `bson:"agreementBody"`
-	ClientID         bson.ObjectID `bson:"clientId"`
-	ClientName       string        `bson:"clientName"`
-	ClientEmail      string        `bson:"clientEmail"`
-	SignedName       string        `bson:"signedName"`
-	BookingID        string        `bson:"bookingId,omitempty"`
-	SignedAt         bson.DateTime `bson:"signedAt"`
+	ID                       bson.ObjectID  `bson:"_id,omitempty"`
+	AgreementID              bson.ObjectID  `bson:"agreementId"`
+	AgreementKey             string         `bson:"agreementKey"`
+	AgreementTitle           string         `bson:"agreementTitle"`
+	AgreementVersion         int            `bson:"agreementVersion"`
+	AgreementBody            string         `bson:"agreementBody"`
+	ClientID                 bson.ObjectID  `bson:"clientId"`
+	ClientName               string         `bson:"clientName"`
+	ClientEmail              string         `bson:"clientEmail"`
+	SignedName               string         `bson:"signedName"`
+	RequiresCountersignature bool           `bson:"requiresCountersignature"`
+	PractitionerSignedName   string         `bson:"practitionerSignedName,omitempty"`
+	PractitionerSignedAt     *bson.DateTime `bson:"practitionerSignedAt,omitempty"`
+	SharedWithClient         bool           `bson:"sharedWithClient"`
+	BookingID                string         `bson:"bookingId,omitempty"`
+	SignedAt                 bson.DateTime  `bson:"signedAt"`
 }
 
 func newAgreementDoc(a agreement.Agreement) (agreementDoc, error) {
@@ -66,14 +72,16 @@ func newAgreementDoc(a agreement.Agreement) (agreementDoc, error) {
 		return agreementDoc{}, fmt.Errorf("practitioner id: %w", err)
 	}
 	doc := agreementDoc{
-		PractitionerID: pid,
-		Key:            a.Key,
-		Title:          a.Title,
-		Body:           a.Body,
-		Version:        a.Version,
-		Active:         a.Active,
-		CreatedAt:      bson.NewDateTimeFromTime(a.CreatedAt),
-		UpdatedAt:      bson.NewDateTimeFromTime(a.UpdatedAt),
+		PractitionerID:           pid,
+		Key:                      a.Key,
+		Title:                    a.Title,
+		Body:                     a.Body,
+		RequiresCountersignature: a.RequiresCountersignature,
+		CollectionID:             a.CollectionID,
+		Version:                  a.Version,
+		Active:                   a.Active,
+		CreatedAt:                bson.NewDateTimeFromTime(a.CreatedAt),
+		UpdatedAt:                bson.NewDateTimeFromTime(a.UpdatedAt),
 	}
 	if a.ID != "" {
 		if oid, err := bson.ObjectIDFromHex(a.ID); err == nil {
@@ -85,33 +93,43 @@ func newAgreementDoc(a agreement.Agreement) (agreementDoc, error) {
 
 func (d agreementDoc) toDomain() agreement.Agreement {
 	return agreement.Agreement{
-		ID:             d.ID.Hex(),
-		PractitionerID: d.PractitionerID.Hex(),
-		Key:            d.Key,
-		Title:          d.Title,
-		Body:           d.Body,
-		Version:        d.Version,
-		Active:         d.Active,
-		CreatedAt:      d.CreatedAt.Time().UTC(),
-		UpdatedAt:      d.UpdatedAt.Time().UTC(),
+		ID:                       d.ID.Hex(),
+		PractitionerID:           d.PractitionerID.Hex(),
+		Key:                      d.Key,
+		Title:                    d.Title,
+		Body:                     d.Body,
+		RequiresCountersignature: d.RequiresCountersignature,
+		CollectionID:             d.CollectionID,
+		Version:                  d.Version,
+		Active:                   d.Active,
+		CreatedAt:                d.CreatedAt.Time().UTC(),
+		UpdatedAt:                d.UpdatedAt.Time().UTC(),
 	}
 }
 
 func (d agreementSignatureDoc) toDomain() agreement.Signature {
-	return agreement.Signature{
-		ID:               d.ID.Hex(),
-		AgreementID:      d.AgreementID.Hex(),
-		AgreementKey:     d.AgreementKey,
-		AgreementTitle:   d.AgreementTitle,
-		AgreementVersion: d.AgreementVersion,
-		AgreementBody:    d.AgreementBody,
-		ClientID:         d.ClientID.Hex(),
-		ClientName:       d.ClientName,
-		ClientEmail:      d.ClientEmail,
-		SignedName:       d.SignedName,
-		BookingID:        d.BookingID,
-		SignedAt:         d.SignedAt.Time().UTC(),
+	sig := agreement.Signature{
+		ID:                       d.ID.Hex(),
+		AgreementID:              d.AgreementID.Hex(),
+		AgreementKey:             d.AgreementKey,
+		AgreementTitle:           d.AgreementTitle,
+		AgreementVersion:         d.AgreementVersion,
+		AgreementBody:            d.AgreementBody,
+		ClientID:                 d.ClientID.Hex(),
+		ClientName:               d.ClientName,
+		ClientEmail:              d.ClientEmail,
+		SignedName:               d.SignedName,
+		RequiresCountersignature: d.RequiresCountersignature,
+		PractitionerSignedName:   d.PractitionerSignedName,
+		SharedWithClient:         d.SharedWithClient,
+		BookingID:                d.BookingID,
+		SignedAt:                 d.SignedAt.Time().UTC(),
 	}
+	if d.PractitionerSignedAt != nil {
+		t := d.PractitionerSignedAt.Time().UTC()
+		sig.PractitionerSignedAt = &t
+	}
+	return sig
 }
 
 func (r *AgreementRepository) List(ctx context.Context, practitionerID string, includeInactive bool) ([]agreement.Agreement, error) {
@@ -191,11 +209,13 @@ func (r *AgreementRepository) Update(ctx context.Context, a agreement.Agreement)
 		return agreement.Agreement{}, agreement.ErrAgreementNotFound
 	}
 	update := bson.M{"$set": bson.M{
-		"title":     a.Title,
-		"body":      a.Body,
-		"version":   a.Version,
-		"active":    a.Active,
-		"updatedAt": bson.NewDateTimeFromTime(a.UpdatedAt),
+		"title":                    a.Title,
+		"body":                     a.Body,
+		"requiresCountersignature": a.RequiresCountersignature,
+		"collectionId":             a.CollectionID,
+		"version":                  a.Version,
+		"active":                   a.Active,
+		"updatedAt":                bson.NewDateTimeFromTime(a.UpdatedAt),
 	}}
 	res, err := r.agreements.UpdateOne(ctx, bson.M{"_id": oid}, update)
 	if err != nil {
@@ -221,17 +241,24 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 		return agreement.Signature{}, agreement.ErrInvalidClient
 	}
 	doc := agreementSignatureDoc{
-		AgreementID:      aid,
-		AgreementKey:     sig.AgreementKey,
-		AgreementTitle:   sig.AgreementTitle,
-		AgreementVersion: sig.AgreementVersion,
-		AgreementBody:    sig.AgreementBody,
-		ClientID:         cid,
-		ClientName:       sig.ClientName,
-		ClientEmail:      sig.ClientEmail,
-		SignedName:       sig.SignedName,
-		BookingID:        sig.BookingID,
-		SignedAt:         bson.NewDateTimeFromTime(sig.SignedAt),
+		AgreementID:              aid,
+		AgreementKey:             sig.AgreementKey,
+		AgreementTitle:           sig.AgreementTitle,
+		AgreementVersion:         sig.AgreementVersion,
+		AgreementBody:            sig.AgreementBody,
+		ClientID:                 cid,
+		ClientName:               sig.ClientName,
+		ClientEmail:              sig.ClientEmail,
+		SignedName:               sig.SignedName,
+		RequiresCountersignature: sig.RequiresCountersignature,
+		PractitionerSignedName:   sig.PractitionerSignedName,
+		SharedWithClient:         sig.SharedWithClient,
+		BookingID:                sig.BookingID,
+		SignedAt:                 bson.NewDateTimeFromTime(sig.SignedAt),
+	}
+	if sig.PractitionerSignedAt != nil {
+		dt := bson.NewDateTimeFromTime(*sig.PractitionerSignedAt)
+		doc.PractitionerSignedAt = &dt
 	}
 	res, err := r.signatures.InsertOne(ctx, doc)
 	if err != nil {
@@ -242,6 +269,28 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 	}
 	if oid, ok := res.InsertedID.(bson.ObjectID); ok {
 		sig.ID = oid.Hex()
+	}
+	return sig, nil
+}
+
+func (r *AgreementRepository) UpdateSignature(ctx context.Context, sig agreement.Signature) (agreement.Signature, error) {
+	oid, err := bson.ObjectIDFromHex(sig.ID)
+	if err != nil {
+		return agreement.Signature{}, agreement.ErrSignatureNotFound
+	}
+	setDoc := bson.M{
+		"practitionerSignedName": sig.PractitionerSignedName,
+		"sharedWithClient":       sig.SharedWithClient,
+	}
+	if sig.PractitionerSignedAt != nil {
+		setDoc["practitionerSignedAt"] = bson.NewDateTimeFromTime(*sig.PractitionerSignedAt)
+	}
+	res, err := r.signatures.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": setDoc})
+	if err != nil {
+		return agreement.Signature{}, fmt.Errorf("update signature: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return agreement.Signature{}, agreement.ErrSignatureNotFound
 	}
 	return sig, nil
 }

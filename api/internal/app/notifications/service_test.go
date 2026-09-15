@@ -56,8 +56,8 @@ func bookingNotice(startAt time.Time) ports.BookingNotice {
 	}
 }
 
-// TestBookingConfirmedQueuesConfirmationAndReminder: one immediate message
-// and one scheduled for a lead time before the session.
+// TestBookingConfirmedQueuesConfirmationAndReminder: immediate message
+// and scheduled reminders for client and practice.
 func TestBookingConfirmedQueuesConfirmationAndReminder(t *testing.T) {
 	rig := newTestRig(t)
 	start := fixedNow.Add(72 * time.Hour)
@@ -65,8 +65,8 @@ func TestBookingConfirmedQueuesConfirmationAndReminder(t *testing.T) {
 	rig.svc.BookingConfirmed(context.Background(), bookingNotice(start))
 
 	confirmations := rig.jobs.OfKind(notification.KindBookingConfirmation)
-	if len(confirmations) != 1 {
-		t.Fatalf("confirmations = %d, want 1", len(confirmations))
+	if len(confirmations) != 2 {
+		t.Fatalf("confirmations = %d, want 2 (client + practice)", len(confirmations))
 	}
 	confirmation := confirmations[0]
 	if confirmation.Recipient != "ama@example.com" || !confirmation.Due(fixedNow) {
@@ -80,32 +80,31 @@ func TestBookingConfirmedQueuesConfirmationAndReminder(t *testing.T) {
 	}
 
 	reminders := rig.jobs.OfKind(notification.KindSessionReminder)
-	if len(reminders) != 1 {
-		t.Fatalf("reminders = %d, want 1", len(reminders))
+	if len(reminders) != 2 {
+		t.Fatalf("reminders = %d, want 2 (client + practice)", len(reminders))
 	}
 	if !reminders[0].DueAt.Equal(start.Add(-notification.DefaultReminderLead)) {
 		t.Errorf("reminder due = %v, want one lead time before %v", reminders[0].DueAt, start)
 	}
-	if reminders[0].Data["timeUntil"] != "tomorrow" {
-		t.Errorf("timeUntil = %q, want the lead phrased for the subject line", reminders[0].Data["timeUntil"])
+	if reminders[0].Data["timeUntil"] != "in 10 minutes" {
+		t.Errorf("timeUntil = %q, want 'in 10 minutes'", reminders[0].Data["timeUntil"])
 	}
 	if reminders[0].BookingID != "booking-1" {
 		t.Error("reminder is not linked to its booking; a reschedule could not find it")
 	}
 }
 
-// TestShortNoticeBookingSkipsTheReminder: booking for this afternoon gets a
-// confirmation only — a reminder would arrive alongside it.
+// TestShortNoticeBookingSkipsTheReminder: booking inside 10 minutes gets confirmation only.
 func TestShortNoticeBookingSkipsTheReminder(t *testing.T) {
 	rig := newTestRig(t)
 
-	rig.svc.BookingConfirmed(context.Background(), bookingNotice(fixedNow.Add(3*time.Hour)))
+	rig.svc.BookingConfirmed(context.Background(), bookingNotice(fixedNow.Add(5*time.Minute)))
 
 	if got := len(rig.jobs.OfKind(notification.KindSessionReminder)); got != 0 {
 		t.Errorf("reminders = %d, want none inside the lead time", got)
 	}
-	if got := len(rig.jobs.OfKind(notification.KindBookingConfirmation)); got != 1 {
-		t.Errorf("confirmations = %d, want 1", got)
+	if got := len(rig.jobs.OfKind(notification.KindBookingConfirmation)); got != 2 {
+		t.Errorf("confirmations = %d, want 2 (client + practice)", got)
 	}
 }
 
@@ -123,22 +122,22 @@ func TestRescheduleMovesTheReminder(t *testing.T) {
 	rig.svc.BookingRescheduled(context.Background(), notice)
 
 	reminders := rig.jobs.OfKind(notification.KindSessionReminder)
-	if len(reminders) != 2 {
-		t.Fatalf("reminders = %d, want the original plus its replacement", len(reminders))
+	if len(reminders) != 4 {
+		t.Fatalf("reminders = %d, want 4 (2 original + 2 replacement)", len(reminders))
 	}
-	if reminders[0].Status != notification.StatusCancelled {
-		t.Errorf("original reminder status = %q, want cancelled", reminders[0].Status)
+	if reminders[0].Status != notification.StatusCancelled || reminders[1].Status != notification.StatusCancelled {
+		t.Errorf("original reminders status = %q/%q, want cancelled", reminders[0].Status, reminders[1].Status)
 	}
-	if reminders[1].Status != notification.StatusPending {
-		t.Errorf("new reminder status = %q, want pending", reminders[1].Status)
+	if reminders[2].Status != notification.StatusPending || reminders[3].Status != notification.StatusPending {
+		t.Errorf("new reminders status = %q/%q, want pending", reminders[2].Status, reminders[3].Status)
 	}
-	if !reminders[1].DueAt.Equal(moved.Add(-notification.DefaultReminderLead)) {
-		t.Errorf("new reminder due = %v, want it to follow the new session time", reminders[1].DueAt)
+	if !reminders[2].DueAt.Equal(moved.Add(-notification.DefaultReminderLead)) {
+		t.Errorf("new reminder due = %v, want it to follow the new session time", reminders[2].DueAt)
 	}
 
 	notices := rig.jobs.OfKind(notification.KindBookingRescheduled)
-	if len(notices) != 1 {
-		t.Fatalf("reschedule notices = %d, want 1", len(notices))
+	if len(notices) != 2 {
+		t.Fatalf("reschedule notices = %d, want 2 (client + practice)", len(notices))
 	}
 	if notices[0].Data["oldStartTime"] == "" || notices[0].Data["newStartTime"] == "" {
 		t.Errorf("data = %v, want both the old and the new time", notices[0].Data)
@@ -162,8 +161,8 @@ func TestCancellationDropsTheReminder(t *testing.T) {
 			t.Errorf("reminder %s status = %q, want cancelled", job.ID, job.Status)
 		}
 	}
-	if got := len(rig.jobs.OfKind(notification.KindBookingCancelled)); got != 1 {
-		t.Errorf("cancellation notices = %d, want 1", got)
+	if got := len(rig.jobs.OfKind(notification.KindBookingCancelled)); got != 2 {
+		t.Errorf("cancellation notices = %d, want 2 (client + practice)", got)
 	}
 
 	// And the dispatcher must not resurrect it once the due time arrives.
@@ -187,7 +186,7 @@ func TestAlreadySentReminderIsNotCancelled(t *testing.T) {
 	start := fixedNow.Add(48 * time.Hour)
 	rig.svc.BookingConfirmed(context.Background(), bookingNotice(start))
 
-	rig.advance(25 * time.Hour) // the reminder is now due
+	rig.advance(48*time.Hour - 5*time.Minute) // the reminder is now due (10m lead)
 	if _, err := rig.svc.DispatchDue(context.Background(), 10); err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
@@ -215,11 +214,11 @@ func TestDispatchSendsOnlyDueJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
-	if result.Sent != 1 || result.Failed != 0 {
-		t.Errorf("result = %+v, want only the confirmation sent", result)
+	if result.Sent != 2 || result.Failed != 0 {
+		t.Errorf("result = %+v, want 2 confirmations sent", result)
 	}
-	if got := len(rig.mailer.Sent()); got != 1 {
-		t.Fatalf("sent %d messages, want 1", got)
+	if got := len(rig.mailer.Sent()); got != 2 {
+		t.Fatalf("sent %d messages, want 2", got)
 	}
 
 	// Nothing is left due, so a second pass sends nothing.
@@ -232,17 +231,18 @@ func TestDispatchSendsOnlyDueJobs(t *testing.T) {
 	}
 
 	// Once the reminder falls due it goes out, exactly once.
-	rig.advance(49 * time.Hour)
+	rig.advance(72*time.Hour - 5*time.Minute)
 	if _, err := rig.svc.DispatchDue(context.Background(), 10); err != nil {
 		t.Fatalf("third DispatchDue: %v", err)
 	}
-	if got := len(rig.mailer.Sent()); got != 2 {
-		t.Errorf("sent %d messages in total, want 2", got)
+	if got := len(rig.mailer.Sent()); got != 4 {
+		t.Errorf("sent %d messages in total, want 4", got)
 	}
+
 	if _, err := rig.svc.DispatchDue(context.Background(), 10); err != nil {
 		t.Fatalf("fourth DispatchDue: %v", err)
 	}
-	if got := len(rig.mailer.Sent()); got != 2 {
+	if got := len(rig.mailer.Sent()); got != 4 {
 		t.Errorf("sent %d messages, want the reminder delivered only once", got)
 	}
 }
@@ -258,8 +258,8 @@ func TestFailedSendRetriesThenGivesUp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
-	if result.Failed != 1 || result.Sent != 0 {
-		t.Errorf("result = %+v, want the send counted as failed", result)
+	if result.Failed != 2 || result.Sent != 0 {
+		t.Errorf("result = %+v, want the sends counted as failed", result)
 	}
 
 	job := rig.jobs.OfKind(notification.KindBookingConfirmation)[0]
@@ -313,7 +313,7 @@ func TestRecoveredProviderDeliversTheRetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
-	if result.Sent != 1 {
+	if result.Sent != 2 {
 		t.Errorf("result = %+v, want the retry delivered once the provider recovered", result)
 	}
 }
@@ -334,12 +334,8 @@ func TestOneBadRecipientDoesNotBlockTheBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
-	if result.Sent != 1 || result.Failed != 1 {
-		t.Errorf("result = %+v, want the good message through and the bad one failed", result)
-	}
-	sent := rig.mailer.Sent()
-	if len(sent) != 1 || sent[0].To != "ama@example.com" {
-		t.Errorf("sent = %+v, want only the deliverable message", sent)
+	if result.Sent != 3 || result.Failed != 1 {
+		t.Errorf("result = %+v, want 3 good messages through and 1 bad one failed", result)
 	}
 }
 
@@ -477,17 +473,17 @@ func TestTimesRenderInTheClientTimezone(t *testing.T) {
 	rig.svc.BookingConfirmed(context.Background(), london)
 
 	jobs := rig.jobs.OfKind(notification.KindBookingConfirmation)
-	if len(jobs) != 2 {
-		t.Fatalf("jobs = %d, want 2", len(jobs))
+	if len(jobs) != 4 {
+		t.Fatalf("jobs = %d, want 4 (2 client + 2 practice)", len(jobs))
 	}
 	if !strings.Contains(jobs[0].Data["startTime"], "09:00") {
 		t.Errorf("Accra startTime = %q, want 09:00", jobs[0].Data["startTime"])
 	}
-	if !strings.Contains(jobs[1].Data["startTime"], "10:00") {
-		t.Errorf("London startTime = %q, want 10:00 (BST)", jobs[1].Data["startTime"])
+	if !strings.Contains(jobs[2].Data["startTime"], "10:00") {
+		t.Errorf("London startTime = %q, want 10:00 (BST)", jobs[2].Data["startTime"])
 	}
-	if jobs[1].Data["timezone"] != "Europe/London" {
-		t.Errorf("timezone = %q, want it stated alongside the time", jobs[1].Data["timezone"])
+	if jobs[2].Data["timezone"] != "Europe/London" {
+		t.Errorf("timezone = %q, want it stated alongside the time", jobs[2].Data["timezone"])
 	}
 }
 
@@ -527,7 +523,7 @@ func TestDispatchRespectsTheBatchLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DispatchDue: %v", err)
 	}
-	if result.Sent != 3 {
-		t.Errorf("sent = %d on the second pass, want the remaining 3", result.Sent)
+	if result.Sent != 8 {
+		t.Errorf("sent = %d on the second pass, want the remaining 8", result.Sent)
 	}
 }
