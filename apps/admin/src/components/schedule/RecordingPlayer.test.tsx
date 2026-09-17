@@ -23,6 +23,9 @@ describe("RecordingPlayer", () => {
     render(<RecordingPlayer {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Download recording" }));
     await waitFor(() => expect(clicked?.download).toBe("session.mp4"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Download recording" }).hasAttribute("disabled")).toBe(false),
+    );
     expect(clicked?.href).toBe("blob:recording");
     expect(clicked?.target).toBe("");
     expect(fetcher).toHaveBeenCalledWith(props.url, { credentials: "omit", cache: "no-store" });
