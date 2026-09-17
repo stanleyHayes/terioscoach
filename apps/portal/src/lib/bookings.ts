@@ -8,9 +8,10 @@
  *   POST /v1/bookings/{id}/reschedule    {startAt, tz?} → {booking} (409 slot_unavailable, 422 cutoff_passed)
  *   POST /v1/bookings/{id}/cancel        → {booking} (422 cutoff_passed)
  *
- * All timestamps are RFC 3339 UTC; `tz` (IANA) only tells the server which
- * wall clock to evaluate the schedule in. Authed calls go through
- * `authedRequest` with the caller's session + refresh callback (from useAuth).
+ * All timestamps are RFC 3339 UTC; `tz` (IANA) tells the server which client
+ * calendar day to return and which timezone to include in notifications.
+ * Authed calls go through `authedRequest` with the caller's session + refresh
+ * callback (from useAuth).
  */
 
 import {
@@ -53,7 +54,7 @@ export interface Booking {
 
 export interface GetSlotsParams {
   serviceId: string;
-  /** Inclusive calendar dates, YYYY-MM-DD, interpreted in `tz`. */
+  /** Inclusive client-visible calendar dates, YYYY-MM-DD, interpreted in `tz`. */
   from: string;
   to: string;
   /** IANA name, e.g. "Africa/Accra". */

@@ -62,10 +62,18 @@ function buildDays(timeZone: string, offsetDays: number = 0): DayCell[] {
     timeZone,
   });
   const todayKey = keyFormat.format(now);
+  const todayNoonUtc = new Date(`${todayKey}T12:00:00Z`);
 
   return Array.from({ length: DAY_COUNT }, (_, index) => {
     const totalOffset = offsetDays + index;
-    const date = new Date(now.getTime() + totalOffset * 24 * 60 * 60 * 1000);
+    const date = new Date(
+      Date.UTC(
+        todayNoonUtc.getUTCFullYear(),
+        todayNoonUtc.getUTCMonth(),
+        todayNoonUtc.getUTCDate() + totalOffset,
+        12,
+      ),
+    );
     const key = keyFormat.format(date);
     return {
       key,
@@ -138,17 +146,13 @@ export function SlotPicker({
   const tz = useMemo(() => timeZone ?? browserTimeZone(), [timeZone]);
   const [offsetDays, setOffsetDays] = useState(0);
   const days = useMemo(() => buildDays(tz, offsetDays), [tz, offsetDays]);
-  const [selectedDay, setSelectedDay] = useState(days[0].key);
+  const [selectedDayKey, setSelectedDayKey] = useState(days[0].key);
+  const selectedDay = days.some((day) => day.key === selectedDayKey)
+    ? selectedDayKey
+    : days[0].key;
   const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [raceStartAt, setRaceStartAt] = useState<string | null>(null);
-
-  // If the active selection drops outside the newly scrolled window, default to day 0
-  useEffect(() => {
-    if (!days.some((d) => d.key === selectedDay)) {
-      setSelectedDay(days[0].key);
-    }
-  }, [days, selectedDay]);
 
   /* Load the selected day's slots (public endpoint, visitor tz). */
   // The synchronous reset to "loading" is the point of this effect, not a
@@ -217,6 +221,7 @@ export function SlotPicker({
               type="button"
               onClick={() => {
                 setOffsetDays(0);
+                setSelectedDayKey(days[0].key);
               }}
               className="rounded-md px-2.5 py-1 text-xs font-medium text-primary hover:bg-eucalyptus-50 transition-colors"
             >
@@ -227,7 +232,9 @@ export function SlotPicker({
             type="button"
             aria-label="Previous 2 weeks"
             disabled={offsetDays <= 0}
-            onClick={() => setOffsetDays((prev) => Math.max(0, prev - DAY_COUNT))}
+            onClick={() =>
+              setOffsetDays((prev) => Math.max(0, prev - DAY_COUNT))
+            }
             className="flex size-8 items-center justify-center rounded-md border border-border bg-surface-raised text-ink transition-colors hover:border-primary hover:bg-eucalyptus-50 disabled:pointer-events-none disabled:opacity-40"
           >
             <ChevronLeft size={16} aria-hidden="true" />
@@ -259,7 +266,7 @@ export function SlotPicker({
               key={day.key}
               type="button"
               aria-pressed={selected}
-              onClick={() => setSelectedDay(day.key)}
+              onClick={() => setSelectedDayKey(day.key)}
               className={cn(
                 "flex min-h-[40px] w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border py-2",
                 "transition-colors duration-fast ease-out",

@@ -151,6 +151,36 @@ func TestCreateBookingSlotMatchValidation(t *testing.T) {
 	}
 }
 
+func TestCreateBookingAcceptsClientTimezoneForAuthoredAvailability(t *testing.T) {
+	rig := newTestRig()
+	ctx := context.Background()
+	svc, err := catalog.NewService("prac-1", "Massage", "", 60, 0, "USD", 1, fixedNow)
+	if err != nil {
+		t.Fatalf("domain NewService: %v", err)
+	}
+	svc, err = rig.services.Create(ctx, svc)
+	if err != nil {
+		t.Fatalf("seed service: %v", err)
+	}
+	day := fixedNow.Add(7 * 24 * time.Hour).Truncate(24 * time.Hour)
+	err = rig.avail.ReplaceRules(ctx, "prac-1", []domain.WeeklyRule{{
+		Timezone: "Africa/Accra",
+		Weekday:  day.Weekday(),
+		Windows:  []domain.Window{{StartMin: 540, EndMin: 600}},
+	}})
+	if err != nil {
+		t.Fatalf("seed rules: %v", err)
+	}
+
+	b, err := rig.svc.CreateBooking(ctx, "client-1", svc.ID, day.Add(9*time.Hour), "America/New_York")
+	if err != nil {
+		t.Fatalf("CreateBooking: %v", err)
+	}
+	if !b.StartAt.Equal(day.Add(9 * time.Hour)) {
+		t.Errorf("startAt = %s, want Accra-authored 9 AM UTC", b.StartAt)
+	}
+}
+
 func TestCreateBookingBlocksBookedSlot(t *testing.T) {
 	rig := newTestRig()
 	svc, day := seedBookable(t, rig)

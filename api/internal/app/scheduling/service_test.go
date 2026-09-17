@@ -174,6 +174,39 @@ func TestGetSlotsConvertsAuthoredAvailabilityIntoViewerTimezone(t *testing.T) {
 	}
 }
 
+func TestGetSlotsReturnsAccraAuthoredAvailabilityAcrossClientTimezones(t *testing.T) {
+	rig := newTestRig()
+	ctx := context.Background()
+	rig.svc.now = func() time.Time { return time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC) }
+	svc := seedService(t, rig, "prac-1", true)
+	day := time.Date(2027, 1, 4, 0, 0, 0, 0, time.UTC) // Monday
+
+	_, err := rig.svc.ReplaceRules(ctx, "prac-1", []domain.WeeklyRule{{
+		Timezone: "Africa/Accra",
+		Weekday:  time.Monday,
+		Windows:  []domain.Window{{StartMin: 540, EndMin: 600}},
+	}})
+	if err != nil {
+		t.Fatalf("ReplaceRules: %v", err)
+	}
+
+	for _, tz := range []string{"America/New_York", "America/Los_Angeles", "Europe/London", "Africa/Lagos"} {
+		t.Run(tz, func(t *testing.T) {
+			res, err := rig.svc.GetSlots(ctx, svc.ID, day, day, tz)
+			if err != nil {
+				t.Fatalf("GetSlots: %v", err)
+			}
+			if len(res.Slots) != 1 {
+				t.Fatalf("slots = %v, want one Accra-authored slot", res.Slots)
+			}
+			want := time.Date(2027, 1, 4, 9, 0, 0, 0, time.UTC)
+			if !res.Slots[0].Start.Equal(want) {
+				t.Errorf("slot start = %s, want Accra 9 AM as %s", res.Slots[0].Start, want)
+			}
+		})
+	}
+}
+
 func TestGetSlotsMisses(t *testing.T) {
 	rig := newTestRig()
 	ctx := context.Background()
