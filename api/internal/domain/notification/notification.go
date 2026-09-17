@@ -24,6 +24,7 @@ const (
 	KindSessionReminder        Kind = "session_reminder"
 	KindBookingRescheduled     Kind = "booking_rescheduled"
 	KindBookingCancelled       Kind = "booking_cancelled"
+	KindBookingChangeRequested Kind = "booking_change_requested"
 	KindFeedbackShared         Kind = "feedback_shared"
 	KindEnquiryReceived        Kind = "enquiry_received"
 	KindAgreementSigned        Kind = "agreement_signed"
@@ -35,7 +36,7 @@ const (
 func (k Kind) Valid() bool {
 	switch k {
 	case KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
-		KindBookingCancelled, KindFeedbackShared, KindEnquiryReceived, KindAgreementSigned,
+		KindBookingCancelled, KindBookingChangeRequested, KindFeedbackShared, KindEnquiryReceived, KindAgreementSigned,
 		KindFormAssigned, KindFormSubmitted:
 		return true
 	}

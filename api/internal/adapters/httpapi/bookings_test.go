@@ -277,27 +277,39 @@ func TestBookingRescheduleAndCancelFlow(t *testing.T) {
 	serviceID, day := seedBookableSlot(t, rig)
 	b := bookViaHTTP(t, rig, rig.clientToken, serviceID, day.Add(9*time.Hour), http.StatusCreated)
 
-	// Other client cannot reschedule or cancel: 404, not 403 — isolation.
+	// Clients can only request a change; direct mutations are practitioner-only.
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/reschedule",
-		map[string]any{"startAt": day.Add(10 * time.Hour), "tz": "UTC"}, bearer(rig.otherClientToken))
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("other client reschedule status = %d, want 404", rec.Code)
+		map[string]any{"startAt": day.Add(10 * time.Hour), "tz": "UTC"}, bearer(rig.clientToken))
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("client direct reschedule status = %d, want 403", rec.Code)
 	}
-	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/cancel", nil, bearer(rig.otherClientToken))
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("other client cancel status = %d, want 404", rec.Code)
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/cancel", nil, bearer(rig.clientToken))
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("client direct cancel status = %d, want 403", rec.Code)
 	}
 
-	// Owner reschedules to a valid slot; misaligned target is 409.
+	// Other client cannot request changes to someone else's booking: 404,
+	// not 403 — isolation.
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/reschedule-request",
+		map[string]any{"startAt": day.Add(10 * time.Hour), "tz": "UTC"}, bearer(rig.otherClientToken))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("other client reschedule request status = %d, want 404", rec.Code)
+	}
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/cancel-request",
+		map[string]any{"reason": "Travel"}, bearer(rig.otherClientToken))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("other client cancellation request status = %d, want 404", rec.Code)
+	}
+
 	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/reschedule",
 		map[string]any{"startAt": day.Add(10*time.Hour + 15*time.Minute), "tz": "UTC"}, bearer(rig.clientToken))
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("misaligned reschedule status = %d, want 409", rec.Code)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("direct client misaligned reschedule status = %d, want 403", rec.Code)
 	}
 	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/reschedule",
-		map[string]any{"startAt": day.Add(10 * time.Hour), "tz": "UTC"}, bearer(rig.clientToken))
+		map[string]any{"startAt": day.Add(10 * time.Hour), "tz": "UTC"}, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("reschedule status = %d, body %s", rec.Code, rec.Body.String())
+		t.Fatalf("practitioner reschedule status = %d, body %s", rec.Code, rec.Body.String())
 	}
 	var res struct {
 		Booking bookingTestBody `json:"booking"`
@@ -310,8 +322,35 @@ func TestBookingRescheduleAndCancelFlow(t *testing.T) {
 	// Old slot freed: another client can book it.
 	bookViaHTTP(t, rig, rig.otherClientToken, serviceID, day.Add(9*time.Hour), http.StatusCreated)
 
+	requested := res.Booking
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+requested.ID+"/reschedule-request",
+		map[string]any{"startAt": day.Add(11 * time.Hour), "tz": "UTC"}, bearer(rig.clientToken))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("reschedule request status = %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeBody(t, rec, &res)
+	if !res.Booking.StartAt.Equal(day.Add(10*time.Hour)) || res.Booking.Status != "confirmed" {
+		t.Errorf("reschedule request changed booking = %+v", res.Booking)
+	}
+
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+requested.ID+"/cancel-request",
+		map[string]any{"reason": "Family trip", "tz": "UTC"}, bearer(rig.clientToken))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("cancellation request status = %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeBody(t, rec, &res)
+	if res.Booking.Status != "confirmed" || res.Booking.CancelledAt != nil {
+		t.Errorf("cancellation request changed booking = %+v", res.Booking)
+	}
+
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+requested.ID+"/cancel-request",
+		map[string]any{"reason": "   ", "tz": "UTC"}, bearer(rig.clientToken))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("blank cancellation reason status = %d, want 400", rec.Code)
+	}
+
 	// Practitioner cancels the client's booking anytime (no cutoff).
-	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/cancel", nil, bearer(rig.practitionerToken))
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+requested.ID+"/cancel", nil, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("practitioner cancel status = %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -321,7 +360,7 @@ func TestBookingRescheduleAndCancelFlow(t *testing.T) {
 	}
 
 	// Terminal: a second cancel is 409 invalid_status.
-	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+b.ID+"/cancel", nil, bearer(rig.practitionerToken))
+	rec = doJSON(t, rig.srv, http.MethodPost, "/v1/bookings/"+requested.ID+"/cancel", nil, bearer(rig.practitionerToken))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("double cancel status = %d, want 409", rec.Code)
 	}
@@ -374,8 +413,10 @@ func TestBookingRoleAndAuthMatrix(t *testing.T) {
 		{http.MethodGet, "/v1/bookings/mine", nil, "client"},
 		{http.MethodGet, "/v1/bookings", nil, "practitioner"},
 		{http.MethodGet, "/v1/bookings/" + b.ID, nil, "both"},
-		{http.MethodPost, "/v1/bookings/" + b.ID + "/reschedule", map[string]any{"startAt": day.Add(11 * time.Hour)}, "both"},
-		{http.MethodPost, "/v1/bookings/" + b.ID + "/cancel", nil, "both"},
+		{http.MethodPost, "/v1/bookings/" + b.ID + "/reschedule-request", map[string]any{"startAt": day.Add(11 * time.Hour)}, "client"},
+		{http.MethodPost, "/v1/bookings/" + b.ID + "/cancel-request", map[string]any{"reason": "Travel"}, "client"},
+		{http.MethodPost, "/v1/bookings/" + b.ID + "/reschedule", map[string]any{"startAt": day.Add(11 * time.Hour)}, "practitioner"},
+		{http.MethodPost, "/v1/bookings/" + b.ID + "/cancel", nil, "practitioner"},
 		{http.MethodPost, "/v1/bookings/" + b.ID + "/complete", nil, "practitioner"},
 		{http.MethodPost, "/v1/bookings/" + b.ID + "/no-show", nil, "practitioner"},
 	}

@@ -41,6 +41,12 @@ type BookingService interface {
 	// CancelBooking cancels a booking, freeing its slot. Same cutoff rules
 	// as RescheduleBooking.
 	CancelBooking(ctx context.Context, id identity.Identity, bookingID string) (booking.Booking, error)
+	// RequestReschedule validates a client-owned booking and proposed slot,
+	// then notifies the practice without moving the booking.
+	RequestReschedule(ctx context.Context, clientID, bookingID string, proposedStartAt time.Time, tz string) (booking.Booking, error)
+	// RequestCancellation validates a client-owned booking and required
+	// reason, then notifies the practice without cancelling the booking.
+	RequestCancellation(ctx context.Context, clientID, bookingID, reason, tz string) (booking.Booking, error)
 	// CompleteBooking marks a booking completed — practitioner-only, and
 	// only after the appointment has ended (booking.ErrTooEarly).
 	CompleteBooking(ctx context.Context, practitionerID, bookingID string) (booking.Booking, error)

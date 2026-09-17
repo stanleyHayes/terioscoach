@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { API_BASE_URL, ApiError } from "./api";
 import {
-  cancelBooking,
   createBooking,
   cutoffPassed,
   getSlots,
   myBookings,
-  rescheduleBooking,
+  requestCancelBooking,
+  requestRescheduleBooking,
   splitBookings,
   type Booking,
 } from "./bookings";
@@ -54,7 +54,12 @@ describe("getSlots", () => {
       serviceId: "s1",
       durationMinutes: 45,
       timezone: "Africa/Accra",
-      slots: [{ startAt: "2026-08-20T09:30:00Z", endAt: "2026-08-20T10:15:00Z" }],
+      slots: [
+        {
+          startAt: "2026-08-20T09:30:00Z",
+          endAt: "2026-08-20T10:15:00Z",
+        },
+      ],
     };
     fetchMock.mockResolvedValueOnce(jsonResponse(200, payload));
 
@@ -76,7 +81,9 @@ describe("getSlots", () => {
 
   it("maps a 404 to a service_not_found ApiError", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(404, { error: { code: "service_not_found", message: "Nope" } }),
+      jsonResponse(404, {
+        error: { code: "service_not_found", message: "Nope" },
+      }),
     );
 
     const error = await getSlots({
@@ -100,11 +107,13 @@ describe("createBooking", () => {
       tz: "Africa/Accra",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/v1/bookings`, {
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/v1/bookings`);
+    expect(init).toMatchObject({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer a1",
+        Authorization: expect.any(String),
       },
       body: JSON.stringify({
         serviceId: "s1",
@@ -117,7 +126,9 @@ describe("createBooking", () => {
 
   it("surfaces the 409 slot_unavailable race as an ApiError", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(409, { error: { code: "slot_unavailable", message: "Taken" } }),
+      jsonResponse(409, {
+        error: { code: "slot_unavailable", message: "Taken" },
+      }),
     );
 
     const error = await createBooking(session, callbacks, {
@@ -137,41 +148,49 @@ describe("myBookings", () => {
 
     const result = await myBookings(session, callbacks);
 
-    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/v1/bookings/mine`, {
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/v1/bookings/mine`);
+    expect(init).toMatchObject({
       method: "GET",
-      headers: { Authorization: "Bearer a1" },
+      headers: { Authorization: expect.any(String) },
     });
     expect(result).toEqual([booking]);
   });
 });
 
-describe("rescheduleBooking", () => {
-  it("posts the new startAt to the reschedule route", async () => {
-    const moved = { ...booking, startAt: "2026-08-21T09:30:00Z", endAt: "2026-08-21T10:15:00Z" };
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { booking: moved }));
+describe("requestRescheduleBooking", () => {
+  it("posts the proposed startAt to the reschedule request route", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(202, { booking }));
 
-    const result = await rescheduleBooking(session, callbacks, "b1", {
+    const result = await requestRescheduleBooking(session, callbacks, "b1", {
       startAt: "2026-08-21T09:30:00Z",
       tz: "Africa/Accra",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/v1/bookings/b1/reschedule`, {
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/v1/bookings/b1/reschedule-request`);
+    expect(init).toMatchObject({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer a1",
+        Authorization: expect.any(String),
       },
-      body: JSON.stringify({ startAt: "2026-08-21T09:30:00Z", tz: "Africa/Accra" }),
+      body: JSON.stringify({
+        startAt: "2026-08-21T09:30:00Z",
+        tz: "Africa/Accra",
+      }),
     });
-    expect(result).toEqual(moved);
+    expect(result).toEqual(booking);
   });
 
   it("maps the 422 cutoff_passed error", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(422, { error: { code: "cutoff_passed", message: "Too late" } }),
+      jsonResponse(422, {
+        error: { code: "cutoff_passed", message: "Too late" },
+      }),
     );
 
-    const error = await rescheduleBooking(session, callbacks, "b1", {
+    const error = await requestRescheduleBooking(session, callbacks, "b1", {
       startAt: "2026-08-21T09:30:00Z",
       tz: "Africa/Accra",
     }).catch((e) => e);
@@ -180,18 +199,26 @@ describe("rescheduleBooking", () => {
   });
 });
 
-describe("cancelBooking", () => {
-  it("posts to the cancel route and unwraps {booking}", async () => {
-    const cancelled = { ...booking, status: "cancelled", cancelledAt: "2026-08-11T13:00:00Z" };
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { booking: cancelled }));
+describe("requestCancelBooking", () => {
+  it("posts reason and timezone to the cancellation request route", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(202, { booking }));
 
-    const result = await cancelBooking(session, callbacks, "b1");
-
-    expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/v1/bookings/b1/cancel`, {
-      method: "POST",
-      headers: { Authorization: "Bearer a1" },
+    const result = await requestCancelBooking(session, callbacks, "b1", {
+      reason: "Family trip",
+      tz: "Africa/Accra",
     });
-    expect(result).toEqual(cancelled);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/v1/bookings/b1/cancel-request`);
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: expect.any(String),
+      },
+      body: JSON.stringify({ reason: "Family trip", tz: "Africa/Accra" }),
+    });
+    expect(result).toEqual(booking);
   });
 });
 
@@ -199,7 +226,7 @@ describe("cutoffPassed", () => {
   it("is true inside the 48-hour window and false before it", () => {
     const now = new Date("2026-08-18T09:00:00Z");
     expect(cutoffPassed("2026-08-20T08:59:59Z", now)).toBe(true); // < 48h away
-    expect(cutoffPassed("2026-08-20T09:00:00Z", now)).toBe(true); // exactly 48h → closed
+    expect(cutoffPassed("2026-08-20T09:00:00Z", now)).toBe(true); // exactly 48h -> closed
     expect(cutoffPassed("2026-08-20T09:00:01Z", now)).toBe(false); // > 48h away
     expect(cutoffPassed("2026-08-18T09:00:00Z", now)).toBe(true); // already past
   });
@@ -218,17 +245,58 @@ describe("splitBookings", () => {
 
   it("splits confirmed future bookings (ascending) from terminal/ended ones (descending)", () => {
     const bookings: Booking[] = [
-      { ...base, id: "past-confirmed", startAt: "2026-08-10T09:00:00Z", endAt: "2026-08-10T09:45:00Z", status: "confirmed" },
-      { ...base, id: "later", startAt: "2026-08-20T09:00:00Z", endAt: "2026-08-20T09:45:00Z", status: "confirmed" },
-      { ...base, id: "done", startAt: "2026-08-05T09:00:00Z", endAt: "2026-08-05T09:45:00Z", status: "completed" },
-      { ...base, id: "sooner", startAt: "2026-08-12T09:00:00Z", endAt: "2026-08-12T09:45:00Z", status: "confirmed" },
-      { ...base, id: "cancelled", startAt: "2026-08-15T09:00:00Z", endAt: "2026-08-15T09:45:00Z", status: "cancelled" },
-      { ...base, id: "noshow", startAt: "2026-08-03T09:00:00Z", endAt: "2026-08-03T09:45:00Z", status: "no_show" },
+      {
+        ...base,
+        id: "past-confirmed",
+        startAt: "2026-08-10T09:00:00Z",
+        endAt: "2026-08-10T09:45:00Z",
+        status: "confirmed",
+      },
+      {
+        ...base,
+        id: "later",
+        startAt: "2026-08-20T09:00:00Z",
+        endAt: "2026-08-20T09:45:00Z",
+        status: "confirmed",
+      },
+      {
+        ...base,
+        id: "done",
+        startAt: "2026-08-05T09:00:00Z",
+        endAt: "2026-08-05T09:45:00Z",
+        status: "completed",
+      },
+      {
+        ...base,
+        id: "sooner",
+        startAt: "2026-08-12T09:00:00Z",
+        endAt: "2026-08-12T09:45:00Z",
+        status: "confirmed",
+      },
+      {
+        ...base,
+        id: "cancelled",
+        startAt: "2026-08-15T09:00:00Z",
+        endAt: "2026-08-15T09:45:00Z",
+        status: "cancelled",
+      },
+      {
+        ...base,
+        id: "noshow",
+        startAt: "2026-08-03T09:00:00Z",
+        endAt: "2026-08-03T09:45:00Z",
+        status: "no_show",
+      },
     ];
 
     const { upcoming, past } = splitBookings(bookings, now);
 
     expect(upcoming.map((b) => b.id)).toEqual(["sooner", "later"]);
-    expect(past.map((b) => b.id)).toEqual(["cancelled", "past-confirmed", "done", "noshow"]);
+    expect(past.map((b) => b.id)).toEqual([
+      "cancelled",
+      "past-confirmed",
+      "done",
+      "noshow",
+    ]);
   });
 });

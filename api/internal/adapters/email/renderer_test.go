@@ -32,6 +32,7 @@ func TestRendersEveryKind(t *testing.T) {
 		notification.KindSessionReminder,
 		notification.KindBookingRescheduled,
 		notification.KindBookingCancelled,
+		notification.KindBookingChangeRequested,
 		notification.KindFeedbackShared,
 		notification.KindEnquiryReceived,
 		notification.KindAgreementSigned,
@@ -45,7 +46,11 @@ func TestRendersEveryKind(t *testing.T) {
 				"senderName":     "Ama Serwaa",
 				"serviceName":    "Deep Tissue Massage",
 				"startTime":      "Thursday 20 August, 09:00",
+				"currentTime":    "Thursday 20 August, 09:00",
+				"proposedTime":   "Friday 21 August, 10:00",
 				"timezone":       "Africa/Accra",
+				"requestType":    "reschedule",
+				"reason":         "Travel conflict",
 				"paymentUrl":     "https://checkout.stripe.com/c/pay/test",
 				"agreementTitle": "Holistic Coaching Agreement",
 				"signedName":     "Ama Serwaa",
@@ -57,6 +62,7 @@ func TestRendersEveryKind(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Render: %v", err)
 			}
+
 			if msg.To != "ama@example.com" || msg.Subject == "" || msg.Text == "" {
 				t.Errorf("message = %+v, want recipient, subject and text set", msg)
 			}
@@ -70,6 +76,30 @@ func TestRendersEveryKind(t *testing.T) {
 				t.Error("copyright year not substituted")
 			}
 		})
+	}
+}
+
+func TestBookingChangeRequestRendersForPractice(t *testing.T) {
+	msg, err := testRenderer().Render(job(notification.KindBookingChangeRequested, map[string]string{
+		"clientName":   "Ama Serwaa",
+		"clientEmail":  "ama@example.com",
+		"serviceName":  "Deep Tissue Massage",
+		"requestType":  "cancellation",
+		"currentTime":  "Thursday 20 August 2026, 09:00",
+		"proposedTime": "No new time requested — cancellation requested.",
+		"reason":       "Family emergency",
+		"timezone":     "Africa/Accra",
+	}))
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if msg.Subject != "Ama Serwaa requested a session cancellation" {
+		t.Errorf("subject = %q", msg.Subject)
+	}
+	for _, required := range []string{"has not changed automatically", "Family emergency", "Open dashboard"} {
+		if !strings.Contains(msg.HTML, required) {
+			t.Errorf("change-request email is missing %q", required)
+		}
 	}
 }
 

@@ -5,6 +5,7 @@ package booking
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/booking"
@@ -110,6 +111,31 @@ func (s *Service) notice(ctx context.Context, b booking.Booking, tz string) (por
 		ServiceName: serviceName,
 		StartAt:     b.StartAt,
 		Timezone:    tz,
+	}, true
+}
+
+func (s *Service) changeRequestNotice(ctx context.Context, b booking.Booking, requestType, reason string, proposedStartAt time.Time, tz string) (ports.BookingChangeRequestNotice, bool) {
+	if s.notifier == nil || s.users == nil {
+		return ports.BookingChangeRequestNotice{}, false
+	}
+	user, err := s.users.FindByID(ctx, b.ClientID)
+	if err != nil {
+		return ports.BookingChangeRequestNotice{}, false
+	}
+	serviceName := "your session"
+	if svc, err := s.services.FindByID(ctx, b.ServiceID); err == nil {
+		serviceName = svc.Name
+	}
+	return ports.BookingChangeRequestNotice{
+		BookingID:       b.ID,
+		ClientName:      user.Name,
+		ClientEmail:     user.Email,
+		ServiceName:     serviceName,
+		StartAt:         b.StartAt,
+		ProposedStartAt: proposedStartAt,
+		RequestType:     requestType,
+		Reason:          reason,
+		Timezone:        tz,
 	}, true
 }
 
@@ -241,6 +267,61 @@ func (s *Service) CancelBooking(ctx context.Context, id identity.Identity, booki
 		if notice, ok := s.notice(ctx, b, ""); ok {
 			s.notifier.BookingCancelled(ctx, notice)
 		}
+	}
+	return b, nil
+}
+
+// RequestReschedule lets a client ask the practitioner to move a session. It
+// proves the proposed time is currently bookable but deliberately leaves the
+// booking untouched until the practitioner decides what to do.
+func (s *Service) RequestReschedule(ctx context.Context, clientID, bookingID string, proposedStartAt time.Time, tz string) (booking.Booking, error) {
+	if _, err := time.LoadLocation(tz); err != nil {
+		return booking.Booking{}, scheduling.ErrInvalidTimezone
+	}
+	id := identity.Identity{UserID: clientID, Role: identity.RoleClient}
+	b, err := s.loadAuthorized(ctx, id, bookingID)
+	if err != nil {
+		return booking.Booking{}, err
+	}
+	if err := s.checkCutoff(id, b); err != nil {
+		return booking.Booking{}, err
+	}
+	if b.Status != booking.StatusConfirmed {
+		return booking.Booking{}, booking.ErrInvalidTransition
+	}
+	duration := int(b.EndAt.Sub(b.StartAt) / time.Minute)
+	if err := s.assertSlotGeneratable(ctx, b.PractitionerID, duration, proposedStartAt, b.ID); err != nil {
+		return booking.Booking{}, err
+	}
+	if notice, ok := s.changeRequestNotice(ctx, b, "reschedule", "", proposedStartAt, tz); ok {
+		s.notifier.BookingChangeRequested(ctx, notice)
+	}
+	return b, nil
+}
+
+// RequestCancellation lets a client ask the practitioner to cancel a session
+// and requires a reason, but does not release the booked slot automatically.
+func (s *Service) RequestCancellation(ctx context.Context, clientID, bookingID, reason, tz string) (booking.Booking, error) {
+	if _, err := time.LoadLocation(tz); err != nil {
+		return booking.Booking{}, scheduling.ErrInvalidTimezone
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return booking.Booking{}, booking.ErrCancellationReasonRequired
+	}
+	id := identity.Identity{UserID: clientID, Role: identity.RoleClient}
+	b, err := s.loadAuthorized(ctx, id, bookingID)
+	if err != nil {
+		return booking.Booking{}, err
+	}
+	if err := s.checkCutoff(id, b); err != nil {
+		return booking.Booking{}, err
+	}
+	if b.Status != booking.StatusConfirmed {
+		return booking.Booking{}, booking.ErrInvalidTransition
+	}
+	if notice, ok := s.changeRequestNotice(ctx, b, "cancellation", reason, time.Time{}, tz); ok {
+		s.notifier.BookingChangeRequested(ctx, notice)
 	}
 	return b, nil
 }

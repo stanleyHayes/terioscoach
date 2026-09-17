@@ -158,6 +158,39 @@ func (s *Service) BookingCancelled(ctx context.Context, notice ports.BookingNoti
 	s.cancelReminders(ctx, notice.BookingID)
 }
 
+// BookingChangeRequested tells the practice a client has asked to move or
+// cancel a session. It does not notify the client or change reminders because
+// the session is still unchanged until the practitioner acts.
+func (s *Service) BookingChangeRequested(ctx context.Context, notice ports.BookingChangeRequestNotice) {
+	if s.practiceEmail == "" {
+		s.report(fmt.Errorf("booking change request for %s not queued: no practice inbox configured", notice.BookingID))
+		return
+	}
+	data := map[string]string{
+		"bookingId":    notice.BookingID,
+		"clientName":   notice.ClientName,
+		"clientEmail":  notice.ClientEmail,
+		"serviceName":  notice.ServiceName,
+		"requestType":  notice.RequestType,
+		"currentTime":  s.formatTime(notice.StartAt, notice.Timezone),
+		"currentStart": s.formatTime(notice.StartAt, notice.Timezone),
+		"startTime":    s.formatTime(notice.StartAt, notice.Timezone),
+		"reason":       notice.Reason,
+		"timezone":     notice.Timezone,
+	}
+	if data["reason"] == "" {
+		data["reason"] = "No reason provided — reschedule request."
+	}
+	if !notice.ProposedStartAt.IsZero() {
+		proposed := s.formatTime(notice.ProposedStartAt, notice.Timezone)
+		data["proposedTime"] = proposed
+		data["newStartTime"] = proposed
+	} else {
+		data["proposedTime"] = "No new time requested — cancellation requested."
+	}
+	s.queue(ctx, notification.KindBookingChangeRequested, s.practiceEmail, notice.BookingID, data, s.now())
+}
+
 // FeedbackShared queues the post-session feedback email. The notes slice
 // calls it only on the first share, so a client is told once.
 func (s *Service) FeedbackShared(ctx context.Context, notice ports.FeedbackNotice) {

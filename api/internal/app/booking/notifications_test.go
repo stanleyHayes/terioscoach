@@ -191,6 +191,63 @@ func TestCancelAnnouncesTheCancellation(t *testing.T) {
 	}
 }
 
+func TestClientChangeRequestsNotifyPracticeWithoutChangingBooking(t *testing.T) {
+	rig := newNotifiedRig(t)
+	clientID := seedClient(t, rig, "ama@example.com", "Ama Serwaa")
+	svc, day := seedBookableFor(t, rig)
+	original := day.Add(9 * time.Hour)
+	proposed := day.Add(11 * time.Hour)
+
+	b, err := rig.svc.CreateBooking(context.Background(), clientID, svc.ID, original, "UTC")
+	if err != nil {
+		t.Fatalf("CreateBooking: %v", err)
+	}
+	unchanged, err := rig.svc.RequestReschedule(context.Background(), clientID, b.ID, proposed, "UTC")
+	if err != nil {
+		t.Fatalf("RequestReschedule: %v", err)
+	}
+	if !unchanged.StartAt.Equal(original) {
+		t.Fatalf("request moved booking to %v, want original %v", unchanged.StartAt, original)
+	}
+
+	unchanged, err = rig.svc.RequestCancellation(context.Background(), clientID, b.ID, "Need to travel", "UTC")
+	if err != nil {
+		t.Fatalf("RequestCancellation: %v", err)
+	}
+	if unchanged.Status != booking.StatusConfirmed || !unchanged.StartAt.Equal(original) {
+		t.Fatalf("cancellation request changed booking: %+v", unchanged)
+	}
+
+	if len(rig.notifier.ChangeRequested) != 2 {
+		t.Fatalf("change requests = %d, want 2", len(rig.notifier.ChangeRequested))
+	}
+	reschedule := rig.notifier.ChangeRequested[0]
+	if reschedule.RequestType != "reschedule" || !reschedule.ProposedStartAt.Equal(proposed) {
+		t.Errorf("reschedule notice = %+v", reschedule)
+	}
+	cancel := rig.notifier.ChangeRequested[1]
+	if cancel.RequestType != "cancellation" || cancel.Reason != "Need to travel" {
+		t.Errorf("cancellation notice = %+v", cancel)
+	}
+}
+
+func TestCancellationRequestRequiresReason(t *testing.T) {
+	rig := newNotifiedRig(t)
+	clientID := seedClient(t, rig, "ama@example.com", "Ama Serwaa")
+	svc, day := seedBookableFor(t, rig)
+	b, err := rig.svc.CreateBooking(context.Background(), clientID, svc.ID, day.Add(9*time.Hour), "UTC")
+	if err != nil {
+		t.Fatalf("CreateBooking: %v", err)
+	}
+
+	if _, err := rig.svc.RequestCancellation(context.Background(), clientID, b.ID, "   ", "UTC"); err != booking.ErrCancellationReasonRequired {
+		t.Fatalf("err = %v, want ErrCancellationReasonRequired", err)
+	}
+	if len(rig.notifier.ChangeRequested) != 0 {
+		t.Errorf("change requests = %d, want none for invalid request", len(rig.notifier.ChangeRequested))
+	}
+}
+
 // TestCutoffRejectionAnnouncesNothing: a cancellation the rules refused
 // must not tell the client their session is off.
 func TestCutoffRejectionAnnouncesNothing(t *testing.T) {

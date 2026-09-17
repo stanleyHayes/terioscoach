@@ -31,10 +31,12 @@ func WithBooking(svc ports.BookingService, auth ports.AuthService) Option {
 			both := []func(http.Handler) http.Handler{RequireAuth(auth)}
 			r.With(client...).Post("/", h.create)
 			r.With(client...).Get("/mine", h.listMine)
+			r.With(client...).Post("/{id}/reschedule-request", h.requestReschedule)
+			r.With(client...).Post("/{id}/cancel-request", h.requestCancellation)
 			r.With(practitioner...).Get("/", h.listForPractitioner)
 			r.With(both...).Get("/{id}", h.get)
-			r.With(both...).Post("/{id}/reschedule", h.reschedule)
-			r.With(both...).Post("/{id}/cancel", h.cancel)
+			r.With(practitioner...).Post("/{id}/reschedule", h.reschedule)
+			r.With(practitioner...).Post("/{id}/cancel", h.cancel)
 			r.With(practitioner...).Post("/{id}/complete", h.complete)
 			r.With(practitioner...).Post("/{id}/no-show", h.markNoShow)
 		})
@@ -201,6 +203,60 @@ func (h *bookingHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bookingBody{"booking": newBookingBody(b)})
+}
+
+// requestReschedule handles POST /v1/bookings/{id}/reschedule-request.
+func (h *bookingHandler) requestReschedule(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		StartAt time.Time `json:"startAt"`
+		TZ      string    `json:"tz"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.StartAt.IsZero() {
+		writeError(w, http.StatusBadRequest, "validation_error", "startAt is required")
+		return
+	}
+	tz := req.TZ
+	if tz == "" {
+		tz = defaultBookingTimezone
+	}
+	b, err := h.svc.RequestReschedule(r.Context(), id.UserID, chi.URLParam(r, "id"), req.StartAt, tz)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]bookingBody{"booking": newBookingBody(b)})
+}
+
+// requestCancellation handles POST /v1/bookings/{id}/cancel-request.
+func (h *bookingHandler) requestCancellation(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+		TZ     string `json:"tz"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	tz := req.TZ
+	if tz == "" {
+		tz = defaultBookingTimezone
+	}
+	b, err := h.svc.RequestCancellation(r.Context(), id.UserID, chi.URLParam(r, "id"), req.Reason, tz)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]bookingBody{"booking": newBookingBody(b)})
 }
 
 // reschedule handles POST /v1/bookings/{id}/reschedule.

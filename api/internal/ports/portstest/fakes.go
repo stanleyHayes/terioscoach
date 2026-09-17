@@ -1146,6 +1146,7 @@ type FakeNotifier struct {
 	Confirmed       []ports.BookingNotice
 	Rescheduled     []ports.BookingNotice
 	Cancelled       []ports.BookingNotice
+	ChangeRequested []ports.BookingChangeRequestNotice
 	Feedback        []ports.FeedbackNotice
 	Enquiries       []ports.EnquiryNotice
 }
@@ -1176,6 +1177,12 @@ func (f *FakeNotifier) BookingCancelled(_ context.Context, notice ports.BookingN
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.Cancelled = append(f.Cancelled, notice)
+}
+
+func (f *FakeNotifier) BookingChangeRequested(_ context.Context, notice ports.BookingChangeRequestNotice) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ChangeRequested = append(f.ChangeRequested, notice)
 }
 
 func (f *FakeNotifier) FeedbackShared(_ context.Context, notice ports.FeedbackNotice) {

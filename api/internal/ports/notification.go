@@ -66,6 +66,21 @@ type BookingNotice struct {
 	PaymentURL string
 }
 
+// BookingChangeRequestNotice tells the practice a client is asking to move
+// or cancel a session. It is a request only: the booking is unchanged until
+// the practitioner acts from the dashboard.
+type BookingChangeRequestNotice struct {
+	BookingID       string
+	ClientName      string
+	ClientEmail     string
+	ServiceName     string
+	StartAt         time.Time
+	ProposedStartAt time.Time
+	RequestType     string
+	Reason          string
+	Timezone        string
+}
+
 // FeedbackNotice is what the post-session feedback email needs.
 type FeedbackNotice struct {
 	BookingID        string
@@ -101,6 +116,7 @@ type Notifier interface {
 	BookingConfirmed(ctx context.Context, notice BookingNotice)
 	BookingRescheduled(ctx context.Context, notice BookingNotice)
 	BookingCancelled(ctx context.Context, notice BookingNotice)
+	BookingChangeRequested(ctx context.Context, notice BookingChangeRequestNotice)
 	FeedbackShared(ctx context.Context, notice FeedbackNotice)
 	EnquiryReceived(ctx context.Context, notice EnquiryNotice)
 }

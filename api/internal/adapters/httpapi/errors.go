@@ -193,6 +193,8 @@ func mapBookingError(err error) (apiError, bool) {
 		return apiError{http.StatusConflict, "invalid_status", err.Error()}, true
 	case errors.Is(err, booking.ErrInvalidDuration):
 		return validationError(err)
+	case errors.Is(err, booking.ErrCancellationReasonRequired):
+		return validationError(err)
 	}
 	return apiError{}, false
 }
@@ -270,7 +272,7 @@ func mapAgreementError(err error) (apiError, bool) {
 		return apiError{http.StatusConflict, "agreement_inactive", "this agreement is no longer in use"}, true
 	case errors.Is(err, agreement.ErrInvalidSignedName), errors.Is(err, agreement.ErrSignedNameTooLong):
 		return apiError{http.StatusBadRequest, "validation_error", err.Error()}, true
-	case errors.Is(err, agreement.ErrInvalidTitle), errors.Is(err, agreement.ErrTitleTooLong),
+	case errors.Is(err, agreement.ErrInvalidStatementOfWork), errors.Is(err, agreement.ErrInvalidTitle), errors.Is(err, agreement.ErrTitleTooLong),
 		errors.Is(err, agreement.ErrInvalidBody), errors.Is(err, agreement.ErrBodyTooLong),
 		errors.Is(err, agreement.ErrInvalidAgreement), errors.Is(err, agreement.ErrInvalidClient):
 		return apiError{http.StatusBadRequest, "validation_error", err.Error()}, true

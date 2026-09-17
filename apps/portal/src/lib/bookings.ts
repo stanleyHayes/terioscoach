@@ -5,8 +5,8 @@
  *   GET  /v1/availability/slots  public  ?serviceId=&from=&to=&tz= → {serviceId, durationMinutes, timezone, slots}
  *   POST /v1/bookings            client  {serviceId, startAt, tz?} → 201 {booking}   (409 slot_unavailable)
  *   GET  /v1/bookings/mine       client  → {items: [booking]} ascending by startAt
- *   POST /v1/bookings/{id}/reschedule    {startAt, tz?} → {booking} (409 slot_unavailable, 422 cutoff_passed)
- *   POST /v1/bookings/{id}/cancel        → {booking} (422 cutoff_passed)
+ *   POST /v1/bookings/{id}/reschedule-request {startAt, tz?} → 202 {booking}
+ *   POST /v1/bookings/{id}/cancel-request     {reason, tz?} → 202 {booking}
  *
  * All timestamps are RFC 3339 UTC; `tz` (IANA) tells the server which client
  * calendar day to return and which timezone to include in notifications.
@@ -107,16 +107,16 @@ export async function myBookings(
   return items;
 }
 
-/** POST /v1/bookings/{id}/reschedule → {booking}. Throws ApiError 409
- * slot_unavailable (race) or 422 cutoff_passed (inside the 24h cutoff). */
-export async function rescheduleBooking(
+/** POST /v1/bookings/{id}/reschedule-request → 202 {booking}. This only
+ * notifies the practitioner; it does not move the meeting automatically. */
+export async function requestRescheduleBooking(
   session: Session,
   callbacks: RefreshCallbacks,
   bookingId: string,
   input: { startAt: string; tz: string },
 ): Promise<Booking> {
   const { booking } = await authedRequest<{ booking: Booking }>(
-    `/v1/bookings/${bookingId}/reschedule`,
+    `/v1/bookings/${bookingId}/reschedule-request`,
     session,
     callbacks,
     { method: "POST", body: input },
@@ -124,18 +124,19 @@ export async function rescheduleBooking(
   return booking;
 }
 
-/** POST /v1/bookings/{id}/cancel → {booking}. Throws ApiError 422
- * cutoff_passed inside the 24h cutoff, 409 invalid_status on terminal states. */
-export async function cancelBooking(
+/** POST /v1/bookings/{id}/cancel-request → 202 {booking}. A reason is
+ * required and the booking remains confirmed until the practitioner acts. */
+export async function requestCancelBooking(
   session: Session,
   callbacks: RefreshCallbacks,
   bookingId: string,
+  input: { reason: string; tz: string },
 ): Promise<Booking> {
   const { booking } = await authedRequest<{ booking: Booking }>(
-    `/v1/bookings/${bookingId}/cancel`,
+    `/v1/bookings/${bookingId}/cancel-request`,
     session,
     callbacks,
-    { method: "POST" },
+    { method: "POST", body: input },
   );
   return booking;
 }

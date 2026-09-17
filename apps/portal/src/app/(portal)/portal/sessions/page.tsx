@@ -16,9 +16,9 @@ import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatBytes, recordingsApi, type SessionRecording } from "@/lib/portal";
 import {
-  cancelBooking,
   cutoffPassed,
-  rescheduleBooking,
+  requestCancelBooking,
+  requestRescheduleBooking,
   splitBookings,
   type Booking,
   type Slot,
@@ -32,10 +32,9 @@ import {
 
 /**
  * Sessions (CX-04) — every booking the client has made.
- * Upcoming (changeable): Reschedule and Cancel run in custom Modals (§3.14);
- * rescheduling reuses the SlotPicker, and both actions honor the 48-hour
- * cutoff — past it, changes close client-side, and a racing 422
- * cutoff_passed from the server gets the same branded message.
+ * Upcoming (changeable): Reschedule and Cancel run as practitioner-reviewed
+ * requests from custom Modals (§3.14); rescheduling reuses the SlotPicker,
+ * cancellation requires a reason, and both actions honor the 48-hour cutoff.
  * Past sessions are listed with their terminal-status badges.
  */
 
@@ -72,9 +71,11 @@ export default function SessionsPage() {
     null,
   );
   const [reschedulingBusy, setReschedulingBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Cancel modal state.
   const [cancelling, setCancelling] = useState<Booking | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
 
@@ -83,6 +84,7 @@ export default function SessionsPage() {
     setNewSlot(null);
     setRescheduleError(null);
     setRescheduleConflict(null);
+    setNotice(null);
   }
 
   async function handleRescheduleConfirm() {
@@ -90,12 +92,12 @@ export default function SessionsPage() {
     setRescheduleError(null);
     setReschedulingBusy(true);
     try {
-      await rescheduleBooking(session, { onTokensRefreshed }, rescheduling.id, {
+      await requestRescheduleBooking(session, { onTokensRefreshed }, rescheduling.id, {
         startAt: newSlot.startAt,
         tz: timeZone,
       });
       setRescheduling(null);
-      refresh();
+      setNotice("Your reschedule request has been sent. Your session stays at its current time until the practitioner confirms a change.");
     } catch (error) {
       if (error instanceof ApiError && error.code === "slot_unavailable") {
         // Lost the race — the picker flags the taken chip and refreshes.
@@ -116,12 +118,20 @@ export default function SessionsPage() {
 
   async function handleCancelConfirm() {
     if (!session || !cancelling) return;
+    if (!cancelReason.trim()) {
+      setCancelError("Add a reason before sending a cancellation request.");
+      return;
+    }
     setCancelError(null);
     setCancelBusy(true);
     try {
-      await cancelBooking(session, { onTokensRefreshed }, cancelling.id);
+      await requestCancelBooking(session, { onTokensRefreshed }, cancelling.id, {
+        reason: cancelReason.trim(),
+        tz: timeZone,
+      });
       setCancelling(null);
-      refresh();
+      setCancelReason("");
+      setNotice("Your cancellation request has been sent. Your session remains booked until the practitioner reviews it.");
     } catch (error) {
       setCancelError(
         actionErrorMessage(
@@ -149,6 +159,15 @@ export default function SessionsPage() {
           Book a session
         </Link>
       </div>
+
+      {notice ? (
+        <div
+          role="status"
+          className="rounded-xl border border-eucalyptus-200 bg-eucalyptus-50 px-4 py-3 text-sm leading-[1.55] text-eucalyptus-950"
+        >
+          {notice}
+        </div>
+      ) : null}
 
       {bookings === null && !error ? (
         <div role="status" aria-busy="true" className="flex flex-col gap-4">
@@ -245,6 +264,8 @@ export default function SessionsPage() {
                               disabled={locked}
                               onClick={() => {
                                 setCancelError(null);
+                                setCancelReason("");
+                                setNotice(null);
                                 setCancelling(booking);
                               }}
                               className="text-danger hover:bg-danger-bg hover:text-danger"
@@ -257,8 +278,8 @@ export default function SessionsPage() {
                       <RecordingList bookingId={booking.id} />
                       <p className="mt-2 text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
                         {locked
-                          ? "Online changes close 24 hours before a session."
-                          : "Free rescheduling up to 24 hours before"}
+                          ? "Change requests close 48 hours before a session."
+                          : "Request rescheduling or cancellation up to 48 hours before."}
                       </p>
                     </li>
                   );
@@ -311,7 +332,7 @@ export default function SessionsPage() {
         title="Reschedule session"
         description={
           rescheduling
-            ? `Currently ${formatSessionDate(rescheduling.startAt, timeZone)} at ${formatTimeOfDay(rescheduling.startAt, timeZone)} (${gmtOffsetLabel(timeZone, new Date(rescheduling.startAt))}). Free rescheduling up to 24 hours before.`
+            ? `Currently ${formatSessionDate(rescheduling.startAt, timeZone)} at ${formatTimeOfDay(rescheduling.startAt, timeZone)} (${gmtOffsetLabel(timeZone, new Date(rescheduling.startAt))}). Choose a proposed time; the practitioner will review it before anything changes.`
             : undefined
         }
         size="lg"
@@ -325,7 +346,7 @@ export default function SessionsPage() {
               loading={reschedulingBusy}
               onClick={handleRescheduleConfirm}
             >
-              Confirm new time
+              Send request
             </Button>
           </>
         }
@@ -377,7 +398,7 @@ export default function SessionsPage() {
               loading={cancelBusy}
               onClick={handleCancelConfirm}
             >
-              Cancel session
+              Send request
             </Button>
           </>
         }
@@ -387,10 +408,26 @@ export default function SessionsPage() {
             <p className="text-sm leading-[1.55] text-ink-muted">
               Your {formatSessionDate(cancelling.startAt, timeZone)} session at{" "}
               {formatTimeOfDay(cancelling.startAt, timeZone)} (
-              {gmtOffsetLabel(timeZone, new Date(cancelling.startAt))}) will be
-              cancelled and the time released for someone else. This can&rsquo;t
-              be undone — you&rsquo;d need to book again.
+              {gmtOffsetLabel(timeZone, new Date(cancelling.startAt))}) will stay
+              booked while the practitioner reviews your cancellation request.
             </p>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium tracking-[0.005em] text-ink">
+                Reason <span aria-hidden="true" className="text-accent">*</span>
+                <span className="sr-only"> (required)</span>
+              </span>
+              <textarea
+                required
+                value={cancelReason}
+                onChange={(event) => {
+                  setCancelReason(event.target.value);
+                  setCancelError(null);
+                }}
+                rows={4}
+                placeholder="Tell the practitioner why you need to cancel."
+                className="min-h-28 w-full resize-y rounded-xl border border-border-strong bg-surface-raised px-3.5 py-3 text-sm leading-[1.55] text-ink caret-primary transition-[border-color,box-shadow] placeholder:text-ink-faint hover:border-ink-faint focus:border-primary focus:outline-none"
+              />
+            </label>
             {cancelError ? (
               <p
                 role="alert"

@@ -23,4 +23,7 @@ var (
 	ErrTooEarly = errors.New("too early for this status change")
 	// ErrInvalidDuration means a non-positive session duration was supplied.
 	ErrInvalidDuration = errors.New("duration must be positive")
+	// ErrCancellationReasonRequired means a client tried to request a
+	// cancellation without explaining why.
+	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
 )

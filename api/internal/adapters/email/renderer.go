@@ -29,6 +29,7 @@ var templateFiles = map[notification.Kind]string{
 	notification.KindSessionReminder:        "templates/session-reminder.html",
 	notification.KindBookingRescheduled:     "templates/booking-rescheduled.html",
 	notification.KindBookingCancelled:       "templates/booking-cancelled.html",
+	notification.KindBookingChangeRequested: "templates/booking-change-requested.html",
 	notification.KindFeedbackShared:         "templates/feedback-shared.html",
 	notification.KindEnquiryReceived:        "templates/enquiry-notification.html",
 	notification.KindAgreementSigned:        "templates/agreement-signed.html",
@@ -44,6 +45,7 @@ var subjects = map[notification.Kind]string{
 	notification.KindSessionReminder:        "Reminder: your session is coming up",
 	notification.KindBookingRescheduled:     "Your session has been rescheduled",
 	notification.KindBookingCancelled:       "Your session has been cancelled",
+	notification.KindBookingChangeRequested: "Client requested a session change",
 	notification.KindFeedbackShared:         "Notes and resources from your session",
 	notification.KindEnquiryReceived:        "New enquiry from your website",
 	notification.KindAgreementSigned:        "A client signed a service agreement",
@@ -60,6 +62,7 @@ var ctaLinks = map[notification.Kind]string{
 	notification.KindSessionReminder:        "joinUrl",
 	notification.KindBookingRescheduled:     "manageUrl",
 	notification.KindBookingCancelled:       "bookUrl",
+	notification.KindBookingChangeRequested: "dashboardUrl",
 	notification.KindFeedbackShared:         "portalUrl",
 	notification.KindEnquiryReceived:        "dashboardUrl",
 	notification.KindAgreementSigned:        "dashboardUrl",
@@ -170,6 +173,11 @@ func subject(job notification.Job, data map[string]string) string {
 	if job.Kind == notification.KindFormSubmitted {
 		if name := data["clientName"]; name != "" {
 			return name + " submitted " + data["formTitle"]
+		}
+	}
+	if job.Kind == notification.KindBookingChangeRequested {
+		if name := data["clientName"]; name != "" {
+			return name + " requested a session " + data["requestType"]
 		}
 	}
 	if line, ok := subjects[job.Kind]; ok {
