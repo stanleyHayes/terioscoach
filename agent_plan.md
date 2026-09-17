@@ -515,7 +515,7 @@ Work order: implement one numbered source item, verify it, commit and push it be
 | Agreements 4 | Verify agreement email notifications and timing | Done — agreement and Statement of Work notifications queue immediately to the practice outbox; targeted service, renderer, and agreement-flow tests cover recipient, timing, action, subject, and template selection. |
 | Agreements 5 | Add Terios logo to document letterhead | Done — generated agreement and Statement of Work PDFs now include a deterministic native PDF Terios vector lockup in the letterhead, covered by PDF renderer tests. |
 | Agreements 6 | User-friendly rich-text agreement editor | Done — admin agreement editing now uses the themed MarkdownEditor with rich-text and Markdown modes, a full formatting toolbar, and a live preview. |
-| Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Not started in this sequence |
+| Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Done — generated PDFs now use coaching dual-signature, client-only release/consent, and guardian-consent execution blocks; SOW remains unsigned. Covered across all eight seeded document keys. |
 | Recording 1 | Clear downloading state after practitioner download | Not started in this sequence |
 | Recording 2 | Fix client recording download | Not started in this sequence |
 | Forms 1 | Email client on assignment and practitioner on submission | Not started in this sequence |

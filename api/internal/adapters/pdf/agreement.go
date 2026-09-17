@@ -17,6 +17,21 @@ import (
 // name is kept verbatim, and the timestamp does not move. There is nothing
 // to keep in sync and nothing that can drift away from the record.
 func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
+	if sig.StatementOfWork != nil {
+		answers := sig.StatementOfWork
+		blocks := []Block{
+			{Text: "TERIOS WELLNESS SPA", Style: Bold, Size: 13, SpaceAfter: 20},
+			Title(a.Title), Label("CLIENT NAME"), Paragraph(answers.ClientName),
+			Label("EFFECTIVE DATE"), Paragraph(answers.EffectiveDate),
+			Label("INITIAL TERM"), Paragraph(fmt.Sprintf("%d months", answers.InitialTermMonths)),
+			Label("MONTHLY FEE"), Paragraph(answers.MonthlyFee),
+		}
+		if sig.SubmittedAt != nil {
+			blocks = append(blocks, Spacer(18), Label("SUBMITTED AT"), Paragraph(sig.SubmittedAt.Format("2 January 2006 at 15:04 MST")))
+		}
+		return Build(blocks)
+	}
+
 	blocks := []Block{
 		{Text: "TERIOS WELLNESS SPA", Style: Bold, Size: 13, SpaceAfter: 4},
 		{Text: "Holistic Health & Wellness Practice", Style: Italic, Size: 9, SpaceAfter: 20},
@@ -42,36 +57,7 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 		}
 	}
 
-	blocks = append(blocks,
-		Spacer(18),
-		Heading("Signatures & Execution"),
-		Label("CLIENT SIGNATURE"),
-		Block{Text: sig.SignedName, Style: Italic, Size: 15, SpaceAfter: 10},
-		Label("CLIENT ON FILE"),
-		Paragraph(clientLine(sig)),
-		Label("SIGNED AT"),
-		Paragraph(sig.SignedAt.Format("2 January 2006 at 15:04 MST")),
-	)
-
-	if sig.PractitionerSignedName != "" {
-		blocks = append(blocks,
-			Spacer(8),
-			Label("PRACTITIONER / COACH COUNTERSIGNATURE"),
-			Block{Text: sig.PractitionerSignedName, Style: Italic, Size: 15, SpaceAfter: 10},
-		)
-		if sig.PractitionerSignedAt != nil {
-			blocks = append(blocks,
-				Label("COUNTERSIGNED AT"),
-				Paragraph(sig.PractitionerSignedAt.Format("2 January 2006 at 15:04 MST")),
-			)
-		}
-	} else if agreement.RequiresPractitionerSignature(sig.AgreementKey) {
-		blocks = append(blocks,
-			Spacer(8),
-			Label("PRACTITIONER / COACH COUNTERSIGNATURE"),
-			Block{Text: "[Pending Practitioner Countersignature]", Style: Italic, Size: 12, SpaceAfter: 10},
-		)
-	}
+	blocks = append(blocks, executionBlocks(a.Key, sig)...)
 
 	blocks = append(blocks,
 		Spacer(10),
@@ -86,6 +72,68 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 		},
 	)
 	return Build(blocks)
+}
+
+func executionBlocks(key string, sig agreement.Signature) []Block {
+	blocks := []Block{Spacer(18), Heading("Signatures & Execution")}
+	switch key {
+	case "holistic_coaching", "nurse_coaching":
+		blocks = append(blocks,
+			Paragraph("IN WITNESS WHEREOF, the parties hereto have caused this Agreement to be executed as of the Effective Date by their respective duly authorized officers."),
+			Label("TERIOS WELLNESS SPA"),
+			Label("PRACTITIONER SIGNATURE"),
+			practitionerSignature(sig),
+			Label("NAME"),
+			Paragraph(practitionerName(sig)),
+			Label("DATE"),
+			Paragraph(practitionerDate(sig)),
+			Spacer(8),
+			Label("CLIENT"),
+			Label("CLIENT SIGNATURE"),
+			Block{Text: sig.SignedName, Style: Italic, Size: 15, SpaceAfter: 10},
+			Label("NAME"),
+			Paragraph(clientLine(sig)),
+			Label("DATE"),
+			Paragraph(sig.SignedAt.Format("2 January 2006 at 15:04 MST")),
+			guardianClause(),
+		)
+	default:
+		blocks = append(blocks,
+			Label("PRINTED NAME"),
+			Paragraph(clientLine(sig)),
+			Label("CLIENT SIGNATURE"),
+			Block{Text: sig.SignedName, Style: Italic, Size: 15, SpaceAfter: 10},
+			Label("DATE"),
+			Paragraph(sig.SignedAt.Format("2 January 2006 at 15:04 MST")),
+			guardianClause(),
+		)
+	}
+	return blocks
+}
+
+func practitionerSignature(sig agreement.Signature) Block {
+	if sig.PractitionerSignedName == "" {
+		return Block{Text: "[Pending Practitioner Countersignature]", Style: Italic, Size: 12, SpaceAfter: 10}
+	}
+	return Block{Text: sig.PractitionerSignedName, Style: Italic, Size: 15, SpaceAfter: 10}
+}
+
+func practitionerName(sig agreement.Signature) string {
+	if sig.PractitionerSignedName == "" {
+		return "[Pending Practitioner Countersignature]"
+	}
+	return sig.PractitionerSignedName
+}
+
+func practitionerDate(sig agreement.Signature) string {
+	if sig.PractitionerSignedAt == nil {
+		return "[Pending Practitioner Countersignature]"
+	}
+	return sig.PractitionerSignedAt.Format("2 January 2006 at 15:04 MST")
+}
+
+func guardianClause() Block {
+	return Paragraph("OR I am the parent or legal guardian of the minor named above. I have the legal right to consent to and, by signing below, I consent to the terms and conditions of this Release. Name: ____________________  Signature of parent or legal guardian, if under 18: ____________________  Date: ____________________")
 }
 
 func clientLine(sig agreement.Signature) string {

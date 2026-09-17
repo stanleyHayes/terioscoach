@@ -176,3 +176,29 @@ func TestPendingCountersignatureOnlyAppearsOnCoachingAgreements(t *testing.T) {
 		}
 	}
 }
+
+func TestDocumentSpecificExecutionBlocks(t *testing.T) {
+	now := time.Date(2026, 9, 11, 15, 4, 0, 0, time.UTC)
+	practitionerAt := now.Add(time.Hour)
+	sig := agreement.Signature{
+		AgreementKey:           "holistic_coaching",
+		ClientName:             "Ama Serwaa",
+		SignedName:             "Ama Serwaa",
+		SignedAt:               now,
+		PractitionerSignedName: "Dr. Stanley Hayes",
+		PractitionerSignedAt:   &practitionerAt,
+	}
+	coaching := string(SignedAgreement(agreement.Agreement{Key: "holistic_coaching", Title: "Holistic Coaching Agreement", Body: "Terms."}, sig))
+	for _, want := range []string{"IN WITNESS WHEREOF", "TERIOS WELLNESS SPA", "PRACTITIONER SIGNATURE", "Dr. Stanley Hayes", "CLIENT SIGNATURE", "OR I am the parent or legal guardian"} {
+		if !strings.Contains(coaching, want) {
+			t.Errorf("coaching PDF is missing %q", want)
+		}
+	}
+
+	for _, key := range []string{"holistic_confidentiality_hipaa", "nurse_confidentiality_hipaa", "holistic_liability_release", "nurse_liability_release"} {
+		out := string(SignedAgreement(agreement.Agreement{Key: key, Title: "Document", Body: "Terms."}, sig))
+		if strings.Contains(out, "PRACTITIONER SIGNATURE") || !strings.Contains(out, "PRINTED NAME") || !strings.Contains(out, "CLIENT SIGNATURE") {
+			t.Errorf("%s has the wrong client-only execution block", key)
+		}
+	}
+}
