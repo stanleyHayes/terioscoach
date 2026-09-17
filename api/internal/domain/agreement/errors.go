@@ -29,6 +29,7 @@ var (
 	// Countersignature & Collections
 	ErrCountersignatureNotRequired = errors.New("only holistic and nurse coaching agreements require a practitioner countersignature")
 	ErrAlreadyCountersigned        = errors.New("this agreement has already been countersigned")
+	ErrSignatureNotRequired        = errors.New("statement of work documents are fill-in forms and do not require a client signature")
 	ErrSignatureNotFound           = errors.New("signature not found")
 	ErrCollectionNotFound          = errors.New("agreement collection not found")
 	ErrInvalidCollection           = errors.New("invalid agreement collection")

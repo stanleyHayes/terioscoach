@@ -123,6 +123,9 @@ func (s *Service) StatusesForService(ctx context.Context, clientID, serviceID st
 		if !a.Active {
 			continue
 		}
+		if !agreement.RequiresClientSignature(a.Key) {
+			continue
+		}
 
 		status := ports.AgreementStatus{Agreement: &a}
 		if clientID != "" {

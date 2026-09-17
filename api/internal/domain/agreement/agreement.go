@@ -74,6 +74,13 @@ func RequiresPractitionerSignature(key string) bool {
 	return key == "holistic_coaching" || key == "nurse_coaching"
 }
 
+// RequiresClientSignature returns whether a document is a legal agreement the
+// client must sign. Statement-of-work documents are fill-in forms only and do
+// not stand as a signature gate.
+func RequiresClientSignature(key string) bool {
+	return key != "holistic_sow" && key != "nurse_sow"
+}
+
 // New builds an active agreement at version 1. The legacy boolean argument is
 // retained for caller compatibility; the document key determines signing roles.
 func New(practitionerID, key, title, body string, _ bool, now time.Time) (Agreement, error) {
@@ -217,6 +224,9 @@ func (s Signature) Countersign(practitionerName string, now time.Time) (Signatur
 
 // Sign builds a signature of a against the wording a currently carries.
 func (a Agreement) Sign(clientID, clientName, clientEmail, signedName, bookingID string, now time.Time) (Signature, error) {
+	if !RequiresClientSignature(a.Key) {
+		return Signature{}, ErrSignatureNotRequired
+	}
 	if clientID == "" {
 		return Signature{}, ErrInvalidClient
 	}

@@ -185,6 +185,23 @@ func TestCountersign(t *testing.T) {
 	}
 }
 
+func TestStatementOfWorkDocumentsAreFillInFormsWithoutClientSignatures(t *testing.T) {
+	for _, key := range []string{"holistic_sow", "nurse_sow"} {
+		t.Run(key, func(t *testing.T) {
+			a, err := New("prac-1", key, "Statement of Work", "Terms.", false, fixedNow)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if RequiresClientSignature(key) {
+				t.Fatal("SOW documents should be excluded from client-signature requirements")
+			}
+			if _, err := a.Sign("client-1", "Daniel", "daniel@example.com", "Daniel Baah", "booking-9", fixedNow); !errors.Is(err, ErrSignatureNotRequired) {
+				t.Fatalf("err = %v, want ErrSignatureNotRequired", err)
+			}
+		})
+	}
+}
+
 func TestAgreementCollection(t *testing.T) {
 	c, err := NewCollection("prac-1", "holistic_bundle", "Holistic Coaching Bundle", "Standard onboarding packet", []string{"agr-1", "agr-2"}, fixedNow)
 	if err != nil {
@@ -210,6 +227,12 @@ func TestCountersignaturePolicyForAllDocuments(t *testing.T) {
 			}
 			if a.RequiresCountersignature != want {
 				t.Fatal("create/edit accepted an incorrect signature requirement")
+			}
+			if !RequiresClientSignature(key) {
+				if _, err := a.Sign("client-1", "Daniel", "", "Daniel Baah", "", fixedNow); !errors.Is(err, ErrSignatureNotRequired) {
+					t.Fatalf("SOW signature err = %v, want ErrSignatureNotRequired", err)
+				}
+				return
 			}
 			// Simulate a legacy record with an incorrect stored flag.
 			a.RequiresCountersignature = !want
