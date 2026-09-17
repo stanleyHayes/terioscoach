@@ -123,6 +123,7 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
     <>
       <ul className="flex flex-col gap-3">
         {signatures.map((signature) => {
+          const submission = signature.statementOfWork;
           const isPendingCountersign =
             signature.requiresCountersignature && !signature.practitionerSignedAt;
           const isCountersigned = Boolean(
@@ -147,11 +148,19 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
                     ) : isCountersigned ? (
                       <Badge variant="success">Countersigned</Badge>
                     ) : (
-                      <Badge variant="neutral">Signed</Badge>
+                      <Badge variant="neutral">{submission ? "Submitted" : "Signed"}</Badge>
                     )}
                   </div>
 
-                  <div className="mt-2 text-xs text-ink-muted">
+                  {submission ? (
+                    <dl className="mt-2 grid gap-2 text-xs text-ink-muted sm:grid-cols-2">
+                      <div><dt className="font-medium text-ink">Client name</dt><dd>{submission.clientName}</dd></div>
+                      <div><dt className="font-medium text-ink">Effective date</dt><dd>{submission.effectiveDate}</dd></div>
+                      <div><dt className="font-medium text-ink">Initial term</dt><dd>{submission.initialTermMonths} months</dd></div>
+                      <div><dt className="font-medium text-ink">Monthly fee</dt><dd>{submission.monthlyFee}</dd></div>
+                      <div><dt className="font-medium text-ink">Submitted at</dt><dd>{signature.submittedAt ? new Date(signature.submittedAt).toLocaleString() : "—"}</dd></div>
+                    </dl>
+                  ) : <div className="mt-2 text-xs text-ink-muted">
                     <span className="font-medium text-ink">Client signature:</span>{" "}
                     <span className="font-display italic text-ink">{signature.signedName}</span>
                     <span className="ml-1 text-[11px] text-ink-faint">
@@ -163,9 +172,9 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
                         minute: "2-digit",
                       })})
                     </span>
-                  </div>
+                  </div>}
 
-                  {signature.signedName.trim().toLowerCase() !==
+                  {!submission && signature.signedName.trim().toLowerCase() !==
                   signature.clientName.trim().toLowerCase() ? (
                     <p className="mt-0.5 text-[11px] text-ink-faint">
                       Account name: {signature.clientName}

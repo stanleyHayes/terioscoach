@@ -33,6 +33,7 @@ func WithAgreements(svc ports.AgreementService, auth ports.AuthService) Option {
 			r.Use(RequireAuth(auth))
 			r.Get("/v1/services/{id}/agreement", h.forService)
 			r.Post("/v1/agreements/{id}/sign", h.sign)
+			r.Post("/v1/agreements/{id}/submit", h.sign)
 			r.Get("/v1/agreements/mine", h.mine)
 			r.Get("/v1/agreements/signatures/{signatureId}/pdf", h.document)
 		})
@@ -84,24 +85,27 @@ func newAgreementBody(a agreement.Agreement) agreementBody {
 }
 
 type agreementSignatureBody struct {
-	ID                       string     `json:"id"`
-	AgreementID              string     `json:"agreementId"`
-	AgreementTitle           string     `json:"agreementTitle"`
-	AgreementVersion         int        `json:"agreementVersion"`
-	ClientID                 string     `json:"clientId"`
-	ClientName               string     `json:"clientName"`
-	ClientEmail              string     `json:"clientEmail"`
-	SignedName               string     `json:"signedName"`
-	RequiresCountersignature bool       `json:"requiresCountersignature"`
-	PractitionerSignedName   string     `json:"practitionerSignedName,omitempty"`
-	PractitionerSignedAt     *time.Time `json:"practitionerSignedAt,omitempty"`
-	Countersigned            bool       `json:"countersigned"`
-	BookingID                string     `json:"bookingId,omitempty"`
-	SignedAt                 time.Time  `json:"signedAt"`
+	StatementOfWork          *agreement.StatementOfWork `json:"statementOfWork,omitempty"`
+	SubmittedAt              *time.Time                 `json:"submittedAt,omitempty"`
+	ID                       string                     `json:"id"`
+	AgreementID              string                     `json:"agreementId"`
+	AgreementTitle           string                     `json:"agreementTitle"`
+	AgreementVersion         int                        `json:"agreementVersion"`
+	ClientID                 string                     `json:"clientId"`
+	ClientName               string                     `json:"clientName"`
+	ClientEmail              string                     `json:"clientEmail"`
+	SignedName               string                     `json:"signedName"`
+	RequiresCountersignature bool                       `json:"requiresCountersignature"`
+	PractitionerSignedName   string                     `json:"practitionerSignedName,omitempty"`
+	PractitionerSignedAt     *time.Time                 `json:"practitionerSignedAt,omitempty"`
+	Countersigned            bool                       `json:"countersigned"`
+	BookingID                string                     `json:"bookingId,omitempty"`
+	SignedAt                 time.Time                  `json:"signedAt"`
 }
 
 func newAgreementSignatureBody(s agreement.Signature) agreementSignatureBody {
 	return agreementSignatureBody{
+		StatementOfWork: s.StatementOfWork, SubmittedAt: s.SubmittedAt,
 		ID:                       s.ID,
 		AgreementID:              s.AgreementID,
 		AgreementTitle:           s.AgreementTitle,
@@ -221,17 +225,19 @@ func (h *agreementHandler) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		SignedName string `json:"signedName"`
-		BookingID  string `json:"bookingId"`
+		SignedName      string                     `json:"signedName"`
+		BookingID       string                     `json:"bookingId"`
+		StatementOfWork *agreement.StatementOfWork `json:"statementOfWork"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	sig, err := h.svc.Sign(r.Context(), ports.SignRequest{
-		AgreementID: chi.URLParam(r, "id"),
-		ClientID:    id.UserID,
-		SignedName:  req.SignedName,
-		BookingID:   req.BookingID,
+		StatementOfWork: req.StatementOfWork,
+		AgreementID:     chi.URLParam(r, "id"),
+		ClientID:        id.UserID,
+		SignedName:      req.SignedName,
+		BookingID:       req.BookingID,
 	})
 	if err != nil {
 		writeDomainError(w, err)

@@ -17,14 +17,15 @@ var (
 	ErrAgreementRequired = errors.New("this service requires a signed agreement")
 
 	// Validation.
-	ErrInvalidAgreement  = errors.New("a practitioner and key are required")
-	ErrInvalidTitle      = errors.New("title is required")
-	ErrTitleTooLong      = errors.New("title is too long")
-	ErrInvalidBody       = errors.New("agreement text is required")
-	ErrBodyTooLong       = errors.New("agreement text is too long")
-	ErrInvalidClient     = errors.New("a client is required")
-	ErrInvalidSignedName = errors.New("type your full name to sign")
-	ErrSignedNameTooLong = errors.New("that name is too long")
+	ErrInvalidStatementOfWork = errors.New("complete the statement of work with client name, effective date (YYYY-MM-DD), initial term (1-1200 months), and monthly fee; no signature is required")
+	ErrInvalidAgreement       = errors.New("a practitioner and key are required")
+	ErrInvalidTitle           = errors.New("title is required")
+	ErrTitleTooLong           = errors.New("title is too long")
+	ErrInvalidBody            = errors.New("agreement text is required")
+	ErrBodyTooLong            = errors.New("agreement text is too long")
+	ErrInvalidClient          = errors.New("a client is required")
+	ErrInvalidSignedName      = errors.New("type your full name to sign")
+	ErrSignedNameTooLong      = errors.New("that name is too long")
 
 	// Countersignature & Collections
 	ErrCountersignatureNotRequired = errors.New("only holistic and nurse coaching agreements require a practitioner countersignature")

@@ -24,7 +24,16 @@ export interface Agreement {
   updatedAt: string;
 }
 
+export interface StatementOfWork {
+  clientName: string;
+  effectiveDate: string;
+  initialTermMonths: number;
+  monthlyFee: string;
+}
+
 export interface AgreementSignature {
+  statementOfWork?: StatementOfWork;
+  submittedAt?: string;
   id: string;
   agreementId: string;
   agreementTitle: string;
@@ -72,6 +81,19 @@ export const agreementsApi = {
       session,
       callbacks,
       { method: "POST", body: { signedName, bookingId } },
+    );
+    return signature;
+  },
+
+  async submitStatementOfWork(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    agreementId: string,
+    statementOfWork: StatementOfWork,
+  ): Promise<AgreementSignature> {
+    const { signature } = await authedRequest<{ signature: AgreementSignature }>(
+      `/v1/agreements/${agreementId}/submit`, session, callbacks,
+      { method: "POST", body: { statementOfWork } },
     );
     return signature;
   },

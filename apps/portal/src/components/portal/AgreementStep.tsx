@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ScrollText } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { parseAgreement, type Agreement } from "@/lib/agreements";
+import { parseAgreement, type Agreement, type StatementOfWork } from "@/lib/agreements";
 import { BrandedCheckbox } from "@/components/ui/ChoiceControls";
+import { StatementOfWorkStep } from "./StatementOfWorkStep";
 import { cn } from "@/lib/cn";
 
 /**
@@ -27,6 +28,7 @@ export function AgreementStep({
   clientName,
   stepInfo,
   onSigned,
+  onSubmitted,
   onBack,
 }: {
   agreement: Agreement;
@@ -34,6 +36,7 @@ export function AgreementStep({
   clientName: string;
   stepInfo?: { current: number; total: number };
   onSigned: (signedName: string) => Promise<void>;
+  onSubmitted?: (answers: StatementOfWork) => Promise<void>;
   onBack: () => void;
 }) {
   const [typedName, setTypedName] = useState(clientName);
@@ -82,6 +85,10 @@ export function AgreementStep({
       );
       setSubmitting(false);
     }
+  }
+
+  if (agreement.key === "holistic_sow" || agreement.key === "nurse_sow") {
+    return <StatementOfWorkStep key={agreement.id} agreement={agreement} clientName={clientName} stepInfo={stepInfo} onSubmitted={onSubmitted} onBack={onBack} />;
   }
 
   return (

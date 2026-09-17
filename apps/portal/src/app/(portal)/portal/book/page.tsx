@@ -26,7 +26,7 @@ import {
   supportedTimeZoneOptions,
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { agreementsApi, type AgreementStatus } from "@/lib/agreements";
+import { agreementsApi, type AgreementStatus, type StatementOfWork } from "@/lib/agreements";
 import { AgreementStep } from "@/components/portal/AgreementStep";
 
 /**
@@ -199,6 +199,14 @@ function BookingFlow() {
     totalAgreementsCount - unsignedAgreements.length,
   );
   const currentUnsigned = unsignedAgreements[0] ?? null;
+
+  async function submitStatementOfWork(answers: StatementOfWork) {
+    if (!currentUnsigned?.agreement || !session || !serviceId) return;
+    await agreementsApi.submitStatementOfWork(session, { onTokensRefreshed }, currentUnsigned.agreement.id, answers);
+    const updated = await agreementsApi.forService(session, { onTokensRefreshed }, serviceId);
+    setAgreement(updated);
+    if (!updated.required || updated.signed) setStep("review");
+  }
 
   async function signAgreement(signedName: string) {
     if (!currentUnsigned?.agreement || !session || !serviceId) return;
@@ -527,6 +535,7 @@ function BookingFlow() {
                 : undefined
             }
             onSigned={signAgreement}
+            onSubmitted={submitStatementOfWork}
             onBack={() => setStep("time")}
           />
         </div>

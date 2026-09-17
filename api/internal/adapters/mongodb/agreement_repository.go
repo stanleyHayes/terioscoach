@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/agreement"
 	"github.com/xcreativs/terios/api/internal/ports"
@@ -48,22 +49,24 @@ type agreementDoc struct {
 }
 
 type agreementSignatureDoc struct {
-	ID                       bson.ObjectID  `bson:"_id,omitempty"`
-	AgreementID              bson.ObjectID  `bson:"agreementId"`
-	AgreementKey             string         `bson:"agreementKey"`
-	AgreementTitle           string         `bson:"agreementTitle"`
-	AgreementVersion         int            `bson:"agreementVersion"`
-	AgreementBody            string         `bson:"agreementBody"`
-	ClientID                 bson.ObjectID  `bson:"clientId"`
-	ClientName               string         `bson:"clientName"`
-	ClientEmail              string         `bson:"clientEmail"`
-	SignedName               string         `bson:"signedName"`
-	RequiresCountersignature bool           `bson:"requiresCountersignature"`
-	PractitionerSignedName   string         `bson:"practitionerSignedName,omitempty"`
-	PractitionerSignedAt     *bson.DateTime `bson:"practitionerSignedAt,omitempty"`
-	SharedWithClient         bool           `bson:"sharedWithClient"`
-	BookingID                string         `bson:"bookingId,omitempty"`
-	SignedAt                 bson.DateTime  `bson:"signedAt"`
+	StatementOfWork          *agreement.StatementOfWork `bson:"statementOfWork,omitempty"`
+	SubmittedAt              *time.Time                 `bson:"submittedAt,omitempty"`
+	ID                       bson.ObjectID              `bson:"_id,omitempty"`
+	AgreementID              bson.ObjectID              `bson:"agreementId"`
+	AgreementKey             string                     `bson:"agreementKey"`
+	AgreementTitle           string                     `bson:"agreementTitle"`
+	AgreementVersion         int                        `bson:"agreementVersion"`
+	AgreementBody            string                     `bson:"agreementBody"`
+	ClientID                 bson.ObjectID              `bson:"clientId"`
+	ClientName               string                     `bson:"clientName"`
+	ClientEmail              string                     `bson:"clientEmail"`
+	SignedName               string                     `bson:"signedName"`
+	RequiresCountersignature bool                       `bson:"requiresCountersignature"`
+	PractitionerSignedName   string                     `bson:"practitionerSignedName,omitempty"`
+	PractitionerSignedAt     *bson.DateTime             `bson:"practitionerSignedAt,omitempty"`
+	SharedWithClient         bool                       `bson:"sharedWithClient"`
+	BookingID                string                     `bson:"bookingId,omitempty"`
+	SignedAt                 bson.DateTime              `bson:"signedAt"`
 }
 
 func newAgreementDoc(a agreement.Agreement) (agreementDoc, error) {
@@ -109,6 +112,7 @@ func (d agreementDoc) toDomain() agreement.Agreement {
 
 func (d agreementSignatureDoc) toDomain() agreement.Signature {
 	sig := agreement.Signature{
+		StatementOfWork: d.StatementOfWork, SubmittedAt: d.SubmittedAt,
 		ID:                       d.ID.Hex(),
 		AgreementID:              d.AgreementID.Hex(),
 		AgreementKey:             d.AgreementKey,
@@ -241,6 +245,7 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 		return agreement.Signature{}, agreement.ErrInvalidClient
 	}
 	doc := agreementSignatureDoc{
+		StatementOfWork: sig.StatementOfWork, SubmittedAt: sig.SubmittedAt,
 		AgreementID:              aid,
 		AgreementKey:             sig.AgreementKey,
 		AgreementTitle:           sig.AgreementTitle,
