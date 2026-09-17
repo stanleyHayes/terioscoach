@@ -50,6 +50,46 @@ describe("SlotPicker timezone handling", () => {
     expect(screen.getByRole("button", { name: "Mon15" })).toBeTruthy();
   });
 
+  it("keeps the first day as today when the display timezone changes", async () => {
+    vi.setSystemTime(new Date("2026-09-17T01:00:00.000Z"));
+    const { rerender } = render(
+      <SlotPicker
+        serviceId="svc-1"
+        selectedSlot={null}
+        onSelect={vi.fn()}
+        timeZone="Europe/London"
+      />,
+    );
+
+    await waitFor(() =>
+      expect(getSlots).toHaveBeenLastCalledWith({
+        serviceId: "svc-1",
+        from: "2026-09-17",
+        to: "2026-09-17",
+        tz: "Europe/London",
+      }),
+    );
+
+    rerender(
+      <SlotPicker
+        serviceId="svc-1"
+        selectedSlot={null}
+        onSelect={vi.fn()}
+        timeZone="America/Los_Angeles"
+      />,
+    );
+
+    await waitFor(() =>
+      expect(getSlots).toHaveBeenLastCalledWith({
+        serviceId: "svc-1",
+        from: "2026-09-16",
+        to: "2026-09-16",
+        tz: "America/Los_Angeles",
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Wed16" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
   it.each([
     ["America/New_York", "4:00 AM"],
     ["America/Los_Angeles", "1:00 AM"],

@@ -146,10 +146,9 @@ export function SlotPicker({
   const tz = useMemo(() => timeZone ?? browserTimeZone(), [timeZone]);
   const [offsetDays, setOffsetDays] = useState(0);
   const days = useMemo(() => buildDays(tz, offsetDays), [tz, offsetDays]);
-  const [selectedDayKey, setSelectedDayKey] = useState(days[0].key);
-  const selectedDay = days.some((day) => day.key === selectedDayKey)
-    ? selectedDayKey
-    : days[0].key;
+  const [selectedDayOffset, setSelectedDayOffset] = useState(0);
+  const selectedDayIndex = Math.min(selectedDayOffset, days.length - 1);
+  const selectedDay = days[selectedDayIndex].key;
   const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [raceStartAt, setRaceStartAt] = useState<string | null>(null);
@@ -221,7 +220,7 @@ export function SlotPicker({
               type="button"
               onClick={() => {
                 setOffsetDays(0);
-                setSelectedDayKey(days[0].key);
+                setSelectedDayOffset(0);
               }}
               className="rounded-md px-2.5 py-1 text-xs font-medium text-primary hover:bg-eucalyptus-50 transition-colors"
             >
@@ -259,14 +258,14 @@ export function SlotPicker({
         aria-label="Choose a day"
         className="flex gap-2 overflow-x-auto pb-1"
       >
-        {days.map((day) => {
-          const selected = day.key === selectedDay;
+        {days.map((day, index) => {
+          const selected = index === selectedDayIndex;
           return (
             <button
               key={day.key}
               type="button"
               aria-pressed={selected}
-              onClick={() => setSelectedDayKey(day.key)}
+              onClick={() => setSelectedDayOffset(index)}
               className={cn(
                 "flex min-h-[40px] w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border py-2",
                 "transition-colors duration-fast ease-out",
