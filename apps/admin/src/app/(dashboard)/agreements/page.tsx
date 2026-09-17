@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CircleAlert, FileText, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { MarkdownEditor } from "@/components/content/MarkdownEditor";
 import { TextInput } from "@/components/ui/TextInput";
 import { agreementsApi, type Agreement } from "@/lib/agreements";
 import { useAuth } from "@/lib/auth";
@@ -198,22 +199,14 @@ function AgreementEditor({
         onChange={(event) => setTitle(event.target.value)}
       />
 
-      <label className="mt-4 flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-ink">Agreement text</span>
-        <textarea
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          rows={26}
-          spellCheck={false}
-          className="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] leading-relaxed text-ink outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-primary/20"
-        />
-        <span className="text-xs leading-relaxed text-ink-muted">
-          Blank line between paragraphs. A line starting with
-          <code className="mx-1 rounded bg-surface-sunken px-1">##</code>
-          is a heading. Plain text only — nothing here is rendered as HTML, on
-          the page or in the signed PDF.
-        </span>
-      </label>
+      <div className="mt-4">
+        <MarkdownEditor value={body} onChange={setBody} />
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+          Use the toolbar to format the agreement without memorising Markdown.
+          The Markdown source is saved with the agreement and rendered safely
+          in the client preview and signed PDF.
+        </p>
+      </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button loading={saving} disabled={!dirty || saving} onClick={() => void save()}>
