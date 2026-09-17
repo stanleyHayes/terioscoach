@@ -39,6 +39,7 @@ type windowDoc struct {
 // (unique index in indexes.go).
 type ruleDoc struct {
 	PractitionerID bson.ObjectID `bson:"practitionerId"`
+	Timezone       string        `bson:"timezone,omitempty"`
 	Weekday        int           `bson:"weekday"`
 	Windows        []windowDoc   `bson:"windows"`
 	BufferMinutes  int           `bson:"bufferMinutes"`
@@ -76,6 +77,7 @@ func (r *AvailabilityRepository) GetRules(ctx context.Context, practitionerID st
 		}
 		rule := scheduling.WeeklyRule{
 			PractitionerID: practitionerID,
+			Timezone:       doc.Timezone,
 			Weekday:        time.Weekday(doc.Weekday),
 			BufferMinutes:  doc.BufferMinutes,
 		}
@@ -116,6 +118,7 @@ func (r *AvailabilityRepository) ReplaceRules(ctx context.Context, practitionerI
 		}
 		docs = append(docs, ruleDoc{
 			PractitionerID: oid,
+			Timezone:       rule.Timezone,
 			Weekday:        int(rule.Weekday),
 			Windows:        windows,
 			BufferMinutes:  rule.BufferMinutes,

@@ -13,11 +13,10 @@
  *
  * All calls go through authedRequest (single 401 → refresh → retry).
  *
- * This module also owns the calendar date/time helpers. The practice schedule
- * is evaluated in one IANA timezone (the contract default, Africa/Accra), so
- * all civil-date math below is done via Intl parts in that zone rather than
- * browser-local Date math — the rendered week is identical wherever the
- * practitioner's browser happens to be.
+ * This module also owns the calendar date/time helpers. Civil-date math is
+ * done via Intl parts in the chosen IANA zone rather than browser-local Date
+ * math, so rendered schedules are identical wherever the practitioner's
+ * browser happens to be.
  */
 
 import { authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
@@ -53,6 +52,11 @@ export interface AvailabilityRule {
   windows: AvailabilityWindow[];
   /** Recovery gap kept free around busy intervals; 0–120. */
   bufferMinutes: number;
+}
+
+export interface AvailabilityRulesResponse {
+  timezone: string;
+  rules: AvailabilityRule[];
 }
 
 export interface TimeOff {
@@ -99,13 +103,13 @@ export const scheduleApi = {
   async getRules(
     session: Session,
     callbacks: RefreshCallbacks,
-  ): Promise<AvailabilityRule[]> {
-    const data = await authedRequest<{ rules: AvailabilityRule[] }>(
+  ): Promise<AvailabilityRulesResponse> {
+    const data = await authedRequest<AvailabilityRulesResponse>(
       "/v1/availability/rules",
       session,
       callbacks,
     );
-    return data.rules;
+    return { timezone: data.timezone || PRACTICE_TIMEZONE, rules: data.rules };
   },
 
   /** Full weekly replacement: send every open day; closed days are omitted. */
@@ -113,14 +117,15 @@ export const scheduleApi = {
     session: Session,
     callbacks: RefreshCallbacks,
     rules: AvailabilityRule[],
-  ): Promise<AvailabilityRule[]> {
-    const data = await authedRequest<{ rules: AvailabilityRule[] }>(
+    timezone: string = PRACTICE_TIMEZONE,
+  ): Promise<AvailabilityRulesResponse> {
+    const data = await authedRequest<AvailabilityRulesResponse>(
       "/v1/availability/rules",
       session,
       callbacks,
-      { method: "PUT", body: { rules } },
+      { method: "PUT", body: { timezone, rules } },
     );
-    return data.rules;
+    return { timezone: data.timezone || PRACTICE_TIMEZONE, rules: data.rules };
   },
 
   async addTimeOff(

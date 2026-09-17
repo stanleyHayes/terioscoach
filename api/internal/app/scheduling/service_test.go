@@ -48,15 +48,16 @@ func TestReplaceRulesValidates(t *testing.T) {
 	ctx := context.Background()
 
 	rules := []domain.WeeklyRule{{
-		Weekday: time.Monday,
-		Windows: []domain.Window{{StartMin: 540, EndMin: 720}},
+		Timezone: "America/New_York",
+		Weekday:  time.Monday,
+		Windows:  []domain.Window{{StartMin: 540, EndMin: 720}},
 	}}
 	stored, err := rig.svc.ReplaceRules(ctx, "prac-1", rules)
 	if err != nil {
 		t.Fatalf("ReplaceRules: %v", err)
 	}
-	if len(stored) != 1 || stored[0].PractitionerID != "prac-1" {
-		t.Errorf("stored rules = %+v, want practitioner stamped", stored)
+	if len(stored) != 1 || stored[0].PractitionerID != "prac-1" || stored[0].Timezone != "America/New_York" {
+		t.Errorf("stored rules = %+v, want practitioner and timezone stamped", stored)
 	}
 
 	// Invalid input leaves the previous schedule untouched.
@@ -70,6 +71,15 @@ func TestReplaceRulesValidates(t *testing.T) {
 	current, _ := rig.svc.GetRules(ctx, "prac-1")
 	if len(current) != 1 || current[0].Weekday != time.Monday {
 		t.Errorf("rules after failed replace = %+v, want the Monday rule kept", current)
+	}
+
+	badTimezone := []domain.WeeklyRule{{
+		Timezone: "Mars/Olympus_Mons",
+		Weekday:  time.Wednesday,
+		Windows:  []domain.Window{{StartMin: 540, EndMin: 720}},
+	}}
+	if _, err := rig.svc.ReplaceRules(ctx, "prac-1", badTimezone); !errors.Is(err, domain.ErrInvalidTimezone) {
+		t.Fatalf("bad timezone err = %v, want ErrInvalidTimezone", err)
 	}
 }
 
@@ -132,6 +142,35 @@ func TestGetSlots(t *testing.T) {
 	}
 	if len(res.Slots) != 1 || !res.Slots[0].Start.Equal(day.Add(11*time.Hour)) {
 		t.Errorf("slots with busy = %v, want only 11:00", res.Slots)
+	}
+}
+
+func TestGetSlotsConvertsAuthoredAvailabilityIntoViewerTimezone(t *testing.T) {
+	rig := newTestRig()
+	ctx := context.Background()
+	rig.svc.now = func() time.Time { return time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC) }
+	svc := seedService(t, rig, "prac-1", true)
+	day := time.Date(2027, 1, 4, 0, 0, 0, 0, time.UTC) // Monday
+
+	_, err := rig.svc.ReplaceRules(ctx, "prac-1", []domain.WeeklyRule{{
+		Timezone: "America/New_York",
+		Weekday:  time.Monday,
+		Windows:  []domain.Window{{StartMin: 540, EndMin: 600}},
+	}})
+	if err != nil {
+		t.Fatalf("ReplaceRules: %v", err)
+	}
+
+	res, err := rig.svc.GetSlots(ctx, svc.ID, day, day, "Europe/London")
+	if err != nil {
+		t.Fatalf("GetSlots: %v", err)
+	}
+	if len(res.Slots) != 1 {
+		t.Fatalf("slots = %v, want one converted start", res.Slots)
+	}
+	want := time.Date(2027, 1, 4, 14, 0, 0, 0, time.UTC)
+	if !res.Slots[0].Start.Equal(want) {
+		t.Errorf("slot start = %s, want New York 9 AM converted to %s", res.Slots[0].Start, want)
 	}
 }
 

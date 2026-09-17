@@ -117,8 +117,7 @@ func (s *Service) notice(ctx context.Context, b booking.Booking, tz string) (por
 // not merely a free one. The storage unique index is the race backstop: a
 // concurrent claim of the same slot surfaces as ErrSlotUnavailable.
 func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string, startAt time.Time, tz string) (booking.Booking, error) {
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
+	if _, err := time.LoadLocation(tz); err != nil {
 		return booking.Booking{}, scheduling.ErrInvalidTimezone
 	}
 	svc, err := s.services.FindByID(ctx, serviceID)
@@ -138,7 +137,7 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 			return booking.Booking{}, err
 		}
 	}
-	if err := s.assertSlotGeneratable(ctx, svc.PractitionerID, svc.DurationMinutes, startAt, loc, ""); err != nil {
+	if err := s.assertSlotGeneratable(ctx, svc.PractitionerID, svc.DurationMinutes, startAt, ""); err != nil {
 		return booking.Booking{}, err
 	}
 
@@ -189,8 +188,7 @@ func (s *Service) GetBooking(ctx context.Context, id identity.Identity, bookingI
 // so it cannot block its own neighbours; the update claims the new slot and
 // frees the old one in a single write.
 func (s *Service) RescheduleBooking(ctx context.Context, id identity.Identity, bookingID string, startAt time.Time, tz string) (booking.Booking, error) {
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
+	if _, err := time.LoadLocation(tz); err != nil {
 		return booking.Booking{}, scheduling.ErrInvalidTimezone
 	}
 	b, err := s.loadAuthorized(ctx, id, bookingID)
@@ -202,7 +200,7 @@ func (s *Service) RescheduleBooking(ctx context.Context, id identity.Identity, b
 	}
 	// The duration never changes — same service, different slot.
 	duration := int(b.EndAt.Sub(b.StartAt) / time.Minute)
-	if err := s.assertSlotGeneratable(ctx, b.PractitionerID, duration, startAt, loc, b.ID); err != nil {
+	if err := s.assertSlotGeneratable(ctx, b.PractitionerID, duration, startAt, b.ID); err != nil {
 		return booking.Booking{}, err
 	}
 	previousStart := b.StartAt
@@ -329,7 +327,6 @@ func (s *Service) assertSlotGeneratable(
 	practitionerID string,
 	durationMinutes int,
 	startAt time.Time,
-	loc *time.Location,
 	excludeBookingID string,
 ) error {
 	startAt = startAt.UTC()
@@ -341,6 +338,10 @@ func (s *Service) assertSlotGeneratable(
 	rules, err := s.availability.GetRules(ctx, practitionerID)
 	if err != nil {
 		return err
+	}
+	scheduleLoc, err := time.LoadLocation(scheduling.RulesTimezone(rules))
+	if err != nil {
+		return scheduling.ErrInvalidTimezone
 	}
 	timeOff, err := s.availability.ListTimeOff(ctx, practitionerID, queryFrom, queryTo)
 	if err != nil {
@@ -373,7 +374,7 @@ func (s *Service) assertSlotGeneratable(
 		DurationMinutes: durationMinutes,
 		From:            startAt,
 		To:              startAt,
-		Loc:             loc,
+		Loc:             scheduleLoc,
 		Now:             s.now(),
 	})
 	if err != nil {

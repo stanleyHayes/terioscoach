@@ -52,13 +52,16 @@ beforeEach(() => {
 });
 
 describe("scheduleApi", () => {
-  it("getRules GETs /v1/availability/rules and unwraps rules", async () => {
+  it("getRules GETs /v1/availability/rules and unwraps the timezone and rules", async () => {
     const rules: AvailabilityRule[] = [
       { weekday: 1, windows: [{ startMin: 540, endMin: 1020 }], bufferMinutes: 15 },
     ];
-    authedRequestMock.mockResolvedValueOnce({ rules });
+    authedRequestMock.mockResolvedValueOnce({ timezone: "America/New_York", rules });
 
-    await expect(scheduleApi.getRules(session, callbacks)).resolves.toEqual(rules);
+    await expect(scheduleApi.getRules(session, callbacks)).resolves.toEqual({
+      timezone: "America/New_York",
+      rules,
+    });
     expect(authedRequestMock).toHaveBeenCalledWith(
       "/v1/availability/rules",
       session,
@@ -66,7 +69,7 @@ describe("scheduleApi", () => {
     );
   });
 
-  it("putRules PUTs the full replacement set and unwraps rules", async () => {
+  it("putRules PUTs the full replacement set with timezone and unwraps both", async () => {
     const rules: AvailabilityRule[] = [
       {
         weekday: 2,
@@ -77,14 +80,17 @@ describe("scheduleApi", () => {
         bufferMinutes: 0,
       },
     ];
-    authedRequestMock.mockResolvedValueOnce({ rules });
+    authedRequestMock.mockResolvedValueOnce({ timezone: "America/New_York", rules });
 
-    await expect(scheduleApi.putRules(session, callbacks, rules)).resolves.toEqual(rules);
+    await expect(scheduleApi.putRules(session, callbacks, rules, "America/New_York")).resolves.toEqual({
+      timezone: "America/New_York",
+      rules,
+    });
     expect(authedRequestMock).toHaveBeenCalledWith(
       "/v1/availability/rules",
       session,
       callbacks,
-      { method: "PUT", body: { rules } },
+      { method: "PUT", body: { timezone: "America/New_York", rules } },
     );
   });
 

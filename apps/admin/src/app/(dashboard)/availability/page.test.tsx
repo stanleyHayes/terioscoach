@@ -50,6 +50,8 @@ const RULES: AvailabilityRule[] = [
   { weekday: 1, windows: [{ startMin: 540, endMin: 1020 }], bufferMinutes: 15 },
 ];
 
+const RULES_RESPONSE = { timezone: "Africa/Accra", rules: RULES };
+
 function mondayRegion() {
   return screen.getByRole("region", { name: "Monday" });
 }
@@ -80,7 +82,7 @@ afterEach(() => {
 
 describe("AvailabilityPage", () => {
   it("loads rules into the weekly form (switch on, windows and buffer pre-filled)", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
 
     const monday = await screen.findByRole("region", { name: "Monday" });
@@ -103,10 +105,11 @@ describe("AvailabilityPage", () => {
   });
 
   it("keeps Save changes disabled until the form is dirty, and disables it again after save", async () => {
-    getRulesMock.mockResolvedValue(RULES);
-    putRulesMock.mockResolvedValue([
-      { weekday: 1, windows: [{ startMin: 540, endMin: 750 }], bufferMinutes: 15 },
-    ]);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
+    putRulesMock.mockResolvedValue({
+      timezone: "Africa/Accra",
+      rules: [{ weekday: 1, windows: [{ startMin: 540, endMin: 750 }], bufferMinutes: 15 }],
+    });
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -121,14 +124,14 @@ describe("AvailabilityPage", () => {
     // PUT payload: only the open day, minutes-since-midnight windows.
     expect(putRulesMock).toHaveBeenCalledWith(session, refreshCallbacks, [
       { weekday: 1, windows: [{ startMin: 540, endMin: 750 }], bufferMinutes: 15 },
-    ]);
+    ], "Africa/Accra");
     expect(await screen.findByRole("status")).toBeTruthy();
     expect(screen.getByText("Availability saved.")).toBeTruthy();
     expect((saveButton() as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("adds and removes windows on a day", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -143,7 +146,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("blocks overnight windows client-side before submit", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -160,7 +163,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("blocks overlapping windows client-side before submit", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -176,7 +179,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("validates the buffer range", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -194,7 +197,7 @@ describe("AvailabilityPage", () => {
   it("shows an error banner with retry when rules fail to load", async () => {
     getRulesMock
       .mockRejectedValueOnce(new ApiError(0, "network_error", "Can't reach the server."))
-      .mockResolvedValueOnce(RULES);
+      .mockResolvedValueOnce(RULES_RESPONSE);
     render(<AvailabilityPage />);
 
     const alert = await screen.findByRole("alert");
@@ -205,7 +208,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("adds time off with an inclusive end date (endAt = next midnight) and lists it", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     const created: TimeOff = {
       id: "to-1",
       practitionerId: "prac-1",
@@ -238,7 +241,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("prevents an end date before the selected start date", async () => {
-    getRulesMock.mockResolvedValue(RULES);
+    getRulesMock.mockResolvedValue(RULES_RESPONSE);
     render(<AvailabilityPage />);
     await screen.findByRole("region", { name: "Monday" });
 
@@ -248,5 +251,41 @@ describe("AvailabilityPage", () => {
     expect((screen.getByRole("button", { name: "Choose 2026-09-05" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByLabelText("End date").textContent).toContain("Choose date");
     expect(addTimeOffMock).not.toHaveBeenCalled();
+  });
+
+  it("saves weekly availability and time off in the selected working timezone", async () => {
+    getRulesMock.mockResolvedValue({ timezone: "America/New_York", rules: RULES });
+    putRulesMock.mockResolvedValue({ timezone: "America/Chicago", rules: RULES });
+    addTimeOffMock.mockResolvedValue({
+      id: "to-2",
+      practitionerId: "prac-1",
+      startAt: "2026-09-01T05:00:00.000Z",
+      endAt: "2026-09-04T05:00:00.000Z",
+      reason: "",
+      createdAt: "2026-08-11T10:00:00.000Z",
+    });
+    render(<AvailabilityPage />);
+    await screen.findByRole("region", { name: "Monday" });
+
+    expect(screen.getByText(/Clients still see the same openings converted/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("combobox", { name: "Working timezone" }));
+    fireEvent.click(screen.getByRole("option", { name: /Central Time/ }));
+    expect((saveButton() as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(saveButton());
+    await waitFor(() =>
+      expect(putRulesMock).toHaveBeenCalledWith(session, refreshCallbacks, RULES, "America/Chicago"),
+    );
+
+    chooseDate("Start date", "2026-09-01");
+    chooseDate("End date", "2026-09-03");
+    fireEvent.click(screen.getByRole("button", { name: "Add time off" }));
+
+    await waitFor(() =>
+      expect(addTimeOffMock).toHaveBeenCalledWith(session, refreshCallbacks, {
+        startAt: "2026-09-01T05:00:00.000Z",
+        endAt: "2026-09-04T05:00:00.000Z",
+      }),
+    );
   });
 });

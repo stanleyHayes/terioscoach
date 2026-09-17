@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { IconButton } from "@/components/ui/IconButton";
 import { Switch } from "@/components/ui/Switch";
 import { TextInput } from "@/components/ui/TextInput";
@@ -20,6 +21,7 @@ import {
   parseDateInput,
   parseTimeInput,
   scheduleApi,
+  SUPPORTED_TIME_ZONES,
   wallClockToUtcIso,
   weekdayLongName,
   zonedParts,
@@ -115,6 +117,8 @@ export default function AvailabilityPage() {
   const { session, refreshCallbacks, logout } = useAuth();
   const [days, setDays] = useState<DayDraft[] | null>(null);
   const [savedDays, setSavedDays] = useState<DayDraft[] | null>(null);
+  const [timeZone, setTimeZone] = useState(PRACTICE_TIMEZONE);
+  const [savedTimeZone, setSavedTimeZone] = useState(PRACTICE_TIMEZONE);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<number, DayErrors>>({});
@@ -146,10 +150,12 @@ export default function AvailabilityPage() {
     let cancelled = false;
     scheduleApi
       .getRules(session, refreshCallbacks)
-      .then((rules) => {
+      .then(({ rules, timezone }) => {
         if (cancelled) return;
         const drafts = draftsFromRules(rules);
         setLoadError(null);
+        setTimeZone(timezone);
+        setSavedTimeZone(timezone);
         setDays(drafts);
         setSavedDays(drafts);
       })
@@ -168,7 +174,7 @@ export default function AvailabilityPage() {
   const dirty =
     days !== null &&
     savedDays !== null &&
-    JSON.stringify(days) !== JSON.stringify(savedDays);
+    (timeZone !== savedTimeZone || JSON.stringify(days) !== JSON.stringify(savedDays));
 
   function updateDay(weekday: number, patch: Partial<DayDraft>) {
     setDays((prev) =>
@@ -291,8 +297,11 @@ export default function AvailabilityPage() {
         session,
         refreshCallbacks,
         rules,
+        timeZone,
       );
-      const drafts = draftsFromRules(saved);
+      const drafts = draftsFromRules(saved.rules);
+      setTimeZone(saved.timezone);
+      setSavedTimeZone(saved.timezone);
       setDays(drafts);
       setSavedDays(drafts);
       setToast("Availability saved.");
@@ -334,7 +343,7 @@ export default function AvailabilityPage() {
       startAt: wallClockToUtcIso(
         `${startCivil!.year}-${String(startCivil!.month).padStart(2, "0")}-${String(startCivil!.day).padStart(2, "0")}`,
         "00:00",
-        PRACTICE_TIMEZONE,
+        timeZone,
       )!,
       endAt: wallClockToUtcIso(
         (() => {
@@ -342,7 +351,7 @@ export default function AvailabilityPage() {
           return `${next.year}-${String(next.month).padStart(2, "0")}-${String(next.day).padStart(2, "0")}`;
         })(),
         "00:00",
-        PRACTICE_TIMEZONE,
+        timeZone,
       )!,
       ...(timeOffReason.trim() ? { reason: timeOffReason.trim() } : {}),
     };
@@ -375,8 +384,7 @@ export default function AvailabilityPage() {
             Availability
           </h1>
           <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            The hours clients can book, week after week. Times are{" "}
-            {timezoneShortName(PRACTICE_TIMEZONE)}.
+            The hours clients can book, week after week. Author times in your working timezone and Terios converts them for clients.
           </p>
         </div>
         <Button
@@ -387,6 +395,32 @@ export default function AvailabilityPage() {
           Save changes
         </Button>
       </div>
+
+      <Card className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <h2 className="text-base leading-[1.4] font-semibold tracking-[-0.005em] text-ink">
+            Availability timezone
+          </h2>
+          <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
+            Set weekly hours in this timezone. Clients still see the same openings converted into the timezone they choose while booking.
+          </p>
+        </div>
+        <div className="w-full sm:w-80">
+          <BrandedSelect
+            label="Working timezone"
+            value={timeZone}
+            options={SUPPORTED_TIME_ZONES.map((zone) => ({
+              value: zone.value,
+              label: zone.label,
+              description: `${timezoneShortName(zone.value)} · ${zone.value}`,
+            }))}
+            onChange={(next) => {
+              setTimeZone(next);
+              setToast(null);
+            }}
+          />
+        </div>
+      </Card>
 
       {saveError ? (
         <div
@@ -627,10 +661,10 @@ export default function AvailabilityPage() {
         {timeOffs.length > 0 ? (
           <ul className="flex flex-col divide-y divide-border border-t border-border">
             {timeOffs.map((entry) => {
-              const start = zonedParts(entry.startAt, PRACTICE_TIMEZONE);
+              const start = zonedParts(entry.startAt, timeZone);
               // endAt is exclusive; the last blocked day is the one before it.
               const lastDay = addDaysCivil(
-                zonedParts(entry.endAt, PRACTICE_TIMEZONE),
+                zonedParts(entry.endAt, timeZone),
                 -1,
               );
               return (

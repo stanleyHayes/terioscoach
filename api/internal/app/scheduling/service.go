@@ -46,8 +46,13 @@ func (s *Service) GetRules(ctx context.Context, practitionerID string) ([]domain
 
 // ReplaceRules validates the full weekly schedule, then swaps it in.
 func (s *Service) ReplaceRules(ctx context.Context, practitionerID string, rules []domain.WeeklyRule) ([]domain.WeeklyRule, error) {
+	timezone := domain.RulesTimezone(rules)
+	if _, err := time.LoadLocation(timezone); err != nil {
+		return nil, domain.ErrInvalidTimezone
+	}
 	for i := range rules {
 		rules[i].PractitionerID = practitionerID
+		rules[i].Timezone = timezone
 	}
 	if err := domain.ValidateRules(rules); err != nil {
 		return nil, err
@@ -68,9 +73,10 @@ func (s *Service) AddTimeOff(ctx context.Context, practitionerID string, startAt
 }
 
 // GetSlots computes bookable slots for an active service: the schedule is
-// evaluated in the requested timezone's wall clock and emitted in UTC.
+// evaluated in the practitioner's authored availability timezone, then
+// filtered to the viewer's requested calendar dates and emitted in UTC.
 func (s *Service) GetSlots(ctx context.Context, serviceID string, from, to time.Time, tz string) (ports.SlotsResult, error) {
-	loc, err := time.LoadLocation(tz)
+	viewerLoc, err := time.LoadLocation(tz)
 	if err != nil {
 		return ports.SlotsResult{}, domain.ErrInvalidTimezone
 	}
@@ -94,6 +100,11 @@ func (s *Service) GetSlots(ctx context.Context, serviceID string, from, to time.
 	if err != nil {
 		return ports.SlotsResult{}, err
 	}
+	scheduleTimezone := domain.RulesTimezone(rules)
+	scheduleLoc, err := time.LoadLocation(scheduleTimezone)
+	if err != nil {
+		return ports.SlotsResult{}, domain.ErrInvalidTimezone
+	}
 	timeOff, err := s.availability.ListTimeOff(ctx, svc.PractitionerID, queryFrom, queryTo)
 	if err != nil {
 		return ports.SlotsResult{}, err
@@ -103,18 +114,26 @@ func (s *Service) GetSlots(ctx context.Context, serviceID string, from, to time.
 		return ports.SlotsResult{}, err
 	}
 
+	viewerFrom := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, viewerLoc)
+	viewerToExclusive := time.Date(to.Year(), to.Month(), to.Day()+1, 0, 0, 0, 0, viewerLoc)
 	slots, err := domain.GenerateSlots(domain.SlotRequest{
 		Rules:           rules,
 		TimeOff:         timeOff,
 		Busy:            busy,
 		DurationMinutes: svc.DurationMinutes,
-		From:            from,
-		To:              to,
-		Loc:             loc,
+		From:            viewerFrom.In(scheduleLoc).AddDate(0, 0, -1),
+		To:              viewerToExclusive.In(scheduleLoc).AddDate(0, 0, 1),
+		Loc:             scheduleLoc,
 		Now:             s.now(),
 	})
 	if err != nil {
 		return ports.SlotsResult{}, err
 	}
-	return ports.SlotsResult{DurationMinutes: svc.DurationMinutes, Slots: slots}, nil
+	filtered := slots[:0]
+	for _, slot := range slots {
+		if !slot.Start.Before(viewerFrom) && slot.Start.Before(viewerToExclusive) {
+			filtered = append(filtered, slot)
+		}
+	}
+	return ports.SlotsResult{DurationMinutes: svc.DurationMinutes, Slots: filtered}, nil
 }

@@ -6,6 +6,10 @@ package scheduling
 import "time"
 
 const (
+	// DefaultTimezone is the legacy practice wall clock used for schedules
+	// created before availability rules stored an authoring timezone.
+	DefaultTimezone = "Africa/Accra"
+
 	// minutesPerDay bounds window endpoints; a window may end at midnight
 	// (1440) but never cross it — overnight windows are rejected.
 	minutesPerDay = 24 * 60
@@ -36,6 +40,7 @@ func (w Window) Validate() error {
 // free around every busy interval on this weekday.
 type WeeklyRule struct {
 	PractitionerID string
+	Timezone       string
 	Weekday        time.Weekday
 	Windows        []Window
 	BufferMinutes  int
@@ -77,6 +82,17 @@ func ValidateRules(rules []WeeklyRule) error {
 		seen[r.Weekday] = true
 	}
 	return nil
+}
+
+// RulesTimezone returns the authoring timezone shared by a rule set. Legacy
+// rules without a timezone are treated as DefaultTimezone.
+func RulesTimezone(rules []WeeklyRule) string {
+	for _, r := range rules {
+		if r.Timezone != "" {
+			return r.Timezone
+		}
+	}
+	return DefaultTimezone
 }
 
 // Interval is a half-open UTC time span [Start, End). Bookings (BE-05)

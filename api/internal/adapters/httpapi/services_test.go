@@ -408,6 +408,7 @@ func TestSlotsEndpointBadInput(t *testing.T) {
 func TestAvailabilityRulesRoundTrip(t *testing.T) {
 	rig := newCatalogTestRig(t)
 	rules := map[string]any{
+		"timezone": "America/New_York",
 		"rules": []map[string]any{
 			{"weekday": 1, "windows": []map[string]int{{"startMin": 540, "endMin": 720}}, "bufferMinutes": 15},
 			{"weekday": 3, "windows": []map[string]int{{"startMin": 600, "endMin": 900}}, "bufferMinutes": 0},
@@ -423,7 +424,8 @@ func TestAvailabilityRulesRoundTrip(t *testing.T) {
 		t.Fatalf("get rules status = %d", rec.Code)
 	}
 	var body struct {
-		Rules []struct {
+		Timezone string `json:"timezone"`
+		Rules    []struct {
 			Weekday int `json:"weekday"`
 			Windows []struct {
 				StartMin int `json:"startMin"`
@@ -435,6 +437,9 @@ func TestAvailabilityRulesRoundTrip(t *testing.T) {
 	decodeBody(t, rec, &body)
 	if len(body.Rules) != 2 || body.Rules[0].Weekday != 1 || body.Rules[1].Weekday != 3 {
 		t.Fatalf("rules = %+v, want weekday 1 and 3 in order", body.Rules)
+	}
+	if body.Timezone != "America/New_York" {
+		t.Errorf("timezone = %q, want America/New_York", body.Timezone)
 	}
 	if body.Rules[0].BufferMinutes != 15 || body.Rules[0].Windows[0].StartMin != 540 {
 		t.Errorf("rule = %+v, want buffer 15 and window start 540", body.Rules[0])

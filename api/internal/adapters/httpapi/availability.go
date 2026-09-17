@@ -56,7 +56,12 @@ type ruleBody struct {
 	BufferMinutes int          `json:"bufferMinutes"`
 }
 
-func newRuleBodies(rules []scheduling.WeeklyRule) []ruleBody {
+type rulesResponse struct {
+	Timezone string     `json:"timezone"`
+	Rules    []ruleBody `json:"rules"`
+}
+
+func newRulesResponse(rules []scheduling.WeeklyRule) rulesResponse {
 	out := make([]ruleBody, 0, len(rules))
 	for _, r := range rules {
 		body := ruleBody{Weekday: int(r.Weekday), BufferMinutes: r.BufferMinutes, Windows: []windowBody{}}
@@ -65,13 +70,17 @@ func newRuleBodies(rules []scheduling.WeeklyRule) []ruleBody {
 		}
 		out = append(out, body)
 	}
-	return out
+	return rulesResponse{Timezone: scheduling.RulesTimezone(rules), Rules: out}
 }
 
-func rulesFromBodies(bodies []ruleBody) []scheduling.WeeklyRule {
+func rulesFromBodies(timezone string, bodies []ruleBody) []scheduling.WeeklyRule {
+	if timezone == "" {
+		timezone = scheduling.DefaultTimezone
+	}
 	rules := make([]scheduling.WeeklyRule, 0, len(bodies))
 	for _, b := range bodies {
 		rule := scheduling.WeeklyRule{
+			Timezone:      timezone,
 			Weekday:       time.Weekday(b.Weekday),
 			BufferMinutes: b.BufferMinutes,
 		}
@@ -95,7 +104,7 @@ func (h *schedulingHandler) getRules(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string][]ruleBody{"rules": newRuleBodies(rules)})
+	writeJSON(w, http.StatusOK, newRulesResponse(rules))
 }
 
 // putRules handles PUT /v1/availability/rules — full replacement of the
@@ -107,17 +116,18 @@ func (h *schedulingHandler) putRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Rules []ruleBody `json:"rules"`
+		Timezone string     `json:"timezone"`
+		Rules    []ruleBody `json:"rules"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	rules, err := h.svc.ReplaceRules(r.Context(), id.UserID, rulesFromBodies(req.Rules))
+	rules, err := h.svc.ReplaceRules(r.Context(), id.UserID, rulesFromBodies(req.Timezone, req.Rules))
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string][]ruleBody{"rules": newRuleBodies(rules)})
+	writeJSON(w, http.StatusOK, newRulesResponse(rules))
 }
 
 // timeOffBody is the contract time-off shape.
