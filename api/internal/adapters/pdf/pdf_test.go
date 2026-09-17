@@ -28,6 +28,15 @@ func TestBuildProducesAParseableFile(t *testing.T) {
 	}
 }
 
+func TestBuildIncludesTeriosLetterhead(t *testing.T) {
+	out := Build([]Block{Title("Agreement")})
+	for _, want := range []string{"(TERIOS) Tj", "(WELLNESS SPA) Tj", "0.38 0.60 0.33 scn"} {
+		if !bytes.Contains(out, []byte(want)) {
+			t.Errorf("letterhead is missing %q", want)
+		}
+	}
+}
+
 // A cross-reference table whose offsets do not land on their objects is the
 // one defect that makes a reader refuse the file outright, and it is
 // invisible to eyeballing the output.

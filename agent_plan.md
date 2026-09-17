@@ -513,7 +513,7 @@ Work order: implement one numbered source item, verify it, commit and push it be
 | Agreements 2 | Statement of Work is a fill-in document, no signature | In Progress — client form, validated submission, persisted answers, practitioner view and unsigned PDF; owned by Codex. |
 | Agreements 3 | Fix practitioner countersign submission error | Not started in this sequence |
 | Agreements 4 | Verify agreement email notifications and timing | Done — agreement and Statement of Work notifications queue immediately to the practice outbox; targeted service, renderer, and agreement-flow tests cover recipient, timing, action, subject, and template selection. |
-| Agreements 5 | Add Terios logo to document letterhead | Not started in this sequence |
+| Agreements 5 | Add Terios logo to document letterhead | Done — generated agreement and Statement of Work PDFs now include a deterministic native PDF Terios vector lockup in the letterhead, covered by PDF renderer tests. |
 | Agreements 6 | User-friendly rich-text agreement editor | Not started in this sequence |
 | Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Not started in this sequence |
 | Recording 1 | Clear downloading state after practitioner download | Not started in this sequence |

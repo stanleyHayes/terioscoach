@@ -290,8 +290,9 @@ func escape(s string) string {
 // content builds one page's content stream.
 func content(lines []placedLine) string {
 	var b strings.Builder
+	b.WriteString(logoHeader())
 	b.WriteString("BT\n")
-	y := pageHeight - margin
+	y := pageHeight - margin - 34
 	for _, line := range lines {
 		if line.text != "" {
 			fmt.Fprintf(&b, "%s %.2f Tf\n", line.style.fontRef(), line.size)
@@ -301,6 +302,30 @@ func content(lines []placedLine) string {
 		y -= line.gapAfter
 	}
 	b.WriteString("ET")
+	return b.String()
+}
+
+// logoHeader draws the compact Terios letterhead using PDF primitives so
+// agreement PDFs carry the brand without introducing an image dependency.
+func logoHeader() string {
+	var b strings.Builder
+	y := pageHeight - margin - 10
+	b.WriteString("q\n")
+	b.WriteString("0.38 0.60 0.33 scn\n")
+	fmt.Fprintf(&b, "%.2f %.2f m\n", margin, y)
+	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+10, y+8)
+	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+18, y)
+	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+10, y-8)
+	b.WriteString("f\n")
+	b.WriteString("Q\n")
+	b.WriteString("BT\n")
+	b.WriteString("/F2 15 Tf\n")
+	fmt.Fprintf(&b, "1 0 0 1 %.2f %.2f Tm\n", margin+28, y-5)
+	b.WriteString("(TERIOS) Tj\n")
+	b.WriteString("/F1 7 Tf\n")
+	fmt.Fprintf(&b, "1 0 0 1 %.2f %.2f Tm\n", margin+28, y-16)
+	b.WriteString("(WELLNESS SPA) Tj\n")
+	b.WriteString("ET\n")
 	return b.String()
 }
 
