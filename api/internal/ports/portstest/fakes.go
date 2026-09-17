@@ -1082,6 +1082,89 @@ func (f *FakeNotificationJobRepository) OfKind(kind notification.Kind) []notific
 	return out
 }
 
+// FakeInAppNotificationRepository is an in-memory in-app notification feed.
+type FakeInAppNotificationRepository struct {
+	mu    sync.Mutex
+	byID  map[string]notification.InApp
+	order []string
+	next  int
+}
+
+var _ ports.InAppNotificationRepository = (*FakeInAppNotificationRepository)(nil)
+
+func NewFakeInAppNotificationRepository() *FakeInAppNotificationRepository {
+	return &FakeInAppNotificationRepository{byID: make(map[string]notification.InApp)}
+}
+
+func (f *FakeInAppNotificationRepository) Create(_ context.Context, n notification.InApp) (notification.InApp, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if n.EventID != "" {
+		for _, existing := range f.byID {
+			if existing.EventID == n.EventID && strings.EqualFold(existing.RecipientEmail, n.RecipientEmail) {
+				return existing, nil
+			}
+		}
+	}
+	f.next++
+	n.ID = fmt.Sprintf("inapp-%d", f.next)
+	f.byID[n.ID] = n
+	f.order = append([]string{n.ID}, f.order...)
+	return n, nil
+}
+
+func (f *FakeInAppNotificationRepository) ListForRecipient(_ context.Context, recipientEmail string, limit int) ([]notification.InApp, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []notification.InApp
+	for _, id := range f.order {
+		n := f.byID[id]
+		if strings.EqualFold(n.RecipientEmail, recipientEmail) {
+			out = append(out, n)
+		}
+	}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (f *FakeInAppNotificationRepository) UnreadCount(_ context.Context, recipientEmail string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	count := 0
+	for _, n := range f.byID {
+		if strings.EqualFold(n.RecipientEmail, recipientEmail) && !n.Read {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *FakeInAppNotificationRepository) MarkRead(_ context.Context, id, recipientEmail string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.byID[id]
+	if !ok || !strings.EqualFold(n.RecipientEmail, recipientEmail) {
+		return notification.ErrInAppNotFound
+	}
+	n.Read = true
+	f.byID[id] = n
+	return nil
+}
+
+func (f *FakeInAppNotificationRepository) MarkAllRead(_ context.Context, recipientEmail string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, n := range f.byID {
+		if strings.EqualFold(n.RecipientEmail, recipientEmail) {
+			n.Read = true
+			f.byID[id] = n
+		}
+	}
+	return nil
+}
+
 // FakeMailer records what was sent and can be scripted to fail.
 type FakeMailer struct {
 	mu   sync.Mutex

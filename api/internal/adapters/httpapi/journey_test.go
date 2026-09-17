@@ -52,6 +52,7 @@ browser half of LCH-02 lives in e2e/ and needs a deployed stack.
 
 // journeyRig is the whole application, mounted at once.
 type journeyRig struct {
+	inApp         *portstest.FakeInAppNotificationRepository
 	srv           *Server
 	users         *portstest.FakeUserRepository
 	bookings      *portstest.FakeBookingRepository
@@ -94,11 +95,14 @@ func newJourneyRig(t *testing.T) journeyRig {
 
 	mailer := portstest.NewFakeMailer()
 	jobs := portstest.NewFakeNotificationJobRepository()
+	inAppNotifs := portstest.NewFakeInAppNotificationRepository()
 	notifier := notificationsapp.NewService(
 		jobs,
+		inAppNotifs,
 		&portstest.FakeEmailRenderer{},
 		mailer,
 		notificationsapp.Options{
+			Users:         users,
 			ReminderLead:  notification.DefaultReminderLead,
 			Retry:         notification.DefaultRetryPolicy(),
 			PracticeEmail: "practice@terioscoach.com",
@@ -125,13 +129,14 @@ func newJourneyRig(t *testing.T) journeyRig {
 
 	srv := NewServer(
 		WithAuth(authSvc),
+		WithInAppNotifications(inAppNotifs, authSvc),
 		WithCatalog(catalog.NewService(services), authSvc),
 		WithScheduling(schedulingapp.NewService(services, availability, bookings), authSvc),
 		WithBooking(bookingSvc, authSvc),
 		WithPayments(paymentsapp.NewService(payments, bookings, services, users, gateway,
 			paymentsapp.WithNotifications(notifier)), authSvc),
 		WithNotes(notesSvc, authSvc),
-		WithReviews(reviewsapp.NewService(reviews, bookings, users, services), authSvc),
+		WithReviews(reviewsapp.NewService(reviews, bookings, users, services, notifier), authSvc),
 		WithSessions(signalingSvc, nil, authSvc),
 		WithClients(clientsapp.NewService(
 			profiles, users, bookings, payments,
@@ -141,6 +146,7 @@ func newJourneyRig(t *testing.T) journeyRig {
 	)
 
 	rig := journeyRig{
+		inApp:          inAppNotifs,
 		srv:            srv,
 		users:          users,
 		bookings:       bookings,

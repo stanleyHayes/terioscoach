@@ -19,6 +19,7 @@ import (
 
 // Service orchestrates the document use cases over outbound ports.
 type Service struct {
+	activity  ports.ActivityNotifier
 	documents ports.DocumentRepository
 	media     ports.MediaStore
 	ttl       time.Duration
@@ -30,6 +31,7 @@ var _ ports.DocumentService = (*Service)(nil)
 
 // Options configure a Service.
 type Options struct {
+	Activity ports.ActivityNotifier
 	// DeliveryTTL is how long a signed download link lives.
 	DeliveryTTL time.Duration
 }
@@ -42,6 +44,7 @@ func NewService(documents ports.DocumentRepository, media ports.MediaStore, opts
 	}
 	return &Service{
 		documents: documents,
+		activity:  opts.Activity,
 		media:     media,
 		ttl:       ttl,
 		now:       func() time.Time { return time.Now().UTC() },
@@ -83,7 +86,11 @@ func (s *Service) RecordUpload(ctx context.Context, uploadedBy string, in ports.
 	if err != nil {
 		return document.Document{}, err
 	}
-	return s.documents.Create(ctx, d)
+	stored, err := s.documents.Create(ctx, d)
+	if err == nil && stored.VisibleToClient {
+		s.notify(ctx, stored, "A document was shared with you", "shared")
+	}
+	return stored, err
 }
 
 // StoreDocument files a document the API produced itself: it uploads the
@@ -138,7 +145,11 @@ func (s *Service) StoreDocument(ctx context.Context, uploadedBy string, in ports
 	if in.Title != "" {
 		d.Title = in.Title
 	}
-	return s.documents.Create(ctx, d)
+	stored, err := s.documents.Create(ctx, d)
+	if err == nil && stored.VisibleToClient {
+		s.notify(ctx, stored, "A document was shared with you", "shared")
+	}
+	return stored, err
 }
 
 // ListForClient returns every document held against a client, shared or
@@ -172,10 +183,22 @@ func (s *Service) UpdateDocument(ctx context.Context, id string, patch document.
 	if err != nil {
 		return document.Document{}, err
 	}
+	wasVisible := d.VisibleToClient
 	if err := d.Apply(patch, s.now()); err != nil {
 		return document.Document{}, err
 	}
-	return s.documents.Update(ctx, d)
+	stored, err := s.documents.Update(ctx, d)
+	if err == nil && (wasVisible || stored.VisibleToClient) {
+		title := "A shared document was updated"
+		if !wasVisible {
+			title = "A document was shared with you"
+		}
+		if !stored.VisibleToClient {
+			title = "A document is no longer shared"
+		}
+		s.notify(ctx, stored, title, "updated:"+stored.UpdatedAt.Format(time.RFC3339Nano))
+	}
+	return stored, err
 }
 
 // DeleteDocument removes the record and the stored file.
@@ -192,7 +215,13 @@ func (s *Service) DeleteDocument(ctx context.Context, id string) error {
 	if err := s.media.Delete(ctx, assetOf(d)); err != nil {
 		return err
 	}
-	return s.documents.Delete(ctx, id)
+	if err := s.documents.Delete(ctx, id); err != nil {
+		return err
+	}
+	if d.VisibleToClient {
+		s.notify(ctx, d, "A shared document was removed", "removed")
+	}
+	return nil
 }
 
 // ListMine returns the caller's own documents — shared ones only. A file
@@ -242,4 +271,8 @@ func assetOf(d document.Document) ports.Asset {
 		ResourceType: d.ResourceType,
 		Private:      d.Kind.Private(),
 	}
+}
+
+func (s *Service) notify(ctx context.Context, d document.Document, title, event string) {
+	ports.NotifyActivity(ctx, s.activity, ports.ActivityNotice{EventID: "document:" + d.ID + ":" + event, ClientID: d.ClientID, Title: title, ClientLink: "/portal/documents", PracticeLink: "/clients/" + d.ClientID})
 }

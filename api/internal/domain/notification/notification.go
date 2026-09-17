@@ -19,6 +19,7 @@ import (
 type Kind string
 
 const (
+	KindActivity               Kind = "activity"
 	KindBookingPaymentRequired Kind = "booking_payment_required"
 	KindBookingConfirmation    Kind = "booking_confirmation"
 	KindSessionReminder        Kind = "session_reminder"
@@ -35,7 +36,7 @@ const (
 // Valid reports whether k is a known kind.
 func (k Kind) Valid() bool {
 	switch k {
-	case KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
+	case KindActivity, KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
 		KindBookingCancelled, KindBookingChangeRequested, KindFeedbackShared, KindEnquiryReceived, KindAgreementSigned,
 		KindFormAssigned, KindFormSubmitted:
 		return true

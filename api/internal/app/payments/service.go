@@ -265,6 +265,7 @@ func (s *Service) confirmBooking(ctx context.Context, p *payment.Payment, paidAt
 		if cancelErr := b.Cancel(s.now()); cancelErr == nil {
 			_, _ = s.bookings.Update(ctx, b)
 		}
+		ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "payment:" + p.ID + ":refunded", ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "Payment refunded because the session time is unavailable", ClientLink: "/portal/payments", PracticeLink: "/payments"})
 		return nil
 	}
 	if err != nil {
@@ -352,6 +353,7 @@ func (s *Service) RefundPayment(ctx context.Context, practitionerID, paymentID s
 	if err := s.stampBooking(ctx, p.BookingID, func(b *booking.Booking) { b.MarkRefunded() }); err != nil {
 		return payment.Payment{}, err
 	}
+	ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "payment:" + p.ID + ":refunded", ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "A payment was refunded", ClientLink: "/portal/payments", PracticeLink: "/payments"})
 	return p, nil
 }
 

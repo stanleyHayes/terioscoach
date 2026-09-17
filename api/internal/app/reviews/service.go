@@ -23,6 +23,7 @@ const defaultPublicLimit = 20
 
 // Service orchestrates the review use cases over outbound ports.
 type Service struct {
+	activity ports.ActivityNotifier
 	reviews  ports.ReviewRepository
 	bookings ports.BookingRepository
 	users    ports.UserRepository
@@ -41,9 +42,15 @@ func NewService(
 	bookings ports.BookingRepository,
 	users ports.UserRepository,
 	services ports.ServiceRepository,
+	activity ...ports.ActivityNotifier,
 ) *Service {
+	var notifier ports.ActivityNotifier
+	if len(activity) > 0 {
+		notifier = activity[0]
+	}
 	return &Service{
 		reviews:  reviews,
+		activity: notifier,
 		bookings: bookings,
 		users:    users,
 		services: services,
@@ -77,7 +84,11 @@ func (s *Service) Submit(ctx context.Context, clientID string, in ports.ReviewIn
 	if err != nil {
 		return review.Review{}, err
 	}
-	return s.reviews.Create(ctx, r)
+	stored, err := s.reviews.Create(ctx, r)
+	if err == nil {
+		s.notify(ctx, stored, "A review was submitted", "submitted")
+	}
+	return stored, err
 }
 
 // UpdateMine revises the caller's own review while it is still pending.
@@ -92,7 +103,11 @@ func (s *Service) UpdateMine(ctx context.Context, clientID, reviewID string, pat
 	if err := r.Apply(patch, s.now()); err != nil {
 		return review.Review{}, err
 	}
-	return s.reviews.Update(ctx, r)
+	stored, err := s.reviews.Update(ctx, r)
+	if err == nil {
+		s.notify(ctx, stored, "A review was updated", "updated:"+stored.UpdatedAt.Format(time.RFC3339Nano))
+	}
+	return stored, err
 }
 
 // ListMine returns the caller's own reviews, whatever their state — a
@@ -123,7 +138,11 @@ func (s *Service) Moderate(ctx context.Context, practitionerID, reviewID string,
 	} else {
 		r.Reject(s.now())
 	}
-	return s.reviews.Update(ctx, r)
+	stored, err := s.reviews.Update(ctx, r)
+	if err == nil {
+		s.notify(ctx, stored, "Review "+string(stored.Status), "moderated:"+string(stored.Status))
+	}
+	return stored, err
 }
 
 // PublicReviews returns approved reviews with display names resolved.
@@ -203,4 +222,10 @@ func (s *Service) serviceName(ctx context.Context, serviceID string) string {
 		return ""
 	}
 	return svc.Name
+}
+
+func (s *Service) notify(ctx context.Context, r review.Review, title, event string) {
+	notice := ports.ActivityNotice{EventID: "review:" + r.ID + ":" + event, ClientID: r.ClientID, PractitionerID: r.PractitionerID, Title: title, PracticeLink: "/reviews"}
+	notice.ClientLink = "/portal/reviews"
+	ports.NotifyActivity(ctx, s.activity, notice)
 }

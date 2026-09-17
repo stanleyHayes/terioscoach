@@ -18,6 +18,11 @@ import (
 // slice of the data.
 func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes := map[string][]mongo.IndexModel{
+		"in_app_notifications": {
+			{Keys: bson.D{{Key: "recipientEmail", Value: 1}, {Key: "createdAt", Value: -1}, {Key: "_id", Value: -1}}},
+			{Keys: bson.D{{Key: "recipientEmail", Value: 1}, {Key: "read", Value: 1}}},
+			{Keys: bson.D{{Key: "eventId", Value: 1}, {Key: "recipientEmail", Value: 1}}, Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"eventId": bson.M{"$type": "string"}})},
+		},
 		// Accounts. Email is the login identifier — globally unique.
 		"users": {
 			{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},

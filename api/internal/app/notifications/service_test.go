@@ -17,6 +17,7 @@ var fixedNow = time.Date(2026, 8, 11, 9, 0, 0, 0, time.UTC)
 type testRig struct {
 	svc      *Service
 	jobs     *portstest.FakeNotificationJobRepository
+	inApp    *portstest.FakeInAppNotificationRepository
 	mailer   *portstest.FakeMailer
 	renderer *portstest.FakeEmailRenderer
 	reported []error
@@ -28,11 +29,12 @@ func newTestRig(t *testing.T) *testRig {
 	clock := fixedNow
 	rig := &testRig{
 		jobs:     portstest.NewFakeNotificationJobRepository(),
+		inApp:    portstest.NewFakeInAppNotificationRepository(),
 		mailer:   portstest.NewFakeMailer(),
 		renderer: &portstest.FakeEmailRenderer{},
 		clock:    &clock,
 	}
-	rig.svc = NewService(rig.jobs, rig.renderer, rig.mailer, Options{
+	rig.svc = NewService(rig.jobs, rig.inApp, rig.renderer, rig.mailer, Options{
 		ReminderLead:    notification.DefaultReminderLead,
 		Retry:           notification.RetryPolicy{MaxAttempts: 3, Backoffs: []time.Duration{time.Minute}},
 		DefaultTimezone: "Africa/Accra",

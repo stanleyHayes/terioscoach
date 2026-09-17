@@ -25,6 +25,7 @@ const defaultPurgeBatch = 50
 
 // Options are the deployment-specific parts.
 type Options struct {
+	Activity ports.ActivityNotifier
 	// DeliveryTTL is how long a playback URL lives. Long enough to watch a
 	// consultation back, short enough that a copied link expires.
 	DeliveryTTL time.Duration
@@ -33,6 +34,7 @@ type Options struct {
 }
 
 type Service struct {
+	activity   ports.ActivityNotifier
 	recordings ports.RecordingRepository
 	bookings   ports.BookingRepository
 	media      ports.MediaStore
@@ -63,6 +65,7 @@ func NewService(
 	}
 	return &Service{
 		recordings: recordings,
+		activity:   opts.Activity,
 		bookings:   bookings,
 		media:      media,
 		ttl:        ttl,
@@ -104,7 +107,11 @@ func (s *Service) CreateRecording(ctx context.Context, practitionerID, bookingID
 	if err != nil {
 		return recording.SessionRecording{}, err
 	}
-	return s.recordings.Create(ctx, rec)
+	stored, err := s.recordings.Create(ctx, rec)
+	if err == nil {
+		ports.NotifyActivity(ctx, s.activity, ports.ActivityNotice{EventID: "recording:" + stored.ID, ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "A session recording is ready", ClientLink: "/portal/sessions", PracticeLink: "/clients/" + b.ClientID})
+	}
+	return stored, err
 }
 
 // ListForBooking returns the session's recordings, each with a fresh

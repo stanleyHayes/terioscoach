@@ -353,3 +353,25 @@ func TestPurgeRemovesALegacyInlineRecording(t *testing.T) {
 		t.Error("there is no stored asset to delete for an inline recording")
 	}
 }
+
+type activityCapture struct{ items []ports.ActivityNotice }
+
+func (c *activityCapture) Activity(_ context.Context, n ports.ActivityNotice) {
+	c.items = append(c.items, n)
+}
+func TestRecordingNotifiesBothParticipantsOnlyAfterSuccessfulCreate(t *testing.T) {
+	r := newRig(t)
+	events := &activityCapture{}
+	r.svc.activity = events
+	_, err := r.svc.CreateRecording(context.Background(), "another-practitioner", r.booking.ID, ports.RecordingUpload{ContentType: "video/mp4", PublicID: "recording", Bytes: 100, DurationSec: 10})
+	if err == nil || len(events.items) != 0 {
+		t.Fatal("unauthorized recording notified")
+	}
+	rec, err := r.svc.CreateRecording(context.Background(), "prac-1", r.booking.ID, ports.RecordingUpload{ContentType: "video/mp4", PublicID: "recording", Bytes: 100, DurationSec: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events.items) != 1 || events.items[0].EventID != "recording:"+rec.ID || events.items[0].ClientID != r.booking.ClientID || events.items[0].PractitionerID != r.booking.PractitionerID {
+		t.Fatalf("wrong participants: %+v", events.items)
+	}
+}

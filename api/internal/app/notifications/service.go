@@ -14,8 +14,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/domain/notification"
 	"github.com/xcreativs/terios/api/internal/ports"
 )
@@ -25,7 +27,9 @@ const defaultBatchSize = 50
 
 // Service queues and delivers notifications.
 type Service struct {
+	users    ports.UserRepository
 	jobs     ports.NotificationJobRepository
+	inApp    ports.InAppNotificationRepository
 	renderer ports.EmailRenderer
 	mailer   ports.Mailer
 	retry    notification.RetryPolicy
@@ -48,6 +52,7 @@ var (
 
 // Options configure a Service. Zero values fall back to platform defaults.
 type Options struct {
+	Users ports.UserRepository
 	// ReminderLead is how far ahead of a session its reminder goes out.
 	ReminderLead time.Duration
 	// Retry bounds redelivery of a failing job.
@@ -64,6 +69,7 @@ type Options struct {
 // NewService wires the use cases to their outbound ports.
 func NewService(
 	jobs ports.NotificationJobRepository,
+	inApp ports.InAppNotificationRepository,
 	renderer ports.EmailRenderer,
 	mailer ports.Mailer,
 	opts Options,
@@ -82,6 +88,8 @@ func NewService(
 	}
 	return &Service{
 		jobs:          jobs,
+		users:         opts.Users,
+		inApp:         inApp,
 		renderer:      renderer,
 		mailer:        mailer,
 		retry:         opts.Retry,
@@ -109,16 +117,16 @@ func (s *Service) BookingConfirmed(ctx context.Context, notice ports.BookingNoti
 	now := s.now()
 	data := s.bookingData(notice)
 	s.queue(ctx, notification.KindBookingConfirmation, notice.ClientEmail, notice.BookingID, data, now)
-	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
-		s.queue(ctx, notification.KindBookingConfirmation, s.practiceEmail, notice.BookingID, data, now)
+	if s.practiceAddress(ctx) != "" && s.practiceAddress(ctx) != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingConfirmation, s.practiceAddress(ctx), notice.BookingID, data, now)
 	}
 
 	if dueAt, ok := notification.ReminderDueAt(notice.StartAt, s.lead, now); ok {
 		reminderData := s.bookingData(notice)
 		reminderData["timeUntil"] = humanLead(s.lead)
 		s.queue(ctx, notification.KindSessionReminder, notice.ClientEmail, notice.BookingID, reminderData, dueAt)
-		if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
-			s.queue(ctx, notification.KindSessionReminder, s.practiceEmail, notice.BookingID, reminderData, dueAt)
+		if s.practiceAddress(ctx) != "" && s.practiceAddress(ctx) != notice.ClientEmail {
+			s.queue(ctx, notification.KindSessionReminder, s.practiceAddress(ctx), notice.BookingID, reminderData, dueAt)
 		}
 	}
 }
@@ -131,8 +139,8 @@ func (s *Service) BookingRescheduled(ctx context.Context, notice ports.BookingNo
 	data["oldStartTime"] = s.formatTime(notice.PreviousStartAt, notice.Timezone)
 	data["newStartTime"] = data["startTime"]
 	s.queue(ctx, notification.KindBookingRescheduled, notice.ClientEmail, notice.BookingID, data, now)
-	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
-		s.queue(ctx, notification.KindBookingRescheduled, s.practiceEmail, notice.BookingID, data, now)
+	if s.practiceAddress(ctx) != "" && s.practiceAddress(ctx) != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingRescheduled, s.practiceAddress(ctx), notice.BookingID, data, now)
 	}
 
 	s.cancelReminders(ctx, notice.BookingID)
@@ -140,8 +148,8 @@ func (s *Service) BookingRescheduled(ctx context.Context, notice ports.BookingNo
 		reminderData := s.bookingData(notice)
 		reminderData["timeUntil"] = humanLead(s.lead)
 		s.queue(ctx, notification.KindSessionReminder, notice.ClientEmail, notice.BookingID, reminderData, dueAt)
-		if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
-			s.queue(ctx, notification.KindSessionReminder, s.practiceEmail, notice.BookingID, reminderData, dueAt)
+		if s.practiceAddress(ctx) != "" && s.practiceAddress(ctx) != notice.ClientEmail {
+			s.queue(ctx, notification.KindSessionReminder, s.practiceAddress(ctx), notice.BookingID, reminderData, dueAt)
 		}
 	}
 }
@@ -151,8 +159,8 @@ func (s *Service) BookingRescheduled(ctx context.Context, notice ports.BookingNo
 func (s *Service) BookingCancelled(ctx context.Context, notice ports.BookingNotice) {
 	s.queue(ctx, notification.KindBookingCancelled, notice.ClientEmail, notice.BookingID,
 		s.bookingData(notice), s.now())
-	if s.practiceEmail != "" && s.practiceEmail != notice.ClientEmail {
-		s.queue(ctx, notification.KindBookingCancelled, s.practiceEmail, notice.BookingID,
+	if s.practiceAddress(ctx) != "" && s.practiceAddress(ctx) != notice.ClientEmail {
+		s.queue(ctx, notification.KindBookingCancelled, s.practiceAddress(ctx), notice.BookingID,
 			s.bookingData(notice), s.now())
 	}
 	s.cancelReminders(ctx, notice.BookingID)
@@ -162,7 +170,7 @@ func (s *Service) BookingCancelled(ctx context.Context, notice ports.BookingNoti
 // cancel a session. It does not notify the client or change reminders because
 // the session is still unchanged until the practitioner acts.
 func (s *Service) BookingChangeRequested(ctx context.Context, notice ports.BookingChangeRequestNotice) {
-	if s.practiceEmail == "" {
+	if s.practiceAddress(ctx) == "" {
 		s.report(fmt.Errorf("booking change request for %s not queued: no practice inbox configured", notice.BookingID))
 		return
 	}
@@ -188,7 +196,7 @@ func (s *Service) BookingChangeRequested(ctx context.Context, notice ports.Booki
 	} else {
 		data["proposedTime"] = "No new time requested — cancellation requested."
 	}
-	s.queue(ctx, notification.KindBookingChangeRequested, s.practiceEmail, notice.BookingID, data, s.now())
+	s.queue(ctx, notification.KindBookingChangeRequested, s.practiceAddress(ctx), notice.BookingID, data, s.now())
 }
 
 // FeedbackShared queues the post-session feedback email. The notes slice
@@ -212,11 +220,11 @@ func (s *Service) FeedbackShared(ctx context.Context, notice ports.FeedbackNotic
 // an address a stranger typed would turn the contact form into an open
 // relay for the practice's own branding.
 func (s *Service) EnquiryReceived(ctx context.Context, notice ports.EnquiryNotice) {
-	if s.practiceEmail == "" {
+	if s.practiceAddress(ctx) == "" {
 		s.report(fmt.Errorf("enquiry %s not queued: no practice inbox configured", notice.EnquiryID))
 		return
 	}
-	s.queue(ctx, notification.KindEnquiryReceived, s.practiceEmail, notice.EnquiryID, map[string]string{
+	s.queue(ctx, notification.KindEnquiryReceived, s.practiceAddress(ctx), notice.EnquiryID, map[string]string{
 		"senderName":  notice.SenderName,
 		"senderEmail": notice.SenderEmail,
 		"message":     notice.Message,
@@ -229,7 +237,7 @@ func (s *Service) EnquiryReceived(ctx context.Context, notice ports.EnquiryNotic
 // exists so the practitioner has the signature in writing without having to
 // go looking for it.
 func (s *Service) AgreementSigned(ctx context.Context, notice ports.AgreementSignedNotice) {
-	if s.practiceEmail == "" {
+	if s.practiceAddress(ctx) == "" {
 		s.report(fmt.Errorf("agreement signature for %s not queued: no practice inbox configured", notice.ClientID))
 		return
 	}
@@ -237,7 +245,7 @@ func (s *Service) AgreementSigned(ctx context.Context, notice ports.AgreementSig
 	if notice.Submitted {
 		action = "submitted"
 	}
-	s.queue(ctx, notification.KindAgreementSigned, s.practiceEmail, notice.ClientID, map[string]string{
+	s.queue(ctx, notification.KindAgreementSigned, s.practiceAddress(ctx), notice.ClientID, map[string]string{
 		"clientName":     notice.ClientName,
 		"clientEmail":    notice.ClientEmail,
 		"agreementTitle": notice.AgreementTitle,
@@ -261,11 +269,11 @@ func (s *Service) FormAssigned(ctx context.Context, notice ports.FormAssignedNot
 }
 
 func (s *Service) FormSubmitted(ctx context.Context, notice ports.FormSubmittedNotice) {
-	if s.practiceEmail == "" {
+	if s.practiceAddress(ctx) == "" {
 		s.report(fmt.Errorf("form submission %s not queued: no practice inbox configured", notice.SubmissionID))
 		return
 	}
-	s.queue(ctx, notification.KindFormSubmitted, s.practiceEmail, notice.SubmissionID, map[string]string{
+	s.queue(ctx, notification.KindFormSubmitted, s.practiceAddress(ctx), notice.SubmissionID, map[string]string{
 		"clientName":   notice.ClientName,
 		"clientEmail":  notice.ClientEmail,
 		"formTitle":    notice.FormTitle,
@@ -303,6 +311,23 @@ func (s *Service) DispatchDue(ctx context.Context, limit int) (ports.DispatchRes
 // deliver sends one job and records the outcome. It reports whether the
 // message went out.
 func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
+	if err := s.recordInApp(ctx, job); err != nil {
+		s.report(err)
+		_ = job.RecordFailure(err.Error(), s.retry, s.now())
+		_, updateErr := s.jobs.Update(ctx, job)
+		if updateErr != nil {
+			s.report(updateErr)
+		}
+		return false
+	}
+	if job.Kind == notification.KindActivity {
+		_ = job.MarkSent(s.now())
+		if _, err := s.jobs.Update(ctx, job); err != nil {
+			s.report(err)
+			return false
+		}
+		return true
+	}
 	msg, err := s.renderer.Render(job)
 	if err != nil {
 		// An unrenderable job will never render; spend the whole retry
@@ -336,6 +361,72 @@ func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
 	return true
 }
 
+// recordInApp persists a due event before email delivery. Immediate events
+// also use this path at queue time; EventID deduplicates dispatch retries.
+func (s *Service) recordInApp(ctx context.Context, job notification.Job) error {
+	if s.inApp == nil {
+		return nil
+	}
+	title, body, link := inAppContent(job)
+	if title == "" {
+		return nil
+	}
+	recipient := job.Recipient
+	if strings.EqualFold(recipient, s.practiceAddress(ctx)) && s.users != nil {
+		practitioner, err := s.users.FindFirstByRole(ctx, identity.RolePractitioner)
+		if err != nil {
+			return fmt.Errorf("resolve practitioner notification: %w", err)
+		}
+		recipient = practitioner.Email
+	}
+	if strings.EqualFold(job.Recipient, s.practiceAddress(ctx)) && strings.HasPrefix(link, "/portal/") {
+		link = "/calendar"
+		if job.Kind == notification.KindBookingPaymentRequired {
+			link = "/payments"
+		}
+		title = strings.ReplaceAll(title, "Your session", "Client session")
+		title = strings.ReplaceAll(title, "your session", "client session")
+	}
+	entry, err := notification.NewInApp(recipient, job.Kind, title, body, link, job.BookingID, s.now())
+	if err != nil {
+		return fmt.Errorf("build in-app notification %s (%s): %w", job.ID, job.Kind, err)
+	}
+	entry.EventID = job.ID
+	if key := job.Data["eventId"]; key != "" {
+		entry.EventID = key
+	}
+	if _, err := s.inApp.Create(ctx, entry); err != nil {
+		return fmt.Errorf("persist in-app notification %s (%s): %w", job.ID, job.Kind, err)
+	}
+	// Preserve an acknowledgement for the other participant as well. These
+	// copies are in-app only and share the originating job's retry lifecycle.
+	var receiptRecipient, receiptTitle, receiptLink string
+	switch job.Kind {
+	case notification.KindFormAssigned:
+		receiptRecipient, receiptTitle, receiptLink = s.practiceAddress(ctx), "A form was assigned to a client", "/forms"
+	case notification.KindFormSubmitted:
+		receiptRecipient, receiptTitle, receiptLink = job.Data["clientEmail"], "Your form was submitted", "/portal/forms"
+	case notification.KindAgreementSigned:
+		action := job.Data["action"]
+		if action == "" {
+			action = "signed"
+		}
+		receiptRecipient, receiptTitle, receiptLink = job.Data["clientEmail"], "Your "+job.Data["agreementTitle"]+" was "+action, "/portal/documents"
+	case notification.KindFeedbackShared:
+		receiptRecipient, receiptTitle, receiptLink = s.practiceAddress(ctx), "Session feedback and resources were shared", "/clients"
+	case notification.KindBookingChangeRequested:
+		receiptRecipient, receiptTitle, receiptLink = job.Data["clientEmail"], "Your session change request was sent to the practice", "/portal/sessions"
+	}
+	if receiptRecipient != "" && !strings.EqualFold(receiptRecipient, job.Recipient) {
+		receipt := job
+		receipt.Kind = notification.KindActivity
+		receipt.Recipient = receiptRecipient
+		receipt.Data = map[string]string{"eventId": job.ID + ":receipt", "title": receiptTitle, "link": receiptLink}
+		return s.recordInApp(ctx, receipt)
+	}
+	return nil
+}
+
 // failPermanently burns the retry budget in one go for a job that cannot
 // succeed on any attempt.
 func (s *Service) failPermanently(ctx context.Context, job notification.Job, reason string) {
@@ -359,8 +450,15 @@ func (s *Service) queue(ctx context.Context, kind notification.Kind, recipient, 
 		return
 	}
 	job.BookingID = bookingID
-	if _, err := s.jobs.Create(ctx, job); err != nil {
+	stored, err := s.jobs.Create(ctx, job)
+	if err != nil {
 		s.report(fmt.Errorf("queue %s notification: %w", kind, err))
+		return
+	}
+	if !dueAt.After(s.now()) {
+		if err := s.recordInApp(ctx, stored); err != nil {
+			s.report(err)
+		}
 	}
 }
 
@@ -443,5 +541,76 @@ func humanLead(lead time.Duration) string {
 		return fmt.Sprintf("in %d minutes", int(lead.Minutes()))
 	default:
 		return "coming up"
+	}
+}
+
+// inAppContent resolves a delivered job into the (title, body, link) shown
+// in the recipient's in-app feed. The title reuses the same wording as the
+// email subject so the two channels never disagree about what happened;
+// the link is a route within whichever app that recipient actually uses —
+// the portal for a client-facing kind, the dashboard for a practice-facing
+// one — since a job's recipient is always addressed to exactly one of the
+// two audiences.
+func inAppContent(job notification.Job) (title, body, link string) {
+	data := job.Data
+	switch job.Kind {
+	case notification.KindActivity:
+		return data["title"], "", data["link"]
+	case notification.KindBookingPaymentRequired:
+		return "Payment required to confirm your session", data["serviceName"] + " · " + data["startTime"], "/portal/payments"
+	case notification.KindBookingConfirmation:
+		return "Your session is confirmed", data["serviceName"] + " · " + data["startTime"], "/portal/sessions"
+	case notification.KindSessionReminder:
+		title := "Reminder: your session is coming up"
+		if until := data["timeUntil"]; until != "" {
+			title = "Reminder: your session is " + until
+		}
+		return title, data["serviceName"] + " · " + data["startTime"], "/portal/sessions"
+	case notification.KindBookingRescheduled:
+		return "Your session has been rescheduled", data["serviceName"] + " is now " + data["newStartTime"], "/portal/sessions"
+	case notification.KindBookingCancelled:
+		return "Your session has been cancelled", data["serviceName"] + " · " + data["startTime"], "/portal/sessions"
+	case notification.KindBookingChangeRequested:
+		title := "Client requested a session change"
+		if name := data["clientName"]; name != "" {
+			title = name + " requested a session " + data["requestType"]
+		}
+		return title, data["serviceName"] + " · " + data["currentTime"], "/calendar"
+	case notification.KindFeedbackShared:
+		return "Notes and resources from your session", data["serviceName"] + " · " + data["sessionDate"], "/portal/sessions"
+	case notification.KindEnquiryReceived:
+		title := "New enquiry from your website"
+		if name := data["senderName"]; name != "" {
+			title = "New enquiry from " + name
+		}
+		return title, data["message"], "/enquiries"
+	case notification.KindAgreementSigned:
+		title := "A client signed a service agreement"
+		if name := data["clientName"]; name != "" {
+			action := "signed"
+			if data["action"] == "submitted" {
+				action = "submitted"
+			}
+			title = name + " " + action + " the " + data["agreementTitle"]
+		}
+		return title, "", "/clients"
+	case notification.KindFormAssigned:
+		title := "A form is ready for you"
+		if formTitle := data["formTitle"]; formTitle != "" {
+			title = "Please complete " + formTitle
+		}
+		link := "/portal/forms"
+		if id := data["submissionId"]; id != "" {
+			link = "/portal/forms/" + id
+		}
+		return title, "", link
+	case notification.KindFormSubmitted:
+		title := "A client submitted a form"
+		if name := data["clientName"]; name != "" {
+			title = name + " submitted " + data["formTitle"]
+		}
+		return title, "", "/forms"
+	default:
+		return "", "", ""
 	}
 }

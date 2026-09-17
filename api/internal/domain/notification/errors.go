@@ -16,4 +16,10 @@ var (
 	ErrJobNotFound = errors.New("notification job not found")
 	// ErrTemplateNotFound means no template is registered for a kind.
 	ErrTemplateNotFound = errors.New("notification template not found")
+	// ErrTitleRequired guards against an in-app notification with nothing
+	// to show in the feed.
+	ErrTitleRequired = errors.New("notification title is required")
+	// ErrInAppNotFound means no in-app notification matches the lookup —
+	// the wrong id, or one that belongs to a different recipient.
+	ErrInAppNotFound = errors.New("in-app notification not found")
 )

@@ -189,7 +189,11 @@ func (s *Service) Countersign(ctx context.Context, id identity.Identity, signatu
 	if err != nil {
 		return agreement.Signature{}, err
 	}
-	return s.repo.UpdateSignature(ctx, countersigned)
+	stored, err := s.repo.UpdateSignature(ctx, countersigned)
+	if err == nil {
+		ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "agreement:" + stored.ID + ":countersigned", ClientID: stored.ClientID, PractitionerID: id.UserID, Title: "Your coaching agreement was countersigned", ClientLink: "/portal/documents", PracticeLink: "/clients/" + stored.ClientID})
+	}
+	return stored, err
 }
 
 // Sign records the client's acceptance. It is idempotent: signing an

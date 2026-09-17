@@ -15,6 +15,7 @@ import (
 	"github.com/xcreativs/terios/api/internal/domain/form"
 	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/domain/note"
+	"github.com/xcreativs/terios/api/internal/domain/notification"
 	"github.com/xcreativs/terios/api/internal/domain/payment"
 	"github.com/xcreativs/terios/api/internal/domain/recording"
 	"github.com/xcreativs/terios/api/internal/domain/review"
@@ -78,6 +79,7 @@ var errorMappers = []func(error) (apiError, bool){
 	mapDocumentError,
 	mapReportError,
 	mapSignalingError,
+	mapNotificationError,
 }
 
 // writeDomainError maps domain errors onto status codes and stable codes.
@@ -436,6 +438,14 @@ func mapSignalingError(err error) (apiError, bool) {
 		return apiError{http.StatusConflict, "room_full", "this session already has both participants"}, true
 	case errors.Is(err, domainsignaling.ErrTicketInvalid):
 		return apiError{http.StatusUnauthorized, "ticket_invalid", "connection ticket is invalid or expired"}, true
+	}
+	return apiError{}, false
+}
+
+func mapNotificationError(err error) (apiError, bool) {
+	switch {
+	case errors.Is(err, notification.ErrInAppNotFound):
+		return apiError{http.StatusNotFound, "notification_not_found", "notification not found"}, true
 	}
 	return apiError{}, false
 }

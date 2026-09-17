@@ -49,6 +49,25 @@ type NotificationJobRepository interface {
 	PendingByBooking(ctx context.Context, bookingID string, kind notification.Kind) ([]notification.Job, error)
 }
 
+// InAppNotificationRepository stores recipient-scoped activity with durable
+// read state. Create is idempotent for an EventID and recipient pair.
+type InAppNotificationRepository interface {
+	// Create persists a new unread notification, assigning its ID.
+	Create(ctx context.Context, n notification.InApp) (notification.InApp, error)
+	// ListForRecipient returns recipientEmail's notifications, most recent
+	// first, capped at limit.
+	ListForRecipient(ctx context.Context, recipientEmail string, limit int) ([]notification.InApp, error)
+	// UnreadCount reports how many of recipientEmail's notifications are
+	// still unread — what the bell's badge counts.
+	UnreadCount(ctx context.Context, recipientEmail string) (int, error)
+	// MarkRead marks one notification read. It only matches a notification
+	// that belongs to recipientEmail, so one person can never mark another
+	// person's notification read by guessing an id.
+	MarkRead(ctx context.Context, id, recipientEmail string) error
+	// MarkAllRead marks every unread notification for recipientEmail read.
+	MarkAllRead(ctx context.Context, recipientEmail string) error
+}
+
 // BookingNotice is everything the booking emails need, resolved by the
 // caller: names and times rather than ids, because the message may be sent
 // long after the booking that caused it.
@@ -133,4 +152,19 @@ type DispatchResult struct {
 type Dispatcher interface {
 	// DispatchDue delivers up to limit due jobs and reports the outcome.
 	DispatchDue(ctx context.Context, limit int) (DispatchResult, error)
+}
+
+// ActivityNotifier records committed workflow events independently of email.
+type ActivityNotifier interface {
+	Activity(context.Context, ActivityNotice)
+}
+type ActivityNotice struct {
+	EventID, ClientID, PractitionerID, Title, ClientLink, PracticeLink string
+}
+
+// NotifyActivity permits existing notifier ports to expose the additional channel.
+func NotifyActivity(ctx context.Context, notifier any, notice ActivityNotice) {
+	if n, ok := notifier.(ActivityNotifier); ok && n != nil {
+		n.Activity(ctx, notice)
+	}
 }

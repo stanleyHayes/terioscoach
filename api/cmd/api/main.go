@@ -122,8 +122,8 @@ func run() error {
 		notifier := buildNotificationService(cfg, db)
 		// Agreements are built before bookings: booking creation holds the
 		// gate, so the slice has to exist first.
-		documentService := buildDocumentService(cfg, db)
-		recordingService := buildRecordingService(cfg, db)
+		documentService := buildDocumentService(cfg, db, notifier)
+		recordingService := buildRecordingService(cfg, db, notifier)
 		stopPurge := startRecordingPurge(recordingService)
 		defer stopPurge()
 		agreementService := buildAgreementService(db, notifier, documentService)
@@ -148,10 +148,11 @@ func run() error {
 			httpapi.WithRecordings(recordingService, authService),
 			httpapi.WithContent(buildContentService(db), authService),
 			httpapi.WithEnquiries(buildEnquiryService(db, notifier), authService),
-			httpapi.WithReviews(buildReviewService(db), authService),
+			httpapi.WithReviews(buildReviewService(db, notifier), authService),
 			httpapi.WithForms(buildFormService(db, notifier), authService),
 			httpapi.WithDocuments(documentService, authService),
 			httpapi.WithReports(buildReportService(db), authService),
+			httpapi.WithInAppNotifications(mongodb.NewInAppNotificationRepository(db), authService),
 			// Operational health (LCH-09): what an uptime monitor polls to
 			// learn that mail is backing up or accounts are being locked en
 			// masse, neither of which shows up in a liveness probe.
@@ -195,6 +196,7 @@ func run() error {
 			httpapi.WithForms(nil, nil),
 			httpapi.WithDocuments(nil, nil),
 			httpapi.WithReports(nil, nil),
+			httpapi.WithInAppNotifications(nil, nil),
 			httpapi.WithOps(nil, nil, ops.DefaultThresholds()),
 			httpapi.WithSessions(nil, nil, nil),
 		)
@@ -420,9 +422,11 @@ func buildNotificationService(cfg config.Config, db *mongo.Database) *notificati
 	})
 	return notificationsapp.NewService(
 		mongodb.NewNotificationJobRepository(db),
+		mongodb.NewInAppNotificationRepository(db),
 		renderer,
 		mailer,
 		notificationsapp.Options{
+			Users:           mongodb.NewUserRepository(db),
 			ReminderLead:    cfg.ReminderLead,
 			DefaultTimezone: cfg.DefaultTimezone,
 			PracticeEmail:   cfg.PracticeEmail,
@@ -575,12 +579,13 @@ func buildEnquiryService(db *mongo.Database, notifier *notificationsapp.Service)
 // buildReviewService wires the reviews slice to its MongoDB adapters. The
 // booking repository is what proves a review is earned; the user and
 // service repositories only resolve display names for the public list.
-func buildReviewService(db *mongo.Database) *reviewsapp.Service {
+func buildReviewService(db *mongo.Database, activity ...ports.ActivityNotifier) *reviewsapp.Service {
 	return reviewsapp.NewService(
 		mongodb.NewReviewRepository(db),
 		mongodb.NewBookingRepository(db),
 		mongodb.NewUserRepository(db),
 		mongodb.NewServiceRepository(db),
+		firstActivity(activity),
 	)
 }
 
@@ -608,7 +613,7 @@ func buildFormService(db *mongo.Database, notifier *notificationsapp.Service) *f
 // and converting a typed nil pointer to the interface at the call site would
 // make the interface non-nil — mounting handlers over a nil receiver instead
 // of the intended 503.
-func buildDocumentService(cfg config.Config, db *mongo.Database) ports.DocumentService {
+func buildDocumentService(cfg config.Config, db *mongo.Database, activity ...ports.ActivityNotifier) ports.DocumentService {
 	if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
 		slog.Warn("Cloudinary credentials not set; document routes return 503 and signed agreements are not filed")
 		return nil
@@ -616,7 +621,7 @@ func buildDocumentService(cfg config.Config, db *mongo.Database) ports.DocumentS
 	return documentsapp.NewService(
 		mongodb.NewDocumentRepository(db),
 		cloudinary.NewClient(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
-		documentsapp.Options{DeliveryTTL: cfg.DocumentURLTTL},
+		documentsapp.Options{DeliveryTTL: cfg.DocumentURLTTL, Activity: firstActivity(activity)},
 	)
 }
 
@@ -676,7 +681,7 @@ func buildNoteService(db *mongo.Database, notifier *notificationsapp.Service) *n
 // Returns the port interface, not *recordings.Service: without a media
 // store there is nowhere to put a recording, so this returns nil and the
 // routes answer 503 — the same shape as documents and payments.
-func buildRecordingService(cfg config.Config, db *mongo.Database) ports.RecordingService {
+func buildRecordingService(cfg config.Config, db *mongo.Database, activity ...ports.ActivityNotifier) ports.RecordingService {
 	if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
 		slog.Warn("Cloudinary credentials not set; session recording routes return 503")
 		return nil
@@ -685,6 +690,13 @@ func buildRecordingService(cfg config.Config, db *mongo.Database) ports.Recordin
 		mongodb.NewRecordingRepository(db),
 		mongodb.NewBookingRepository(db),
 		cloudinary.NewClient(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
-		recordingsapp.Options{DeliveryTTL: cfg.DocumentURLTTL},
+		recordingsapp.Options{DeliveryTTL: cfg.DocumentURLTTL, Activity: firstActivity(activity)},
 	)
+}
+
+func firstActivity(items []ports.ActivityNotifier) ports.ActivityNotifier {
+	if len(items) > 0 {
+		return items[0]
+	}
+	return nil
 }

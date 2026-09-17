@@ -178,6 +178,9 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 	if err != nil {
 		return booking.Booking{}, err
 	}
+	if b.Status == booking.StatusPendingPayment {
+		ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "booking:" + b.ID + ":created", ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "A new session is awaiting payment", PracticeLink: "/calendar"})
+	}
 	if b.Status == booking.StatusConfirmed {
 		if notice, ok := s.notice(ctx, b, tz); ok {
 			s.notifier.BookingConfirmed(ctx, notice)
@@ -336,7 +339,11 @@ func (s *Service) CompleteBooking(ctx context.Context, practitionerID, bookingID
 	if err := b.Complete(s.now()); err != nil {
 		return booking.Booking{}, err
 	}
-	return s.bookings.Update(ctx, b)
+	stored, err := s.bookings.Update(ctx, b)
+	if err == nil {
+		ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "booking:" + b.ID + ":" + string(b.Status), ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "Session marked " + strings.ReplaceAll(string(b.Status), "_", " "), ClientLink: "/portal/sessions", PracticeLink: "/calendar"})
+	}
+	return stored, err
 }
 
 // MarkNoShow marks a booking no_show — practitioner-only, after the
@@ -349,7 +356,11 @@ func (s *Service) MarkNoShow(ctx context.Context, practitionerID, bookingID stri
 	if err := b.MarkNoShow(s.now()); err != nil {
 		return booking.Booking{}, err
 	}
-	return s.bookings.Update(ctx, b)
+	stored, err := s.bookings.Update(ctx, b)
+	if err == nil {
+		ports.NotifyActivity(ctx, s.notifier, ports.ActivityNotice{EventID: "booking:" + b.ID + ":" + string(b.Status), ClientID: b.ClientID, PractitionerID: b.PractitionerID, Title: "Session marked " + strings.ReplaceAll(string(b.Status), "_", " "), ClientLink: "/portal/sessions", PracticeLink: "/calendar"})
+	}
+	return stored, err
 }
 
 // authorized reports whether the principal may touch the booking: the
