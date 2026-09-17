@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/Badge";
 import { formatCivilDate, formatTime, PRACTICE_TIMEZONE, timezoneShortName, zonedParts, type Booking } from "@/lib/schedule";
 import { BookingDetailModal, type BookingActionHandler, type RescheduleHandler } from "./BookingDetailModal";
 
-export function UpcomingConsultations({ bookings, clientNames, serviceNames, onAction, onReschedule }: {
+export function UpcomingConsultations({ bookings, clientNames, serviceNames, timeZone = PRACTICE_TIMEZONE, onAction, onReschedule }: {
   bookings: Booking[];
   clientNames: Record<string, string>;
   serviceNames: Record<string, string>;
+  timeZone?: string;
   onAction: BookingActionHandler;
   onReschedule: RescheduleHandler;
 }) {
@@ -41,8 +42,8 @@ export function UpcomingConsultations({ bookings, clientNames, serviceNames, onA
                     <Badge variant="success" dot>Confirmed</Badge>
                   </span>
                   <span className="mt-2 block break-words text-sm font-medium text-ink">{clientNames[booking.clientId] ?? booking.clientId}</span>
-                  <span className="mt-1 block text-sm tabular-nums text-ink-muted">{formatCivilDate(zonedParts(booking.startAt, PRACTICE_TIMEZONE))} · {formatTime(booking.startAt, PRACTICE_TIMEZONE)} – {formatTime(booking.endAt, PRACTICE_TIMEZONE)}</span>
-                  <span className="mt-1 block text-xs text-ink-faint">{timezoneShortName(PRACTICE_TIMEZONE, new Date(booking.startAt))} ({PRACTICE_TIMEZONE})</span>
+                  <span className="mt-1 block text-sm tabular-nums text-ink-muted">{formatCivilDate(zonedParts(booking.startAt, timeZone))} · {formatTime(booking.startAt, timeZone)} – {formatTime(booking.endAt, timeZone)}</span>
+                  <span className="mt-1 block text-xs text-ink-faint">{timezoneShortName(timeZone, new Date(booking.startAt))} ({timeZone})</span>
                 </span>
                 <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-primary" />
               </button>
@@ -50,7 +51,7 @@ export function UpcomingConsultations({ bookings, clientNames, serviceNames, onA
           ))}
         </ul>
       )}
-      {selected ? <BookingDetailModal booking={selected} clientName={clientNames[selected.clientId]} serviceName={serviceNames[selected.serviceId]} timeZone={PRACTICE_TIMEZONE} onClose={() => setSelected(null)} onAction={onAction} onReschedule={onReschedule} /> : null}
+      {selected ? <BookingDetailModal booking={selected} clientName={clientNames[selected.clientId]} serviceName={serviceNames[selected.serviceId]} timeZone={timeZone} onClose={() => setSelected(null)} onAction={onAction} onReschedule={onReschedule} /> : null}
     </section>
   );
 }

@@ -97,11 +97,11 @@ function booking(overrides: Partial<Booking> = {}): Booking {
 }
 
 /** Expected from/to bounds for the currently visible week. */
-function currentWeekRange() {
-  const monday = mondayOfWeek(todayCivil(PRACTICE_TIMEZONE));
+function currentWeekRange(timeZone = PRACTICE_TIMEZONE) {
+  const monday = mondayOfWeek(todayCivil(timeZone));
   return {
-    from: wallClockToUtcIso(dateKey(monday), "00:00", PRACTICE_TIMEZONE)!,
-    to: wallClockToUtcIso(dateKey(addDaysCivil(monday, 7)), "00:00", PRACTICE_TIMEZONE)!,
+    from: wallClockToUtcIso(dateKey(monday), "00:00", timeZone)!,
+    to: wallClockToUtcIso(dateKey(addDaysCivil(monday, 7)), "00:00", timeZone)!,
   };
 }
 
@@ -128,6 +128,29 @@ describe("CalendarPage", () => {
       to: currentWeekRange().to,
     });
     expect(screen.getByText("Times in GMT")).toBeTruthy();
+  });
+
+  it("lets the practitioner view booked sessions in another timezone", async () => {
+    listBookingsMock.mockResolvedValue([booking()]);
+    render(<CalendarPage />);
+    await screen.findByRole("grid");
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Display timezone" }));
+    fireEvent.click(screen.getByRole("option", { name: /Eastern Time/ }));
+
+    await waitFor(() =>
+      expect(listBookingsMock).toHaveBeenLastCalledWith(
+        session,
+        refreshCallbacks,
+        currentWeekRange("America/New_York"),
+      ),
+    );
+    expect(screen.getByText(/Times in EDT|Times in EST/)).toBeTruthy();
+    expect(
+      await screen.findByRole("button", {
+        name: /5:00 AM to 6:00 AM, client-1, svc-1, Confirmed/,
+      }),
+    ).toBeTruthy();
   });
 
   it("lists future consultations beyond the current week in date order and restores the calendar", async () => {

@@ -3,6 +3,7 @@
 import { CalendarDays, CircleAlert, List } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { UpcomingConsultations } from "@/components/schedule/UpcomingConsultations";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
 import { KpiStrip } from "@/components/insights/KpiStrip";
@@ -17,6 +18,7 @@ import {
   dateKey,
   mondayOfWeek,
   scheduleApi,
+  SUPPORTED_TIME_ZONES,
   todayCivil,
   wallClockToUtcIso,
   PRACTICE_TIMEZONE,
@@ -54,6 +56,7 @@ export default function CalendarPage() {
   const [weekStart, setWeekStart] = useState<CivilDate>(() =>
     mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)),
   );
+  const [timeZone, setTimeZone] = useState(PRACTICE_TIMEZONE);
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
@@ -84,9 +87,9 @@ export default function CalendarPage() {
         from: wallClockToUtcIso(
           dateKey(weekStart),
           "00:00",
-          PRACTICE_TIMEZONE,
+        timeZone,
         )!,
-        to: wallClockToUtcIso(dateKey(weekEnd), "00:00", PRACTICE_TIMEZONE)!,
+        to: wallClockToUtcIso(dateKey(weekEnd), "00:00", timeZone)!,
         ...(filter === "all" ? {} : { status: filter }),
       })
       .then((items) => {
@@ -104,7 +107,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, refreshCallbacks, weekStart, filter, view, handleSessionExpiry]);
+  }, [session, refreshCallbacks, weekStart, timeZone, filter, view, handleSessionExpiry]);
 
   useEffect(() => load(), [load]);
 
@@ -180,6 +183,7 @@ export default function CalendarPage() {
           refreshCallbacks,
           booking.id,
           startAt,
+          timeZone,
         ),
       );
     } catch (err) {
@@ -239,6 +243,24 @@ export default function CalendarPage() {
             <Icon size={16} aria-hidden="true" />{label}
           </button>
         ))}
+      </div>
+
+      <div className="max-w-xs">
+        <BrandedSelect
+          label="Display timezone"
+          value={timeZone}
+          options={SUPPORTED_TIME_ZONES.map((zone) => ({
+            value: zone.value,
+            label: zone.label,
+            description: zone.value,
+          }))}
+          onChange={(next) => {
+            setBookings(null);
+            setError(null);
+            setTimeZone(next);
+            setWeekStart(mondayOfWeek(todayCivil(next)));
+          }}
+        />
       </div>
 
       {bookings && view === "calendar" ? (
@@ -311,13 +333,14 @@ export default function CalendarPage() {
       {bookings === null && !error ? (
         view === "calendar" ? <CalendarSkeleton /> : <div role="status" aria-busy="true" className="flex flex-col gap-4"><span className="sr-only">Loading upcoming consultations…</span>{[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="skeleton-shimmer h-36 rounded-[1.5rem]" />)}</div>
       ) : error ? null : view === "list" ? (
-        <UpcomingConsultations bookings={bookings ?? []} clientNames={clientNames} serviceNames={serviceNames} onAction={handleAction} onReschedule={handleReschedule} />
+        <UpcomingConsultations bookings={bookings ?? []} clientNames={clientNames} serviceNames={serviceNames} timeZone={timeZone} onAction={handleAction} onReschedule={handleReschedule} />
       ) : (
         <WeekCalendar
           weekStart={weekStart}
           bookings={bookings ?? []}
           clientNames={clientNames}
           serviceNames={serviceNames}
+          timeZone={timeZone}
           onPrevWeek={() => {
             setBookings(null);
             setWeekStart((current) => addDaysCivil(current, -7));
@@ -328,7 +351,7 @@ export default function CalendarPage() {
           }}
           onToday={() => {
             setBookings(null);
-            setWeekStart(mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)));
+            setWeekStart(mondayOfWeek(todayCivil(timeZone)));
           }}
           onAction={handleAction}
           onReschedule={handleReschedule}

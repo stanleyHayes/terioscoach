@@ -27,7 +27,7 @@ import { BookingDetailModal, type BookingActionHandler, type RescheduleHandler }
  * WeekCalendar — design-system §3.12 week view (admin).
  * Seven day columns over hour lanes (00:00–24:00, 48px rows); bookings
  * are absolute blocks positioned from their UTC startAt/endAt converted into
- * the practice wall clock, status-colored per the spec (confirmed primary,
+ * the selected wall clock, status-colored per the spec (confirmed primary,
  * completed muted, cancelled struck danger, no-show warning). Header chrome:
  * heading-lg week label, prev/today/next nav, and an always-visible timezone
  * caption (brand voice rule). All times use tabular figures.
