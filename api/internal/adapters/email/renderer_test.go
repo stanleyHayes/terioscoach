@@ -34,16 +34,20 @@ func TestRendersEveryKind(t *testing.T) {
 		notification.KindBookingCancelled,
 		notification.KindFeedbackShared,
 		notification.KindEnquiryReceived,
+		notification.KindAgreementSigned,
 	}
 	for _, kind := range kinds {
 		t.Run(string(kind), func(t *testing.T) {
 			msg, err := testRenderer().Render(job(kind, map[string]string{
-				"clientName":  "Ama Serwaa",
-				"senderName":  "Ama Serwaa",
-				"serviceName": "Deep Tissue Massage",
-				"startTime":   "Thursday 20 August, 09:00",
-				"timezone":    "Africa/Accra",
-				"paymentUrl":  "https://checkout.stripe.com/c/pay/test",
+				"clientName":     "Ama Serwaa",
+				"senderName":     "Ama Serwaa",
+				"serviceName":    "Deep Tissue Massage",
+				"startTime":      "Thursday 20 August, 09:00",
+				"timezone":       "Africa/Accra",
+				"paymentUrl":     "https://checkout.stripe.com/c/pay/test",
+				"agreementTitle": "Holistic Coaching Agreement",
+				"signedName":     "Ama Serwaa",
+				"signedAt":       "Tue, 11 Aug 2026 09:00:00 UTC",
 			}))
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -61,6 +65,46 @@ func TestRendersEveryKind(t *testing.T) {
 				t.Error("copyright year not substituted")
 			}
 		})
+	}
+}
+
+func TestAgreementNotificationsUseTheCorrectActionAndTemplate(t *testing.T) {
+	renderer := testRenderer()
+	base := map[string]string{
+		"clientName":     "Ama Serwaa",
+		"agreementTitle": "Holistic Coaching Agreement",
+		"signedName":     "Ama Serwaa",
+		"signedAt":       "Tue, 11 Aug 2026 09:00:00 UTC",
+	}
+
+	signed, err := renderer.Render(job(notification.KindAgreementSigned, base))
+	if err != nil {
+		t.Fatalf("Render signed agreement: %v", err)
+	}
+	if signed.Subject != "Ama Serwaa signed the Holistic Coaching Agreement" {
+		t.Errorf("signed subject = %q", signed.Subject)
+	}
+	if !strings.Contains(signed.HTML, "signed the Holistic Coaching Agreement") {
+		t.Error("signed template does not describe a signature")
+	}
+
+	submittedData := map[string]string{}
+	for key, value := range base {
+		submittedData[key] = value
+	}
+	submittedData["action"] = "submitted"
+	submitted, err := renderer.Render(job(notification.KindAgreementSigned, submittedData))
+	if err != nil {
+		t.Fatalf("Render submitted SOW: %v", err)
+	}
+	if submitted.Subject != "Ama Serwaa submitted the Holistic Coaching Agreement" {
+		t.Errorf("submitted subject = %q", submitted.Subject)
+	}
+	if !strings.Contains(submitted.HTML, "Statement of Work") {
+		t.Error("submitted template does not identify the statement of work")
+	}
+	if strings.Contains(submitted.HTML, "signed the") {
+		t.Error("submitted template still describes the form as signed")
 	}
 }
 

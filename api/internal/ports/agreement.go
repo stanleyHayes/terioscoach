@@ -27,11 +27,12 @@ type AgreementPatch struct {
 
 // SignRequest is one client accepting one agreement.
 type SignRequest struct {
-	AgreementID string
-	ClientID    string
-	ClientName  string
-	ClientEmail string
-	SignedName  string
+	StatementOfWork *agreement.StatementOfWork
+	AgreementID     string
+	ClientID        string
+	ClientName      string
+	ClientEmail     string
+	SignedName      string
 	/** The booking the client was making, when the signature came from the
 	 * booking flow. Optional. */
 	BookingID string
@@ -117,6 +118,7 @@ type AgreementArchivist interface {
 
 // AgreementSignedNotice is what the practice is told when a client signs.
 type AgreementSignedNotice struct {
+	Submitted      bool
 	ClientID       string
 	ClientName     string
 	ClientEmail    string

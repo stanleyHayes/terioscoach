@@ -108,6 +108,9 @@ func (r *Renderer) Render(job notification.Job) (ports.EmailMessage, error) {
 	if !ok {
 		return ports.EmailMessage{}, fmt.Errorf("%w: %s", notification.ErrTemplateNotFound, job.Kind)
 	}
+	if job.Kind == notification.KindAgreementSigned && job.Data["action"] == "submitted" {
+		file = "templates/statement-of-work-submitted.html"
+	}
 	raw, err := templateFS.ReadFile(file)
 	if err != nil {
 		return ports.EmailMessage{}, fmt.Errorf("read template %s: %w", file, err)
@@ -146,7 +149,11 @@ func subject(job notification.Job, data map[string]string) string {
 	}
 	if job.Kind == notification.KindAgreementSigned {
 		if name := data["clientName"]; name != "" {
-			return name + " signed the " + data["agreementTitle"]
+			action := "signed"
+			if data["action"] == "submitted" {
+				action = "submitted"
+			}
+			return name + " " + action + " the " + data["agreementTitle"]
 		}
 	}
 	if line, ok := subjects[job.Kind]; ok {

@@ -457,6 +457,49 @@ func TestEnquiryWithoutAPracticeInboxIsReported(t *testing.T) {
 	}
 }
 
+func TestAgreementSignedQueuesImmediatePracticeNotice(t *testing.T) {
+	rig := newTestRig(t)
+
+	rig.svc.AgreementSigned(context.Background(), ports.AgreementSignedNotice{
+		ClientID:       "client-1",
+		ClientName:     "Ama Serwaa",
+		ClientEmail:    "ama@example.com",
+		AgreementTitle: "Holistic Coaching Agreement",
+		SignedName:     "Ama Serwaa",
+		SignedAt:       "Tue, 11 Aug 2026 09:00:00 UTC",
+	})
+
+	jobs := rig.jobs.OfKind(notification.KindAgreementSigned)
+	if len(jobs) != 1 {
+		t.Fatalf("jobs = %d, want 1", len(jobs))
+	}
+	job := jobs[0]
+	if job.Recipient != "practice@terioscoach.com" || !job.Due(fixedNow) {
+		t.Errorf("job = %+v, want an immediate practice notification", job)
+	}
+	if job.Data["action"] != "signed" || job.Data["agreementTitle"] != "Holistic Coaching Agreement" {
+		t.Errorf("data = %v, want signed agreement details", job.Data)
+	}
+}
+
+func TestStatementOfWorkSubmissionUsesSubmissionNotification(t *testing.T) {
+	rig := newTestRig(t)
+
+	rig.svc.AgreementSigned(context.Background(), ports.AgreementSignedNotice{
+		Submitted:      true,
+		ClientID:       "client-1",
+		ClientName:     "Ama Serwaa",
+		ClientEmail:    "ama@example.com",
+		AgreementTitle: "Statement of Work",
+		SignedAt:       "Tue, 11 Aug 2026 09:00:00 UTC",
+	})
+
+	jobs := rig.jobs.OfKind(notification.KindAgreementSigned)
+	if len(jobs) != 1 || jobs[0].Data["action"] != "submitted" {
+		t.Fatalf("jobs = %+v, want one submitted notification", jobs)
+	}
+}
+
 // TestTimesRenderInTheClientTimezone: a Ghana client and a London client
 // see their own wall clock for the same instant.
 func TestTimesRenderInTheClientTimezone(t *testing.T) {

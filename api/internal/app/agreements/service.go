@@ -219,7 +219,18 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 		}
 	}
 
-	sig, err := a.Sign(req.ClientID, name, email, req.SignedName, req.BookingID, s.now())
+	var sig agreement.Signature
+	if agreement.IsStatementOfWork(a.Key) {
+		if req.StatementOfWork == nil || strings.TrimSpace(req.SignedName) != "" {
+			return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
+		}
+		sig, err = a.SubmitStatementOfWork(req.ClientID, name, email, req.BookingID, *req.StatementOfWork, s.now())
+	} else {
+		if req.StatementOfWork != nil {
+			return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
+		}
+		sig, err = a.Sign(req.ClientID, name, email, req.SignedName, req.BookingID, s.now())
+	}
 	if err != nil {
 		return agreement.Signature{}, err
 	}
@@ -231,14 +242,19 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 	// Neither the practice's copy nor the archive is on the client's
 	// critical path: the signature is recorded, and a mail or storage
 	// failure must not tell them their booking did not go through.
+	noticeTime := stored.SignedAt
+	if stored.SubmittedAt != nil {
+		noticeTime = *stored.SubmittedAt
+	}
 	if s.notifier != nil {
 		s.notifier.AgreementSigned(ctx, ports.AgreementSignedNotice{
+			Submitted:      stored.StatementOfWork != nil,
 			ClientID:       stored.ClientID,
 			ClientName:     stored.ClientName,
 			ClientEmail:    stored.ClientEmail,
 			AgreementTitle: stored.AgreementTitle,
 			SignedName:     stored.SignedName,
-			SignedAt:       stored.SignedAt.Format(time.RFC1123),
+			SignedAt:       noticeTime.Format(time.RFC1123),
 		})
 	}
 	if s.archivist != nil {
@@ -308,6 +324,10 @@ func filename(sig agreement.Signature) string {
 		}
 		return strings.Trim(b.String(), "-")
 	}
+	recordedAt := sig.SignedAt
+	if sig.SubmittedAt != nil {
+		recordedAt = *sig.SubmittedAt
+	}
 	return fmt.Sprintf("%s-%s-%s.pdf",
-		slug(sig.AgreementTitle), slug(sig.ClientName), sig.SignedAt.Format("2006-01-02"))
+		slug(sig.AgreementTitle), slug(sig.ClientName), recordedAt.Format("2006-01-02"))
 }

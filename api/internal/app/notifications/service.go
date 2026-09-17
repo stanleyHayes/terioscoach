@@ -200,10 +200,15 @@ func (s *Service) AgreementSigned(ctx context.Context, notice ports.AgreementSig
 		s.report(fmt.Errorf("agreement signature for %s not queued: no practice inbox configured", notice.ClientID))
 		return
 	}
+	action := "signed"
+	if notice.Submitted {
+		action = "submitted"
+	}
 	s.queue(ctx, notification.KindAgreementSigned, s.practiceEmail, notice.ClientID, map[string]string{
 		"clientName":     notice.ClientName,
 		"clientEmail":    notice.ClientEmail,
 		"agreementTitle": notice.AgreementTitle,
+		"action":         action,
 		"signedName":     notice.SignedName,
 		"signedAt":       notice.SignedAt,
 	}, s.now())
