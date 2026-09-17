@@ -42,7 +42,7 @@ export const SIGN_OUT_MESSAGE_KEY = "terios.admin.signOutMessage";
 export const NOT_PRACTITIONER_MESSAGE =
   "This account doesn't have practice-dashboard access. Sign in with an owner or staff account for this practice.";
 
-export const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+export const INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
 export const PROACTIVE_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";

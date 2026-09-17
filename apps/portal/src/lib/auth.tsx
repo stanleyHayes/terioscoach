@@ -30,7 +30,7 @@ import {
 import { authApi, resetTokenRotation, type AuthTokens, type User } from "@/lib/api";
 
 export const REFRESH_TOKEN_KEY = "terios.web.refreshToken";
-export const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+export const INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
 export const PROACTIVE_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
