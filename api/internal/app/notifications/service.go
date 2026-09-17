@@ -214,6 +214,33 @@ func (s *Service) AgreementSigned(ctx context.Context, notice ports.AgreementSig
 	}, s.now())
 }
 
+func (s *Service) FormAssigned(ctx context.Context, notice ports.FormAssignedNotice) {
+	if notice.ClientEmail == "" {
+		s.report(fmt.Errorf("form assignment %s not queued: no client email", notice.SubmissionID))
+		return
+	}
+	s.queue(ctx, notification.KindFormAssigned, notice.ClientEmail, notice.SubmissionID, map[string]string{
+		"clientName":   notice.ClientName,
+		"formTitle":    notice.FormTitle,
+		"assignedAt":   notice.AssignedAt,
+		"submissionId": notice.SubmissionID,
+	}, s.now())
+}
+
+func (s *Service) FormSubmitted(ctx context.Context, notice ports.FormSubmittedNotice) {
+	if s.practiceEmail == "" {
+		s.report(fmt.Errorf("form submission %s not queued: no practice inbox configured", notice.SubmissionID))
+		return
+	}
+	s.queue(ctx, notification.KindFormSubmitted, s.practiceEmail, notice.SubmissionID, map[string]string{
+		"clientName":   notice.ClientName,
+		"clientEmail":  notice.ClientEmail,
+		"formTitle":    notice.FormTitle,
+		"submittedAt":  notice.SubmittedAt,
+		"submissionId": notice.SubmissionID,
+	}, s.now())
+}
+
 // DispatchDue delivers up to limit due jobs. It is safe to run on a timer
 // and safe to run in more than one process: ClaimDue hands each job to
 // exactly one caller.

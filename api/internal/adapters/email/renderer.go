@@ -32,6 +32,8 @@ var templateFiles = map[notification.Kind]string{
 	notification.KindFeedbackShared:         "templates/feedback-shared.html",
 	notification.KindEnquiryReceived:        "templates/enquiry-notification.html",
 	notification.KindAgreementSigned:        "templates/agreement-signed.html",
+	notification.KindFormAssigned:           "templates/form-assigned.html",
+	notification.KindFormSubmitted:          "templates/form-submitted.html",
 }
 
 // subjects are the subject lines, in the brand voice. The reminder's is
@@ -45,6 +47,8 @@ var subjects = map[notification.Kind]string{
 	notification.KindFeedbackShared:         "Notes and resources from your session",
 	notification.KindEnquiryReceived:        "New enquiry from your website",
 	notification.KindAgreementSigned:        "A client signed a service agreement",
+	notification.KindFormAssigned:           "A form is ready for you",
+	notification.KindFormSubmitted:          "A client submitted a form",
 }
 
 // ctaLinks names the data key each template's call-to-action points at, so
@@ -59,6 +63,8 @@ var ctaLinks = map[notification.Kind]string{
 	notification.KindFeedbackShared:         "portalUrl",
 	notification.KindEnquiryReceived:        "dashboardUrl",
 	notification.KindAgreementSigned:        "dashboardUrl",
+	notification.KindFormAssigned:           "portalUrl",
+	notification.KindFormSubmitted:          "dashboardUrl",
 }
 
 // Renderer produces brand messages from jobs.
@@ -154,6 +160,16 @@ func subject(job notification.Job, data map[string]string) string {
 				action = "submitted"
 			}
 			return name + " " + action + " the " + data["agreementTitle"]
+		}
+	}
+	if job.Kind == notification.KindFormAssigned {
+		if title := data["formTitle"]; title != "" {
+			return "Please complete " + title
+		}
+	}
+	if job.Kind == notification.KindFormSubmitted {
+		if name := data["clientName"]; name != "" {
+			return name + " submitted " + data["formTitle"]
 		}
 	}
 	if line, ok := subjects[job.Kind]; ok {

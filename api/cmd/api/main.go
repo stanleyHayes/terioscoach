@@ -149,7 +149,7 @@ func run() error {
 			httpapi.WithContent(buildContentService(db), authService),
 			httpapi.WithEnquiries(buildEnquiryService(db, notifier), authService),
 			httpapi.WithReviews(buildReviewService(db), authService),
-			httpapi.WithForms(buildFormService(db), authService),
+			httpapi.WithForms(buildFormService(db, notifier), authService),
 			httpapi.WithDocuments(documentService, authService),
 			httpapi.WithReports(buildReportService(db), authService),
 			// Operational health (LCH-09): what an uptime monitor polls to
@@ -587,10 +587,14 @@ func buildReviewService(db *mongo.Database) *reviewsapp.Service {
 // buildFormService wires the intake-and-consent slice to its MongoDB
 // adapters. The form_submissions collection it owns is the one the client
 // record's submission counter reads.
-func buildFormService(db *mongo.Database) *formsapp.Service {
+func buildFormService(db *mongo.Database, notifier *notificationsapp.Service) *formsapp.Service {
 	return formsapp.NewService(
 		mongodb.NewFormRepository(db),
 		mongodb.NewFormSubmissionRepository(db),
+		formsapp.Options{
+			Users:    mongodb.NewUserRepository(db),
+			Notifier: notifier,
+		},
 	)
 }
 

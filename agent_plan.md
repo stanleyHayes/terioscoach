@@ -518,7 +518,7 @@ Work order: implement one numbered source item, verify it, commit and push it be
 | Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Done — generated PDFs now use coaching dual-signature, client-only release/consent, and guardian-consent execution blocks; SOW remains unsigned. Covered across all eight seeded document keys. |
 | Recording 1 | Clear downloading state after practitioner download | Done — practitioner recording download uses a same-origin blob download and always clears the button state after success or failure; regression coverage asserts the button returns to "Download recording" after a successful named download. |
 | Recording 2 | Fix client recording download | Done — portal CSP now allows recording download fetches to Cloudinary's authenticated API while keeping playback scoped in media-src; CSP and portal recording-player tests plus portal build passed. |
-| Forms 1 | Email client on assignment and practitioner on submission | Not started in this sequence |
+| Forms 1 | Email client on assignment and practitioner on submission | Done — assigning a form queues an immediate client email, client submission queues an immediate practice email, and both events are covered in forms, notifications, and renderer tests. |
 | Calendar 1 | Admin booked-session timezone selection | Not started in this sequence |
 | Calendar 2 | Practitioner availability timezone and automatic conversions | Not started in this sequence |
 | Calendar 3 | Verify portal slots across timezones | Not started in this sequence |

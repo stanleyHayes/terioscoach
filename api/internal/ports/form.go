@@ -95,3 +95,26 @@ type FormService interface {
 	GetMySubmission(ctx context.Context, clientID, submissionID string) (SubmissionView, error)
 	SubmitMyForm(ctx context.Context, clientID, submissionID string, in SubmitInput) (form.Submission, error)
 }
+
+type FormNotifier interface {
+	FormAssigned(ctx context.Context, notice FormAssignedNotice)
+	FormSubmitted(ctx context.Context, notice FormSubmittedNotice)
+}
+
+type FormAssignedNotice struct {
+	SubmissionID string
+	ClientID     string
+	ClientName   string
+	ClientEmail  string
+	FormTitle    string
+	AssignedAt   string
+}
+
+type FormSubmittedNotice struct {
+	SubmissionID string
+	ClientID     string
+	ClientName   string
+	ClientEmail  string
+	FormTitle    string
+	SubmittedAt  string
+}

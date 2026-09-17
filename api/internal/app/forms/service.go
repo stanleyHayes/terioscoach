@@ -14,13 +14,22 @@ import (
 	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/form"
+	"github.com/xcreativs/terios/api/internal/domain/identity"
 	"github.com/xcreativs/terios/api/internal/ports"
 )
+
+type Options struct {
+	Users    ports.UserRepository
+	Notifier ports.FormNotifier
+	Now      func() time.Time
+}
 
 // Service orchestrates the forms use cases over outbound ports.
 type Service struct {
 	forms       ports.FormRepository
 	submissions ports.FormSubmissionRepository
+	users       ports.UserRepository
+	notifier    ports.FormNotifier
 	now         func() time.Time
 }
 
@@ -28,11 +37,21 @@ type Service struct {
 var _ ports.FormService = (*Service)(nil)
 
 // NewService wires the use cases to their outbound ports.
-func NewService(forms ports.FormRepository, submissions ports.FormSubmissionRepository) *Service {
+func NewService(forms ports.FormRepository, submissions ports.FormSubmissionRepository, opts ...Options) *Service {
+	var cfg Options
+	if len(opts) > 0 {
+		cfg = opts[0]
+	}
+	now := cfg.Now
+	if now == nil {
+		now = func() time.Time { return time.Now().UTC() }
+	}
 	return &Service{
 		forms:       forms,
 		submissions: submissions,
-		now:         func() time.Time { return time.Now().UTC() },
+		users:       cfg.Users,
+		notifier:    cfg.Notifier,
+		now:         now,
 	}
 }
 
@@ -124,7 +143,25 @@ func (s *Service) AssignForm(ctx context.Context, in ports.AssignInput) (form.Su
 	if err != nil {
 		return form.Submission{}, err
 	}
-	return s.submissions.Create(ctx, submission)
+	client, err := s.client(ctx, in.ClientID)
+	if err != nil {
+		return form.Submission{}, err
+	}
+	stored, err := s.submissions.Create(ctx, submission)
+	if err != nil {
+		return form.Submission{}, err
+	}
+	if s.notifier != nil {
+		s.notifier.FormAssigned(ctx, ports.FormAssignedNotice{
+			SubmissionID: stored.ID,
+			ClientID:     stored.ClientID,
+			ClientName:   client.Name,
+			ClientEmail:  client.Email,
+			FormTitle:    stored.FormTitle,
+			AssignedAt:   stored.AssignedAt.Format(time.RFC1123),
+		})
+	}
+	return stored, nil
 }
 
 // ListSubmissions returns the practice's view of filled-in forms.
@@ -177,7 +214,32 @@ func (s *Service) SubmitMyForm(ctx context.Context, clientID, submissionID strin
 	if err := submission.Submit(f, in.Answers, in.Signature, s.now()); err != nil {
 		return form.Submission{}, err
 	}
-	return s.submissions.Update(ctx, submission)
+	client, err := s.client(ctx, clientID)
+	if err != nil {
+		return form.Submission{}, err
+	}
+	updated, err := s.submissions.Update(ctx, submission)
+	if err != nil {
+		return form.Submission{}, err
+	}
+	if s.notifier != nil && updated.SubmittedAt != nil {
+		s.notifier.FormSubmitted(ctx, ports.FormSubmittedNotice{
+			SubmissionID: updated.ID,
+			ClientID:     updated.ClientID,
+			ClientName:   client.Name,
+			ClientEmail:  client.Email,
+			FormTitle:    updated.FormTitle,
+			SubmittedAt:  updated.SubmittedAt.Format(time.RFC1123),
+		})
+	}
+	return updated, nil
+}
+
+func (s *Service) client(ctx context.Context, clientID string) (identity.User, error) {
+	if s.users == nil {
+		return identity.User{ID: clientID}, nil
+	}
+	return s.users.FindByID(ctx, clientID)
 }
 
 // ownedSubmission loads a submission belonging to the client. Someone

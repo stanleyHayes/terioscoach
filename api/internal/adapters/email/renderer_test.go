@@ -35,6 +35,8 @@ func TestRendersEveryKind(t *testing.T) {
 		notification.KindFeedbackShared,
 		notification.KindEnquiryReceived,
 		notification.KindAgreementSigned,
+		notification.KindFormAssigned,
+		notification.KindFormSubmitted,
 	}
 	for _, kind := range kinds {
 		t.Run(string(kind), func(t *testing.T) {
@@ -48,6 +50,9 @@ func TestRendersEveryKind(t *testing.T) {
 				"agreementTitle": "Holistic Coaching Agreement",
 				"signedName":     "Ama Serwaa",
 				"signedAt":       "Tue, 11 Aug 2026 09:00:00 UTC",
+				"formTitle":      "Health Intake",
+				"assignedAt":     "Tue, 11 Aug 2026 09:00:00 UTC",
+				"submittedAt":    "Tue, 11 Aug 2026 09:00:00 UTC",
 			}))
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -65,6 +70,40 @@ func TestRendersEveryKind(t *testing.T) {
 				t.Error("copyright year not substituted")
 			}
 		})
+	}
+}
+
+func TestFormNotificationsRenderForClientAndPractice(t *testing.T) {
+	renderer := testRenderer()
+	assigned, err := renderer.Render(job(notification.KindFormAssigned, map[string]string{
+		"clientName": "Ama Serwaa",
+		"formTitle":  "Health Intake",
+		"assignedAt": "Tue, 11 Aug 2026 09:00:00 UTC",
+	}))
+	if err != nil {
+		t.Fatalf("Render assigned form: %v", err)
+	}
+	if assigned.Subject != "Please complete Health Intake" {
+		t.Errorf("assigned subject = %q", assigned.Subject)
+	}
+	if !strings.Contains(assigned.HTML, "Complete form") || !strings.Contains(assigned.HTML, "terioscoach.com/portal/forms") {
+		t.Error("assigned form email is missing the portal form CTA")
+	}
+
+	submitted, err := renderer.Render(job(notification.KindFormSubmitted, map[string]string{
+		"clientName":  "Ama Serwaa",
+		"clientEmail": "ama@example.com",
+		"formTitle":   "Health Intake",
+		"submittedAt": "Tue, 11 Aug 2026 09:00:00 UTC",
+	}))
+	if err != nil {
+		t.Fatalf("Render submitted form: %v", err)
+	}
+	if submitted.Subject != "Ama Serwaa submitted Health Intake" {
+		t.Errorf("submitted subject = %q", submitted.Subject)
+	}
+	if !strings.Contains(submitted.HTML, "Open client record") || !strings.Contains(submitted.HTML, "practice.terioscoach.com") {
+		t.Error("submitted form email is missing the dashboard CTA")
 	}
 }
 

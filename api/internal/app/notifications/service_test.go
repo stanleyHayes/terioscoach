@@ -500,6 +500,54 @@ func TestStatementOfWorkSubmissionUsesSubmissionNotification(t *testing.T) {
 	}
 }
 
+func TestFormAssignmentGoesImmediatelyToClient(t *testing.T) {
+	rig := newTestRig(t)
+
+	rig.svc.FormAssigned(context.Background(), ports.FormAssignedNotice{
+		SubmissionID: "submission-1",
+		ClientID:     "client-1",
+		ClientName:   "Ama Serwaa",
+		ClientEmail:  "ama@example.com",
+		FormTitle:    "Health Intake",
+		AssignedAt:   "Tue, 11 Aug 2026 09:00:00 UTC",
+	})
+
+	jobs := rig.jobs.OfKind(notification.KindFormAssigned)
+	if len(jobs) != 1 {
+		t.Fatalf("jobs = %d, want 1", len(jobs))
+	}
+	if jobs[0].Recipient != "ama@example.com" || !jobs[0].Due(fixedNow) {
+		t.Errorf("job = %+v, want immediate client email", jobs[0])
+	}
+	if jobs[0].BookingID != "submission-1" || jobs[0].Data["formTitle"] != "Health Intake" {
+		t.Errorf("job data = %+v", jobs[0])
+	}
+}
+
+func TestFormSubmissionGoesImmediatelyToPractice(t *testing.T) {
+	rig := newTestRig(t)
+
+	rig.svc.FormSubmitted(context.Background(), ports.FormSubmittedNotice{
+		SubmissionID: "submission-1",
+		ClientID:     "client-1",
+		ClientName:   "Ama Serwaa",
+		ClientEmail:  "ama@example.com",
+		FormTitle:    "Health Intake",
+		SubmittedAt:  "Tue, 11 Aug 2026 09:00:00 UTC",
+	})
+
+	jobs := rig.jobs.OfKind(notification.KindFormSubmitted)
+	if len(jobs) != 1 {
+		t.Fatalf("jobs = %d, want 1", len(jobs))
+	}
+	if jobs[0].Recipient != "practice@terioscoach.com" || !jobs[0].Due(fixedNow) {
+		t.Errorf("job = %+v, want immediate practice email", jobs[0])
+	}
+	if jobs[0].Data["clientEmail"] != "ama@example.com" || jobs[0].Data["formTitle"] != "Health Intake" {
+		t.Errorf("job data = %+v", jobs[0])
+	}
+}
+
 // TestTimesRenderInTheClientTimezone: a Ghana client and a London client
 // see their own wall clock for the same instant.
 func TestTimesRenderInTheClientTimezone(t *testing.T) {
