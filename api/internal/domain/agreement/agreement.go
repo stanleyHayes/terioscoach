@@ -159,6 +159,8 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 // signature — and is never normalised or corrected to the name on the
 // account, which is stored alongside it so the two can be compared later.
 type Signature struct {
+	StatementOfWork  *StatementOfWork
+	SubmittedAt      *time.Time
 	ID               string
 	AgreementID      string
 	AgreementKey     string
@@ -224,7 +226,7 @@ func (s Signature) Countersign(practitionerName string, now time.Time) (Signatur
 
 // Sign builds a signature of a against the wording a currently carries.
 func (a Agreement) Sign(clientID, clientName, clientEmail, signedName, bookingID string, now time.Time) (Signature, error) {
-	if !RequiresClientSignature(a.Key) {
+	if !RequiresClientSignature(a.Key) || IsStatementOfWork(a.Key) {
 		return Signature{}, ErrSignatureNotRequired
 	}
 	if clientID == "" {

@@ -26,7 +26,16 @@ export interface Agreement {
   updatedAt: string;
 }
 
+export interface StatementOfWork {
+  clientName: string;
+  effectiveDate: string;
+  initialTermMonths: number;
+  monthlyFee: string;
+}
+
 export interface AgreementSignature {
+  statementOfWork?: StatementOfWork;
+  submittedAt?: string;
   id: string;
   agreementId: string;
   agreementTitle: string;
@@ -110,7 +119,7 @@ export const agreementsApi = {
       `/v1/admin/signatures/${signatureId}/countersign`,
       session,
       callbacks,
-      { method: "POST", body: { practitionerSignedName } },
+      { method: "POST", body: { signedName: practitionerSignedName } },
     );
     return signature;
   },
