@@ -517,7 +517,7 @@ Work order: implement one numbered source item, verify it, commit and push it be
 | Agreements 6 | User-friendly rich-text agreement editor | Done — admin agreement editing now uses the themed MarkdownEditor with rich-text and Markdown modes, a full formatting toolbar, and a live preview. |
 | Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Done — generated PDFs now use coaching dual-signature, client-only release/consent, and guardian-consent execution blocks; SOW remains unsigned. Covered across all eight seeded document keys. |
 | Recording 1 | Clear downloading state after practitioner download | Done — practitioner recording download uses a same-origin blob download and always clears the button state after success or failure; regression coverage asserts the button returns to "Download recording" after a successful named download. |
-| Recording 2 | Fix client recording download | Not started in this sequence |
+| Recording 2 | Fix client recording download | Done — portal CSP now allows recording download fetches to Cloudinary's authenticated API while keeping playback scoped in media-src; CSP and portal recording-player tests plus portal build passed. |
 | Forms 1 | Email client on assignment and practitioner on submission | Not started in this sequence |
 | Calendar 1 | Admin booked-session timezone selection | Not started in this sequence |
 | Calendar 2 | Practitioner availability timezone and automatic conversions | Not started in this sequence |

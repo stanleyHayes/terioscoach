@@ -57,6 +57,9 @@ describe("customer app CSP", () => {
     // by the https: entry.
     expect(connect).toMatch(/https?:\/\/\S+/);
     expect(connect).toMatch(/wss?:\/\/\S+/);
+    // Recording downloads fetch private Cloudinary delivery URLs; playback is
+    // covered by media-src, but the Download button needs connect-src.
+    expect(connect).toContain("https://api.cloudinary.com");
   });
 
   it("never allows eval in a production build", async () => {

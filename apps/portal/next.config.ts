@@ -40,7 +40,7 @@ function contentSecurityPolicy(): string {
     // cover the signature pad's canvas export and local upload previews.
     "img-src 'self' data: blob: https:",
     "font-src 'self'",
-    `connect-src 'self' ${api} ${apiSocket}`,
+    `connect-src 'self' ${api} ${apiSocket} https://api.cloudinary.com`,
     // Video room: remote tracks arrive as blob-backed MediaStreams.
     "media-src 'self' blob: data: https://api.cloudinary.com https://res.cloudinary.com",
     "worker-src 'self' blob:",
