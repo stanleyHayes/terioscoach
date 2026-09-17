@@ -154,3 +154,16 @@ func TestSignedAgreementIsDeterministic(t *testing.T) {
 		t.Error("two renders of the same signature differ")
 	}
 }
+
+func TestPendingCountersignatureOnlyAppearsOnCoachingAgreements(t *testing.T) {
+	for _, key := range []string{"holistic_coaching", "nurse_coaching", "holistic_sow", "nurse_sow", "holistic_confidentiality_hipaa", "nurse_confidentiality_hipaa", "holistic_liability_release", "nurse_liability_release"} {
+		want := key == "holistic_coaching" || key == "nurse_coaching"
+		out := SignedAgreement(agreement.Agreement{Key: key, Title: "Document", Body: "Terms.", RequiresCountersignature: !want}, agreement.Signature{AgreementKey: key, SignedName: "Daniel Baah", RequiresCountersignature: !want})
+		if bytes.Contains(out, []byte("Pending Practitioner Countersignature")) != want {
+			t.Errorf("%s has incorrect pending signature block", key)
+		}
+		if !bytes.Contains(out, []byte("Daniel Baah")) {
+			t.Errorf("%s lost client signature", key)
+		}
+	}
+}

@@ -195,3 +195,39 @@ func TestAgreementCollection(t *testing.T) {
 	}
 }
 
+func TestCountersignaturePolicyForAllDocuments(t *testing.T) {
+	for _, key := range []string{"holistic_coaching", "nurse_coaching", "holistic_sow", "nurse_sow", "holistic_confidentiality_hipaa", "nurse_confidentiality_hipaa", "holistic_liability_release", "nurse_liability_release", "custom_document"} {
+		t.Run(key, func(t *testing.T) {
+			want := key == "holistic_coaching" || key == "nurse_coaching"
+			a, err := New("prac-1", key, "Document", "Terms.", !want, fixedNow)
+			if err != nil {
+				t.Fatal(err)
+			}
+			opposite := !want
+			a, err = a.Apply(Patch{RequiresCountersignature: &opposite}, fixedNow)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if a.RequiresCountersignature != want {
+				t.Fatal("create/edit accepted an incorrect signature requirement")
+			}
+			// Simulate a legacy record with an incorrect stored flag.
+			a.RequiresCountersignature = !want
+			sig, err := a.Sign("client-1", "Daniel", "", "Daniel Baah", "", fixedNow)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if sig.RequiresCountersignature != want {
+				t.Fatal("signature inherited a stale requirement")
+			}
+			sig.RequiresCountersignature = !want
+			result, err := sig.Countersign("Practitioner Name", fixedNow)
+			if want && err != nil {
+				t.Fatal(err)
+			}
+			if !want && (!errors.Is(err, ErrCountersignatureNotRequired) || result.PractitionerSignedAt != nil) {
+				t.Fatalf("client-only document was countersigned: %v", err)
+			}
+		})
+	}
+}

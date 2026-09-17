@@ -30,12 +30,12 @@ type SeedAgreement struct {
 // SeedAgreements is what a fresh practice starts with.
 var SeedAgreements = []SeedAgreement{
 	{Key: "holistic_coaching", Title: "Holistic Coaching Agreement", File: "seed/holistic-coaching.txt", RequiresCountersignature: true},
-	{Key: "holistic_sow", Title: "Holistic Coaching Statement of Work", File: "seed/holistic-statement-of-work.txt", RequiresCountersignature: true},
+	{Key: "holistic_sow", Title: "Holistic Coaching Statement of Work", File: "seed/holistic-statement-of-work.txt", RequiresCountersignature: false},
 	{Key: "holistic_confidentiality_hipaa", Title: "Holistic Coaching Confidentiality and HIPAA Consent", File: "seed/holistic-confidentiality-hipaa.txt", RequiresCountersignature: false},
 	{Key: "holistic_liability_release", Title: "Holistic Coaching Liability Release", File: "seed/holistic-liability-release.txt", RequiresCountersignature: false},
 
 	{Key: "nurse_coaching", Title: "Nurse Coaching Agreement", File: "seed/nurse-coaching.txt", RequiresCountersignature: true},
-	{Key: "nurse_sow", Title: "Nurse Coaching Statement of Work", File: "seed/nurse-statement-of-work.txt", RequiresCountersignature: true},
+	{Key: "nurse_sow", Title: "Nurse Coaching Statement of Work", File: "seed/nurse-statement-of-work.txt", RequiresCountersignature: false},
 	{Key: "nurse_confidentiality_hipaa", Title: "Nurse Coaching Confidentiality and HIPAA Consent", File: "seed/nurse-confidentiality-hipaa.txt", RequiresCountersignature: false},
 	{Key: "nurse_liability_release", Title: "Nurse Coaching Liability Release", File: "seed/nurse-liability-release.txt", RequiresCountersignature: false},
 }

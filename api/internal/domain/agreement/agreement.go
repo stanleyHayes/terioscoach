@@ -38,8 +38,8 @@ const (
 // rendered by the client, never as HTML from the server, so the text can
 // never carry markup into a page.
 type Agreement struct {
-	ID                       string
-	PractitionerID           string
+	ID             string
+	PractitionerID string
 	/** Stable machine name, e.g. "holistic_coaching". Services point at the
 	 * ID, but the key is what seeds and fixtures refer to. */
 	Key                      string
@@ -67,8 +67,16 @@ type AgreementCollection struct {
 	UpdatedAt      time.Time
 }
 
-// New builds an active agreement at version 1.
-func New(practitionerID, key, title, body string, requiresCountersignature bool, now time.Time) (Agreement, error) {
+// RequiresPractitionerSignature is the execution policy for the practice's
+// documents. Derive it from the stable key so legacy stored flags cannot make
+// a client-only document require a practitioner signature.
+func RequiresPractitionerSignature(key string) bool {
+	return key == "holistic_coaching" || key == "nurse_coaching"
+}
+
+// New builds an active agreement at version 1. The legacy boolean argument is
+// retained for caller compatibility; the document key determines signing roles.
+func New(practitionerID, key, title, body string, _ bool, now time.Time) (Agreement, error) {
 	key = strings.TrimSpace(key)
 	title = strings.TrimSpace(title)
 	body = strings.TrimSpace(body)
@@ -87,7 +95,7 @@ func New(practitionerID, key, title, body string, requiresCountersignature bool,
 		Key:                      key,
 		Title:                    title,
 		Body:                     body,
-		RequiresCountersignature: requiresCountersignature,
+		RequiresCountersignature: RequiresPractitionerSignature(key),
 		Version:                  1,
 		Active:                   true,
 		CreatedAt:                now,
@@ -127,9 +135,7 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 			a.Version++
 		}
 	}
-	if p.RequiresCountersignature != nil {
-		a.RequiresCountersignature = *p.RequiresCountersignature
-	}
+	a.RequiresCountersignature = RequiresPractitionerSignature(a.Key)
 	if p.CollectionID != nil {
 		a.CollectionID = strings.TrimSpace(*p.CollectionID)
 	}
@@ -146,16 +152,16 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 // signature — and is never normalised or corrected to the name on the
 // account, which is stored alongside it so the two can be compared later.
 type Signature struct {
-	ID                       string
-	AgreementID              string
-	AgreementKey             string
-	AgreementTitle           string
-	AgreementVersion         int
+	ID               string
+	AgreementID      string
+	AgreementKey     string
+	AgreementTitle   string
+	AgreementVersion int
 	/** The wording as it stood when this was signed. Snapshotted, not
 	 * looked up: an agreement edited later must not silently change what a
 	 * past signatory is recorded as having accepted. */
-	AgreementBody            string
-	ClientID                 string
+	AgreementBody string
+	ClientID      string
 	/** The name on the account when the signature was given. */
 	ClientName               string
 	ClientEmail              string
@@ -193,6 +199,9 @@ func NewCollection(practitionerID, key, title, description string, agreementIDs 
 
 // Countersign records the practitioner countersigning the agreement.
 func (s Signature) Countersign(practitionerName string, now time.Time) (Signature, error) {
+	if !RequiresPractitionerSignature(s.AgreementKey) {
+		return s, ErrCountersignatureNotRequired
+	}
 	if s.PractitionerSignedAt != nil {
 		return s, ErrAlreadyCountersigned
 	}
@@ -228,7 +237,7 @@ func (a Agreement) Sign(clientID, clientName, clientEmail, signedName, bookingID
 		ClientName:               strings.TrimSpace(clientName),
 		ClientEmail:              strings.TrimSpace(clientEmail),
 		SignedName:               signedName,
-		RequiresCountersignature: a.RequiresCountersignature,
+		RequiresCountersignature: RequiresPractitionerSignature(a.Key),
 		BookingID:                strings.TrimSpace(bookingID),
 		SignedAt:                 now.UTC(),
 	}, nil

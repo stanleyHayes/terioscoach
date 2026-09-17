@@ -27,8 +27,9 @@ var (
 	ErrSignedNameTooLong = errors.New("that name is too long")
 
 	// Countersignature & Collections
-	ErrAlreadyCountersigned = errors.New("this agreement has already been countersigned")
-	ErrSignatureNotFound    = errors.New("signature not found")
-	ErrCollectionNotFound   = errors.New("agreement collection not found")
-	ErrInvalidCollection    = errors.New("invalid agreement collection")
+	ErrCountersignatureNotRequired = errors.New("only holistic and nurse coaching agreements require a practitioner countersignature")
+	ErrAlreadyCountersigned        = errors.New("this agreement has already been countersigned")
+	ErrSignatureNotFound           = errors.New("signature not found")
+	ErrCollectionNotFound          = errors.New("agreement collection not found")
+	ErrInvalidCollection           = errors.New("invalid agreement collection")
 )

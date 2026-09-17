@@ -165,7 +165,7 @@ type rig struct {
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	repo := newFakeRepo()
-	a, err := agreement.New("prac-1", "holistic", "Holistic Coaching Agreement", "Terms.", false, fixedNow)
+	a, err := agreement.New("prac-1", "holistic_coaching", "Holistic Coaching Agreement", "Terms.", false, fixedNow)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -493,7 +493,7 @@ func TestCountersignAgreement(t *testing.T) {
 	ctx := context.Background()
 
 	sig, err := r.svc.Sign(ctx, ports.SignRequest{
-		AgreementID: "agr-sow", ClientID: "client-1",
+		AgreementID: "agr-holistic", ClientID: "client-1",
 		ClientName: "Daniel", SignedName: "Daniel Baah",
 	})
 	if err != nil {
@@ -531,4 +531,28 @@ func indexOf(haystack, needle string) int {
 		}
 	}
 	return -1
+}
+
+func TestCountersignRejectsExistingClientOnlySignature(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+	sig, err := r.svc.Sign(ctx, ports.SignRequest{AgreementID: "agr-sow", ClientID: "client-1", SignedName: "Daniel Baah"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig.RequiresCountersignature = true
+	if _, err := r.repo.UpdateSignature(ctx, sig); err != nil {
+		t.Fatal(err)
+	}
+	_, err = r.svc.Countersign(ctx, identity.Identity{UserID: "prac-1", Role: identity.RolePractitioner}, sig.ID, "Practitioner Name")
+	if !errors.Is(err, agreement.ErrCountersignatureNotRequired) {
+		t.Fatalf("got %v", err)
+	}
+	stored, err := r.repo.SignatureByID(ctx, sig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.PractitionerSignedAt != nil {
+		t.Fatal("rejected countersignature was persisted")
+	}
 }

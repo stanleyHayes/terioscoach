@@ -65,7 +65,7 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 				Paragraph(sig.PractitionerSignedAt.Format("2 January 2006 at 15:04 MST")),
 			)
 		}
-	} else if a.RequiresCountersignature || sig.RequiresCountersignature {
+	} else if agreement.RequiresPractitionerSignature(sig.AgreementKey) {
 		blocks = append(blocks,
 			Spacer(8),
 			Label("PRACTITIONER / COACH COUNTERSIGNATURE"),

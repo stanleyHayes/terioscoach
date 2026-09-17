@@ -264,6 +264,8 @@ func mapAgreementError(err error) (apiError, bool) {
 		return apiError{http.StatusConflict, "agreement_required", err.Error()}, true
 	case errors.Is(err, agreement.ErrAgreementNotFound):
 		return apiError{http.StatusNotFound, "agreement_not_found", "agreement not found"}, true
+	case errors.Is(err, agreement.ErrCountersignatureNotRequired):
+		return apiError{http.StatusConflict, "countersignature_not_required", err.Error()}, true
 	case errors.Is(err, agreement.ErrAgreementInactive):
 		return apiError{http.StatusConflict, "agreement_inactive", "this agreement is no longer in use"}, true
 	case errors.Is(err, agreement.ErrInvalidSignedName), errors.Is(err, agreement.ErrSignedNameTooLong):

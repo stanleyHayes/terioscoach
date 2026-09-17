@@ -501,3 +501,27 @@ Owner: Codex. Done. Investigation confirmed that MediaRecorder received only the
 Recording downloads now fetch the private video and save a named blob, with pending/error states, instead of opening a cross-origin Cloudinary URL in a new tab. Cloudinary's download endpoint was checked for cross-origin response support. Existing recordings retain their original captured content; missing practitioner footage cannot be reconstructed.
 
 Verification: admin 463 tests and portal 291 tests passed; both app lint/build checks passed. Recording-service and Cloudinary Go tests passed. A real Chromium MediaRecorder test encoded two distinct participant sources, played the resulting file, verified both tile colors, and confirmed cleanup leaves original call tracks live. The production admin client-record screen downloaded a named MP4 without navigation or a new tab using isolated API/media fixtures. No live client recording was read or modified.
+
+
+## 2026-09-17 — Terios updates (1).pdf: sequential delivery
+
+Work order: implement one numbered source item, verify it, commit and push it before starting the next. Earlier broad platform commits do not count as verification of this PDF.
+
+| Source item | Requirement | Status / evidence |
+|---|---|---|
+| Agreements 1 | Only holistic/nurse coaching agreements require practitioner countersignatures | Done in code; verified before commit. Domain rejects other document types; API responses and MongoDB reads correct legacy flags without rewriting signed wording or existing signatures; new signatures and PDF pending blocks follow the same policy. Full API suite passed; all eight document types covered by domain, API response, persistence-read, PDF and admin component checks. Admin test lint passed. Live deployment verification remains pending. |
+| Agreements 2 | Statement of Work is a fill-in document, no signature | Not started in this sequence |
+| Agreements 3 | Fix practitioner countersign submission error | Not started in this sequence |
+| Agreements 4 | Verify agreement email notifications and timing | Not started in this sequence |
+| Agreements 5 | Add Terios logo to document letterhead | Not started in this sequence |
+| Agreements 6 | User-friendly rich-text agreement editor | Not started in this sequence |
+| Agreements 7 | Exact document-specific client/practitioner/guardian blocks | Not started in this sequence |
+| Recording 1 | Clear downloading state after practitioner download | Not started in this sequence |
+| Recording 2 | Fix client recording download | Not started in this sequence |
+| Forms 1 | Email client on assignment and practitioner on submission | Not started in this sequence |
+| Calendar 1 | Admin booked-session timezone selection | Not started in this sequence |
+| Calendar 2 | Practitioner availability timezone and automatic conversions | Not started in this sequence |
+| Calendar 3 | Verify portal slots across timezones | Not started in this sequence |
+| Calendar 4 | Show today's remaining available times | Not started in this sequence |
+| 48-hour window 1 | Practitioner-reviewed cancellation/reschedule requests with email | Not started in this sequence |
+| In-app Notification 1 | Notifications for client and practitioner activity | Not started in this sequence |
