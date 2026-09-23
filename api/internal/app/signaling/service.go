@@ -25,12 +25,13 @@ const ticketBytes = 32
 
 // Service authorizes video sessions.
 type Service struct {
-	bookings ports.BookingRepository
-	tickets  ports.TicketStore
-	policy   domain.JoinPolicy
-	ice      ports.ICEProvider
-	log      func(error)
-	now      func() time.Time
+	readiness ports.BookingReadiness
+	bookings  ports.BookingRepository
+	tickets   ports.TicketStore
+	policy    domain.JoinPolicy
+	ice       ports.ICEProvider
+	log       func(error)
+	now       func() time.Time
 }
 
 // Compile-time check: Service satisfies the inbound port.
@@ -38,6 +39,7 @@ var _ ports.SignalingService = (*Service)(nil)
 
 // Options configure a Service.
 type Options struct {
+	Readiness ports.BookingReadiness
 	// Policy is the room's opening hours relative to the appointment.
 	Policy domain.JoinPolicy
 	// ICE supplies the STUN/TURN servers handed to the browser. It is a
@@ -56,12 +58,13 @@ func NewService(bookings ports.BookingRepository, tickets ports.TicketStore, opt
 		report = func(error) {}
 	}
 	return &Service{
-		bookings: bookings,
-		tickets:  tickets,
-		policy:   opts.Policy,
-		ice:      opts.ICE,
-		log:      report,
-		now:      func() time.Time { return time.Now().UTC() },
+		readiness: opts.Readiness,
+		bookings:  bookings,
+		tickets:   tickets,
+		policy:    opts.Policy,
+		ice:       opts.ICE,
+		log:       report,
+		now:       func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -79,6 +82,11 @@ func (s *Service) Authorize(ctx context.Context, id identity.Identity, bookingID
 	room, err := domain.Authorize(b, id, s.policy, s.now())
 	if err != nil {
 		return ports.SessionAccess{}, err
+	}
+	if s.readiness != nil {
+		if err := s.readiness.RequireBookingReady(ctx, b.ID); err != nil {
+			return ports.SessionAccess{}, err
+		}
 	}
 	role, ok := domain.RoleFor(b, id)
 	if !ok {
@@ -160,6 +168,11 @@ func (s *Service) RedeemTicket(ctx context.Context, value, bookingID string) (do
 	room, err := domain.Authorize(b, id, s.policy, s.now())
 	if err != nil {
 		return domain.Room{}, domain.Participant{}, err
+	}
+	if s.readiness != nil {
+		if err := s.readiness.RequireBookingReady(ctx, b.ID); err != nil {
+			return domain.Room{}, domain.Participant{}, err
+		}
 	}
 	role, ok := domain.RoleFor(b, id)
 	if !ok {

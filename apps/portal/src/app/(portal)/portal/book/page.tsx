@@ -1,33 +1,44 @@
 "use client";
+import { ParticipantFields } from "@/components/booking/ParticipantFields";
+import type { Participant } from "@/lib/bookings";
+import { TimezonePreference } from "@/components/ui/TimezonePreference";
 
-import { ArrowLeft, ArrowUpRight, Check, CircleAlert, Clock3, ListChecks } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  CircleAlert,
+  Clock3,
+  ListChecks,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { SlotPicker } from "@/components/booking/SlotPicker";
 import { bookingStatusMeta } from "@/components/booking/booking-status";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ApiError, listServices, type ServiceSummary } from "@/lib/api";
+import {
+  ApiError,
+  authedRequest,
+  listServices,
+  type ServiceSummary,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { createBooking, type Booking, type Slot } from "@/lib/bookings";
 import { paymentsApi } from "@/lib/portal";
 import {
-  browserTimeZone,
   formatDuration,
   formatMoney,
   formatSessionDate,
   formatTimeRange,
   gmtOffsetLabel,
-  supportedTimeZoneOptions,
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { agreementsApi, type AgreementStatus, type StatementOfWork } from "@/lib/agreements";
-import { AgreementStep } from "@/components/portal/AgreementStep";
+import type { Agreement } from "@/lib/agreements";
 
 /**
  * Booking flow (WEB-09) — portal-side, guest-friendly.
@@ -40,25 +51,13 @@ import { AgreementStep } from "@/components/portal/AgreementStep";
  * webhook. Free services are confirmed immediately without opening Stripe.
  */
 
-type Step = "service" | "time" | "agreement" | "review" | "done";
+type Step = "service" | "time" | "review" | "done";
 
 const stepTitles: Record<Exclude<Step, "done">, string> = {
   service: "Choose your service",
   time: "Pick a time",
-  agreement: "Read and sign",
   review: "Review your booking",
 };
-
-/**
- * The agreement is a conditional step, so the numbering is computed rather
- * than fixed: a client booking a service that needs no agreement should see
- * "Step 3 of 3" on review, not "Step 4 of 4" with one silently skipped.
- */
-function stepSequence(needsAgreement: boolean): Exclude<Step, "done">[] {
-  return needsAgreement
-    ? ["service", "time", "agreement", "review"]
-    : ["service", "time", "review"];
-}
 
 /** Brand-voice copy for create-booking failures (say what happened, no blame). */
 function confirmErrorMessage(error: unknown): string {
@@ -75,16 +74,24 @@ function BookingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, session, user, onTokensRefreshed } = useAuth();
-  const [tz, setTz] = useState(() => searchParams.get("tz") || browserTimeZone());
-  const timeZoneOptions = useMemo(() => supportedTimeZoneOptions(tz), [tz]);
+  const tz = user?.timezone ?? "UTC";
+  const [participant, setParticipant] = useState<Participant>({
+    name: "",
+    under18: false,
+    accurate: false,
+  });
 
+  const [guardianConsent, setGuardianConsent] = useState<Agreement | null>(
+    null,
+  );
+  const [guardianSignature, setGuardianSignature] = useState("");
+  const [guardianAcknowledged, setGuardianAcknowledged] = useState(false);
   const [services, setServices] = useState<ServiceSummary[] | null>(null);
   const [servicesError, setServicesError] = useState(false);
   const [step, setStep] = useState<Step>("service");
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [conflictStartAt, setConflictStartAt] = useState<string | null>(null);
-  const [agreement, setAgreement] = useState<AgreementStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -94,6 +101,24 @@ function BookingFlow() {
   const [checkoutDeferred, setCheckoutDeferred] = useState(false);
   const initializedRef = useRef(false);
 
+  useEffect(() => {
+    if (!session || !serviceId || !participant.under18) return;
+    let cancelled = false;
+    authedRequest<{ agreement: Agreement }>(
+      `/v1/services/${serviceId}/guardian-consent`,
+      session,
+      { onTokensRefreshed },
+    )
+      .then(({ agreement }) => {
+        if (!cancelled) setGuardianConsent(agreement);
+      })
+      .catch(() => {
+        if (!cancelled) setGuardianConsent(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, serviceId, participant.under18, onTokensRefreshed]);
   /* Live catalog — same source as the marketing pages. */
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +138,7 @@ function BookingFlow() {
 
   /* Restore state from the URL once the catalog is in: ?service= preselects
    * (work-with-me "Choose" links), ?service=&slot= restores after the login
-   * round trip and jumps straight to review. */
+   * round trip and asks for participant details before review. */
   // Runs once, on the first render where the catalogue has loaded — a
   // link with ?service=&slot= has to be applied after the services it
   // refers to exist, and the ref makes it strictly one-shot.
@@ -128,7 +153,11 @@ function BookingFlow() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setServiceId(match.id);
-    if (slotParam && !Number.isNaN(new Date(slotParam).getTime())) {
+    if (
+      slotParam &&
+      /T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(slotParam) &&
+      !Number.isNaN(new Date(slotParam).getTime())
+    ) {
       const startAt = new Date(slotParam).toISOString();
       setSlot({
         startAt,
@@ -136,7 +165,7 @@ function BookingFlow() {
           new Date(startAt).getTime() + match.durationMinutes * 60 * 1000,
         ).toISOString(),
       });
-      setStep("review");
+      setStep("time");
     } else {
       setStep("time");
     }
@@ -147,84 +176,7 @@ function BookingFlow() {
     setSlot(null);
     setConflictStartAt(null);
     setSubmitError(null);
-    setAgreement(null);
     setStep("time");
-  }
-
-  // Whether an agreement stands in the way is asked as soon as a service and
-  // a session exist, so the step can be shown before the client commits to
-  // anything — and the same question is asked again by the API when the
-  // booking is created, which is the check that actually decides.
-  useEffect(() => {
-    if (!serviceId || status !== "authenticated" || !session) return;
-    let cancelled = false;
-    agreementsApi
-      .forService(session, { onTokensRefreshed }, serviceId)
-      .then((value) => {
-        if (!cancelled) setAgreement(value);
-      })
-      .catch(() => {
-        // A failure here must not block the flow: the API refuses the
-        // booking anyway if an agreement is outstanding.
-        if (!cancelled) setAgreement(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [serviceId, session, status, onTokensRefreshed]);
-
-  const needsAgreement = Boolean(agreement?.required && !agreement.signed);
-
-  const unsignedAgreements = useMemo(() => {
-    if (!agreement?.required || agreement.signed) return [];
-    if (agreement.agreements && agreement.agreements.length > 0) {
-      return agreement.agreements.filter(
-        (a) => a.required && !a.signed && a.agreement,
-      );
-    }
-    if (agreement.agreement && !agreement.signed) {
-      return [agreement];
-    }
-    return [];
-  }, [agreement]);
-
-  const totalAgreementsCount =
-    agreement?.agreements && agreement.agreements.length > 0
-      ? agreement.agreements.length
-      : agreement?.agreement
-        ? 1
-        : 0;
-  const signedAgreementsCount = Math.max(
-    0,
-    totalAgreementsCount - unsignedAgreements.length,
-  );
-  const currentUnsigned = unsignedAgreements[0] ?? null;
-
-  async function submitStatementOfWork(answers: StatementOfWork) {
-    if (!currentUnsigned?.agreement || !session || !serviceId) return;
-    await agreementsApi.submitStatementOfWork(session, { onTokensRefreshed }, currentUnsigned.agreement.id, answers);
-    const updated = await agreementsApi.forService(session, { onTokensRefreshed }, serviceId);
-    setAgreement(updated);
-    if (!updated.required || updated.signed) setStep("review");
-  }
-
-  async function signAgreement(signedName: string) {
-    if (!currentUnsigned?.agreement || !session || !serviceId) return;
-    await agreementsApi.sign(
-      session,
-      { onTokensRefreshed },
-      currentUnsigned.agreement.id,
-      signedName,
-    );
-    const updated = await agreementsApi.forService(
-      session,
-      { onTokensRefreshed },
-      serviceId,
-    );
-    setAgreement(updated);
-    if (!updated.required || updated.signed) {
-      setStep("review");
-    }
   }
 
   async function handleConfirm() {
@@ -239,15 +191,49 @@ function BookingFlow() {
       return;
     }
 
+    if (!user?.timezone || !participant.accurate || !participant.name.trim()) {
+      setSubmitError("Choose your timezone and confirm participant details.");
+      return;
+    }
     setSubmitting(true);
     try {
       const created = await createBooking(
         session,
         { onTokensRefreshed },
-        { serviceId: service.id, startAt: slot.startAt, tz },
+        { serviceId: service.id, startAt: slot.startAt, tz, participant },
       );
       setBooking(created);
       setStep("done");
+      if (
+        participant.under18 &&
+        guardianConsent &&
+        guardianAcknowledged &&
+        guardianSignature.trim().length >= 2
+      ) {
+        try {
+          await authedRequest(
+            `/v1/agreements/${guardianConsent.id}/sign`,
+            session,
+            { onTokensRefreshed },
+            {
+              method: "POST",
+              body: {
+                bookingId: created.id,
+                agreementVersion: guardianConsent.version,
+                signerRole: "guardian",
+                consentVersion: `guardian_consent:v${guardianConsent.version}`,
+                acknowledged: guardianAcknowledged,
+                signedName: guardianSignature,
+              },
+            },
+          );
+        } catch {
+          setSubmitError(
+            "The appointment request was saved, but guardian consent still needs signing. Open Required documents before your session.",
+          );
+          return;
+        }
+      }
 
       // Paid services remain pending and non-blocking until Stripe's verified
       // webhook confirms them. If checkout cannot open, the client can retry
@@ -268,30 +254,7 @@ function BookingFlow() {
         }
       }
     } catch (error) {
-      // The API holds the real gate. If it refuses for want of a signature
-      // — a stale status, or a second tab — send the client to the step
-      // rather than showing them an error they cannot act on.
-      if (error instanceof ApiError && error.code === "agreement_required") {
-        if (session) {
-          try {
-            const status = await agreementsApi.forService(
-              session,
-              { onTokensRefreshed },
-              service.id,
-            );
-            setAgreement(status);
-            if (status.agreement && !status.signed) {
-              setStep("agreement");
-              return;
-            }
-          } catch {
-            // Fall through to the message below.
-          }
-        }
-        setSubmitError(
-          "This service needs a signed agreement before it can be booked.",
-        );
-      } else if (error instanceof ApiError && error.code === "slot_unavailable") {
+      if (error instanceof ApiError && error.code === "slot_unavailable") {
         // Lost the race — back to the picker, which flags the taken chip and
         // refreshes its slots.
         setConflictStartAt(slot.startAt);
@@ -315,10 +278,14 @@ function BookingFlow() {
           The service menu didn&rsquo;t load
         </h1>
         <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-          Something interrupted the connection on our side. Try again in a moment.
+          Something interrupted the connection on our side. Try again in a
+          moment.
         </p>
         <div className="mt-6">
-          <Link href="/portal/book" className="text-sm font-medium text-primary hover:text-primary-hover">
+          <Link
+            href="/portal/book"
+            className="text-sm font-medium text-primary hover:text-primary-hover"
+          >
             Try again
           </Link>
         </div>
@@ -331,7 +298,11 @@ function BookingFlow() {
       <div role="status" aria-busy="true" className="flex flex-col gap-4">
         <span className="sr-only">Loading the service menu…</span>
         {[0, 1, 2].map((index) => (
-          <span key={index} aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
+          <span
+            key={index}
+            aria-hidden="true"
+            className="h-24 rounded-lg bg-surface-sunken"
+          />
         ))}
       </div>
     );
@@ -344,8 +315,15 @@ function BookingFlow() {
         <Card>
           <div className="flex flex-col items-center py-4 text-center">
             <Badge tone={meta.tone}>{meta.label}</Badge>
+            {submitError && (
+              <p role="alert" className="mt-4 text-danger-ink">
+                {submitError}
+              </p>
+            )}
             <h1 className="mt-4 font-display text-[2rem] leading-[1.15] font-medium tracking-[-0.01em] text-ink">
-              {booking.status === "pending_payment" ? "Payment required" : "You’re booked"}
+              {booking.status === "pending_payment"
+                ? "Payment required"
+                : "You’re booked"}
             </h1>
             <p className="mt-3 text-base leading-[1.6] text-ink-muted">
               {service.name}
@@ -370,20 +348,30 @@ function BookingFlow() {
                 role="status"
                 className="mt-4 max-w-[48ch] rounded-md bg-warning-bg px-4 py-3 text-sm leading-[1.55] text-warning-ink"
               >
-                We couldn&rsquo;t open the payment page just now. This time is not
-                booked yet — open Payments to try again.
+                We couldn&rsquo;t open the payment page just now. This time is
+                not booked yet — open Payments to try again.
               </p>
             ) : null}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
+                href={`/portal/sessions/${booking.id}/documents`}
+                className={buttonClasses({})}
+              >
+                Complete required documents
+              </Link>
+              <Link
                 href="/portal/payments"
-                className={buttonClasses({ variant: checkoutDeferred ? "primary" : "secondary" })}
+                className={buttonClasses({
+                  variant: checkoutDeferred ? "primary" : "secondary",
+                })}
               >
                 {checkoutDeferred ? "Pay for this session" : "View payments"}
               </Link>
               <Link
                 href="/portal"
-                className={buttonClasses({ variant: checkoutDeferred ? "secondary" : "primary" })}
+                className={buttonClasses({
+                  variant: checkoutDeferred ? "secondary" : "primary",
+                })}
               >
                 View in your portal
               </Link>
@@ -395,11 +383,17 @@ function BookingFlow() {
   }
 
   const currentStep = step as Exclude<Step, "done">;
-  const sequence = stepSequence(needsAgreement);
-  const stepNumber = Math.max(1, sequence.indexOf(currentStep) + 1);
+  const sequence = ["service", "time", "review"] as const;
+  const stepNumber = Math.max(
+    1,
+    (sequence as readonly string[]).indexOf(currentStep) + 1,
+  );
 
   return (
-    <div data-portal-page="booking" className="animate-fade-in flex flex-col gap-8">
+    <div
+      data-portal-page="booking"
+      className="animate-fade-in flex flex-col gap-8"
+    >
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
           Book a session · Step {stepNumber} of {sequence.length}
@@ -429,52 +423,73 @@ function BookingFlow() {
         ) : (
           <ul className="flex flex-col gap-4">
             {services.map((item, index) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={item.id === serviceId}
-                onClick={() => chooseService(item)}
-                className={cn(
-                  "terios-choice-card group relative grid w-full overflow-hidden border text-left lg:grid-cols-[14rem_minmax(0,1fr)_auto]",
-                  item.id === serviceId
-                    ? "is-selected border-eucalyptus-800 bg-eucalyptus-900 text-sand-0"
-                    : "border-border/80 bg-surface-raised text-ink",
-                )}
-              >
-                <span className="relative aspect-[16/10] overflow-hidden bg-eucalyptus-50 lg:aspect-auto lg:min-h-52" aria-hidden="true">
-                  {item.imageUrl ? <Image src={item.imageUrl} alt="" fill unoptimized={item.imageUrl.startsWith("http")} sizes="(min-width: 1024px) 224px, 94vw" className="object-cover object-center" /> : null}
-                  <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-950/70 px-2 py-1 font-mono text-[10px] text-sand-0">{String(index + 1).padStart(2, "0")}</span>
-                </span>
-                <span className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
-                  <span className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary group-[.is-selected]:text-eucalyptus-200">
-                      One-to-one care
+              <li key={item.id}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={item.id === serviceId}
+                  onClick={() => chooseService(item)}
+                  className={cn(
+                    "terios-choice-card group relative grid w-full overflow-hidden border text-left lg:grid-cols-[14rem_minmax(0,1fr)_auto]",
+                    item.id === serviceId
+                      ? "is-selected border-eucalyptus-800 bg-eucalyptus-900 text-sand-0"
+                      : "border-border/80 bg-surface-raised text-ink",
+                  )}
+                >
+                  <span
+                    className="relative aspect-[16/10] overflow-hidden bg-eucalyptus-50 lg:aspect-auto lg:min-h-52"
+                    aria-hidden="true"
+                  >
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt=""
+                        fill
+                        unoptimized={item.imageUrl.startsWith("http")}
+                        sizes="(min-width: 1024px) 224px, 94vw"
+                        className="object-cover object-center"
+                      />
+                    ) : null}
+                    <span className="absolute left-3 top-3 rounded-full bg-eucalyptus-950/70 px-2 py-1 font-mono text-[10px] text-sand-0">
+                      {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="h-px w-8 bg-eucalyptus-200" aria-hidden="true" />
                   </span>
-                  <span className="mt-3 block font-display text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">
-                    {item.name}
+                  <span className="min-w-0 px-5 py-5 sm:px-6 sm:py-7">
+                    <span className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary group-[.is-selected]:text-eucalyptus-200">
+                        One-to-one care
+                      </span>
+                      <span
+                        className="h-px w-8 bg-eucalyptus-200"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span className="mt-3 block font-display text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">
+                      {item.name}
+                    </span>
+                    <span className="mt-2 block max-w-[56ch] text-sm leading-[1.55] text-ink-muted group-[.is-selected]:text-eucalyptus-100">
+                      {item.description}
+                    </span>
+                    <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink-muted group-[.is-selected]:bg-white/10 group-[.is-selected]:text-sand-100">
+                      <Clock3 size={14} aria-hidden="true" />
+                      {formatDuration(item.durationMinutes)}
+                    </span>
                   </span>
-                  <span className="mt-2 block max-w-[56ch] text-sm leading-[1.55] text-ink-muted group-[.is-selected]:text-eucalyptus-100">
-                    {item.description}
+                  <span className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 lg:flex-col lg:items-end lg:justify-between lg:border-t-0 lg:border-l lg:px-6 lg:py-7 group-[.is-selected]:border-white/15">
+                    <span className="font-display text-xl font-medium tabular-nums">
+                      {formatMoney(item.priceKobo, item.currency)}
+                    </span>
+                    <span className="terios-choice-action">
+                      <span className="sr-only">Choose {item.name}</span>
+                      {item.id === serviceId ? (
+                        <Check size={16} aria-hidden="true" />
+                      ) : (
+                        <ArrowUpRight size={16} aria-hidden="true" />
+                      )}
+                    </span>
                   </span>
-                  <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink-muted group-[.is-selected]:bg-white/10 group-[.is-selected]:text-sand-100">
-                    <Clock3 size={14} aria-hidden="true" />
-                    {formatDuration(item.durationMinutes)}
-                  </span>
-                </span>
-                <span className="flex items-center justify-between gap-5 border-t border-border/70 px-5 py-4 lg:flex-col lg:items-end lg:justify-between lg:border-t-0 lg:border-l lg:px-6 lg:py-7 group-[.is-selected]:border-white/15">
-                  <span className="font-display text-xl font-medium tabular-nums">
-                    {formatMoney(item.priceKobo, item.currency)}
-                  </span>
-                  <span className="terios-choice-action">
-                    <span className="sr-only">Choose {item.name}</span>
-                    {item.id === serviceId ? <Check size={16} aria-hidden="true" /> : <ArrowUpRight size={16} aria-hidden="true" />}
-                  </span>
-                </span>
-              </button>
-            </li>
+                </button>
+              </li>
             ))}
           </ul>
         )
@@ -489,15 +504,23 @@ function BookingFlow() {
             </span>
             {formatDuration(service.durationMinutes)}
           </p>
-          <BrandedSelect
-            label="Show available times in"
-            value={tz}
+          <ParticipantFields
+            value={participant}
             onChange={(next) => {
-              setTz(next);
+              setParticipant(next);
+              setGuardianAcknowledged(false);
+            }}
+            consentBody={guardianConsent?.body}
+            signature={guardianSignature}
+            onSignature={setGuardianSignature}
+            acknowledged={guardianAcknowledged}
+            onAcknowledged={setGuardianAcknowledged}
+          />
+          <TimezonePreference
+            onSaved={() => {
               setSlot(null);
               setConflictStartAt(null);
             }}
-            options={timeZoneOptions}
           />
           <SlotPicker
             serviceId={service.id}
@@ -512,8 +535,13 @@ function BookingFlow() {
               Back to services
             </Button>
             <Button
-              disabled={!slot}
-              onClick={() => setStep(needsAgreement ? "agreement" : "review")}
+              disabled={
+                !slot ||
+                !user?.timezone ||
+                !participant.accurate ||
+                !participant.name.trim()
+              }
+              onClick={() => setStep("review")}
             >
               Continue
             </Button>
@@ -521,31 +549,13 @@ function BookingFlow() {
         </div>
       ) : null}
 
-      {step === "agreement" && currentUnsigned?.agreement ? (
-        <div className="mx-auto w-full max-w-[720px]">
-          <AgreementStep
-            agreement={currentUnsigned.agreement}
-            clientName={user?.name ?? ""}
-            stepInfo={
-              totalAgreementsCount > 1
-                ? {
-                    current: signedAgreementsCount + 1,
-                    total: totalAgreementsCount,
-                  }
-                : undefined
-            }
-            onSigned={signAgreement}
-            onSubmitted={submitStatementOfWork}
-            onBack={() => setStep("time")}
-          />
-        </div>
-      ) : null}
-
       {step === "review" && service && slot ? (
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-6">
           <Card className="terios-booking-summary p-0">
             <div className="border-b border-border/70 bg-eucalyptus-50 px-6 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">Your care plan</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+                Your care plan
+              </p>
             </div>
             <dl className="flex flex-col gap-4 p-6">
               <div className="flex items-baseline justify-between gap-4">
@@ -587,7 +597,11 @@ function BookingFlow() {
               role="alert"
               className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
             >
-              <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <CircleAlert
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0"
+              />
               {submitError}
             </div>
           ) : null}
@@ -607,7 +621,9 @@ function BookingFlow() {
             {/* Paid services request the time and hand off to Stripe; only
                 the verified webhook confirms and reserves the slot. */}
             <Button loading={submitting} onClick={handleConfirm}>
-              {service.priceKobo > 0 ? "Continue to payment" : "Confirm booking"}
+              {service.priceKobo > 0
+                ? "Continue to payment"
+                : "Confirm booking"}
             </Button>
           </div>
         </div>
@@ -622,8 +638,14 @@ export default function BookPage() {
       fallback={
         <div role="status" className="flex flex-col gap-4">
           <span className="sr-only">Loading booking…</span>
-          <span aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
-          <span aria-hidden="true" className="h-24 rounded-lg bg-surface-sunken" />
+          <span
+            aria-hidden="true"
+            className="h-24 rounded-lg bg-surface-sunken"
+          />
+          <span
+            aria-hidden="true"
+            className="h-24 rounded-lg bg-surface-sunken"
+          />
         </div>
       }
     >

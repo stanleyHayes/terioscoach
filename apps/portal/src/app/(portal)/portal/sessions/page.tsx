@@ -14,7 +14,11 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatBytes, recordingsApi, type SessionRecording } from "@/lib/portal";
+import {
+  formatBytes,
+  recordingsApi,
+  type SessionRecording,
+} from "@/lib/portal";
 import {
   cutoffPassed,
   requestCancelBooking,
@@ -24,7 +28,6 @@ import {
   type Slot,
 } from "@/lib/bookings";
 import {
-  browserTimeZone,
   formatSessionDate,
   formatTimeOfDay,
   gmtOffsetLabel,
@@ -54,13 +57,13 @@ function actionErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function SessionsPage() {
-  const { session, onTokensRefreshed } = useAuth();
-  const timeZone = useMemo(() => browserTimeZone(), []);
-  const { bookings, servicesById, error, refresh } = useMyBookings();
+  const { session, user, onTokensRefreshed } = useAuth();
+  const timeZone = user?.timezone ?? "UTC";
+  const { now, bookings, servicesById, error, refresh } = useMyBookings();
 
-  const { upcoming, past } = useMemo(
-    () => splitBookings(bookings ?? []),
-    [bookings],
+  const { upcoming, pending, inProgress, past } = useMemo(
+    () => splitBookings(bookings ?? [], now),
+    [bookings, now],
   );
 
   // Reschedule modal state.
@@ -92,12 +95,19 @@ export default function SessionsPage() {
     setRescheduleError(null);
     setReschedulingBusy(true);
     try {
-      await requestRescheduleBooking(session, { onTokensRefreshed }, rescheduling.id, {
-        startAt: newSlot.startAt,
-        tz: timeZone,
-      });
+      await requestRescheduleBooking(
+        session,
+        { onTokensRefreshed },
+        rescheduling.id,
+        {
+          startAt: newSlot.startAt,
+          tz: timeZone,
+        },
+      );
       setRescheduling(null);
-      setNotice("Your reschedule request has been sent. Your session stays at its current time until the practitioner confirms a change.");
+      setNotice(
+        "Your reschedule request has been sent. Your session stays at its current time until the practitioner confirms a change.",
+      );
     } catch (error) {
       if (error instanceof ApiError && error.code === "slot_unavailable") {
         // Lost the race — the picker flags the taken chip and refreshes.
@@ -125,13 +135,20 @@ export default function SessionsPage() {
     setCancelError(null);
     setCancelBusy(true);
     try {
-      await requestCancelBooking(session, { onTokensRefreshed }, cancelling.id, {
-        reason: cancelReason.trim(),
-        tz: timeZone,
-      });
+      await requestCancelBooking(
+        session,
+        { onTokensRefreshed },
+        cancelling.id,
+        {
+          reason: cancelReason.trim(),
+          tz: timeZone,
+        },
+      );
       setCancelling(null);
       setCancelReason("");
-      setNotice("Your cancellation request has been sent. Your session remains booked until the practitioner reviews it.");
+      setNotice(
+        "Your cancellation request has been sent. Your session remains booked until the practitioner reviews it.",
+      );
     } catch (error) {
       setCancelError(
         actionErrorMessage(
@@ -203,6 +220,79 @@ export default function SessionsPage() {
         </Card>
       ) : (
         <>
+          {bookings &&
+            bookings.some(
+              (b) => b.status === "pending_payment" || b.status === "confirmed",
+            ) && (
+              <Card>
+                <h2 className="font-semibold">Prepare for your sessions</h2>
+                <ul>
+                  {bookings
+                    .filter(
+                      (b) =>
+                        b.status === "pending_payment" ||
+                        b.status === "confirmed",
+                    )
+                    .map((b) => (
+                      <li key={b.id}>
+                        <Link
+                          className="text-primary underline"
+                          href={`/portal/sessions/${b.id}/documents`}
+                        >
+                          {servicesById.get(b.serviceId)?.name ?? "Session"} —
+                          participant details and required documents
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              </Card>
+            )}
+          {pending.length > 0 && (
+            <section className="space-y-4" aria-label="Awaiting payment">
+              <h2 className="font-display text-2xl">Awaiting payment</h2>
+              <p className="text-sm text-ink-muted">
+                These requests are not confirmed. Complete checkout from your
+                payments page.
+              </p>
+              {pending.map((booking) => (
+                <SessionRow
+                  key={booking.id}
+                  booking={booking}
+                  serviceName={servicesById.get(booking.serviceId)?.name}
+                  timeZone={timeZone}
+                  actions={
+                    <Link
+                      href="/portal/payments"
+                      className={buttonClasses({ size: "sm" })}
+                    >
+                      Review payment
+                    </Link>
+                  }
+                />
+              ))}
+            </section>
+          )}
+          {inProgress.length > 0 && (
+            <section className="space-y-4" aria-label="In progress">
+              <h2 className="font-display text-2xl">In progress</h2>
+              {inProgress.map((booking) => (
+                <SessionRow
+                  key={booking.id}
+                  booking={booking}
+                  serviceName={servicesById.get(booking.serviceId)?.name}
+                  timeZone={timeZone}
+                  actions={
+                    <Link
+                      href={`/portal/sessions/${booking.id}/room`}
+                      className={buttonClasses({ size: "sm" })}
+                    >
+                      Join video room
+                    </Link>
+                  }
+                />
+              ))}
+            </section>
+          )}
           <section
             aria-labelledby="upcoming-heading"
             className="flex flex-col gap-4"
@@ -232,7 +322,7 @@ export default function SessionsPage() {
             ) : (
               <ul className="flex flex-col gap-4">
                 {upcoming.map((booking) => {
-                  const locked = cutoffPassed(booking.startAt);
+                  const locked = cutoffPassed(booking.startAt, now);
                   return (
                     <li key={booking.id}>
                       <SessionRow
@@ -241,6 +331,15 @@ export default function SessionsPage() {
                         timeZone={timeZone}
                         actions={
                           <>
+                            <Link
+                              href={`/portal/sessions/${booking.id}/documents`}
+                              className={buttonClasses({
+                                size: "sm",
+                                variant: "secondary",
+                              })}
+                            >
+                              Required documents
+                            </Link>
                             {/* The room enforces its own opening hours;
                                 this link is always offered so a client is
                                 told *why* rather than finding no way in. */}
@@ -408,12 +507,16 @@ export default function SessionsPage() {
             <p className="text-sm leading-[1.55] text-ink-muted">
               Your {formatSessionDate(cancelling.startAt, timeZone)} session at{" "}
               {formatTimeOfDay(cancelling.startAt, timeZone)} (
-              {gmtOffsetLabel(timeZone, new Date(cancelling.startAt))}) will stay
-              booked while the practitioner reviews your cancellation request.
+              {gmtOffsetLabel(timeZone, new Date(cancelling.startAt))}) will
+              stay booked while the practitioner reviews your cancellation
+              request.
             </p>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium tracking-[0.005em] text-ink">
-                Reason <span aria-hidden="true" className="text-accent">*</span>
+                Reason{" "}
+                <span aria-hidden="true" className="text-accent">
+                  *
+                </span>
                 <span className="sr-only"> (required)</span>
               </span>
               <textarea

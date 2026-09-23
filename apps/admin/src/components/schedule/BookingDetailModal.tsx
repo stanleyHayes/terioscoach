@@ -1,13 +1,15 @@
 "use client";
+import { useAuth } from "@/lib/auth";
+import { authedRequest } from "@/lib/api";
 
 import Link from "next/link";
 
-
 import { CircleAlert } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { TextInput } from "@/components/ui/TextInput";
 import { ApiError } from "@/lib/api";
 import {
@@ -19,6 +21,7 @@ import {
   parseTimeInput,
   timezoneShortName,
   wallClockToUtcIso,
+  wallClockCandidates,
   zonedParts,
   type Booking,
 } from "@/lib/schedule";
@@ -46,6 +49,7 @@ export type RescheduleHandler = (
 ) => Promise<Booking>;
 
 const STATUS_LABEL: Record<Booking["status"], string> = {
+  pending_payment: "Awaiting payment",
   confirmed: "Confirmed",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -53,6 +57,7 @@ const STATUS_LABEL: Record<Booking["status"], string> = {
 };
 
 const STATUS_BADGE: Record<Booking["status"], BadgeVariant> = {
+  pending_payment: "warning",
   confirmed: "success",
   completed: "neutral",
   cancelled: "danger",
@@ -83,22 +88,56 @@ export function BookingDetailModal({
   onAction: BookingActionHandler;
   onReschedule: RescheduleHandler;
 }) {
+  const { session, refreshCallbacks } = useAuth();
+  const [readiness, setReadiness] = useState("Checking session requirements…");
   // Local copy so a successful transition updates the modal in place.
   const [current, setCurrent] = useState(booking);
   const [rescheduling, setRescheduling] = useState(false);
-  const [pending, setPending] = useState<BookingAction | "reschedule" | null>(null);
+  const [pending, setPending] = useState<BookingAction | "reschedule" | null>(
+    null,
+  );
   const [actionError, setActionError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<RescheduleErrors>({});
 
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    authedRequest<{ ready: boolean; readinessMessage: string }>(
+      `/v1/bookings/${current.id}/agreements`,
+      session,
+      refreshCallbacks,
+    )
+      .then((data) => {
+        if (!cancelled)
+          setReadiness(
+            data.ready
+              ? "Ready — all required consent, documents and forms are complete"
+              : data.readinessMessage,
+          );
+      })
+      .catch(() => {
+        if (!cancelled)
+          setReadiness("Unable to check readiness. Refresh and try again.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, refreshCallbacks, current]);
+
   const start = zonedParts(current.startAt, timeZone);
   const [date, setDate] = useState(dateKey(start));
-  const [time, setTime] = useState(minutesToTimeString(start.minutesSinceMidnight));
+  const [foldInstant, setFoldInstant] = useState("");
+  const [time, setTime] = useState(
+    minutesToTimeString(start.minutesSinceMidnight),
+  );
 
-  const zoneLabel = timezoneShortName(timeZone);
+  const zoneLabel = timezoneShortName(timeZone, new Date(current.startAt));
   const isConfirmed = current.status === "confirmed";
 
   function errorMessage(error: unknown): string {
-    return error instanceof ApiError ? error.message : "Couldn't save that. Try again.";
+    return error instanceof ApiError
+      ? error.message
+      : "Couldn't save that. Try again.";
   }
 
   async function runAction(action: BookingAction) {
@@ -127,9 +166,15 @@ export function BookingDetailModal({
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const startAt = wallClockToUtcIso(date, time, timeZone);
+    const candidates = wallClockCandidates(date, time, timeZone);
+    const startAt =
+      candidates.length > 1
+        ? candidates.find((value) => value === foldInstant)
+        : wallClockToUtcIso(date, time, timeZone);
     if (!startAt) {
-      setActionError("That date and time don't work. Check both and try again.");
+      setActionError(
+        "This local time does not exist or occurs twice. Choose an explicit instant below, or select another time.",
+      );
       return;
     }
 
@@ -217,7 +262,11 @@ export function BookingDetailModal({
             role="alert"
             className="flex items-start gap-2 rounded-md bg-danger-bg px-4 py-3 text-sm leading-[1.55] text-danger-ink"
           >
-            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <CircleAlert
+              size={16}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0"
+            />
             {actionError}
           </div>
         ) : null}
@@ -242,8 +291,8 @@ export function BookingDetailModal({
           <div className="flex items-center justify-between gap-4">
             <dt className="text-ink-muted">Time</dt>
             <dd className="tabular-nums text-ink">
-              {formatTime(current.startAt, timeZone)}–{formatTime(current.endAt, timeZone)}{" "}
-              ({zoneLabel})
+              {formatTime(current.startAt, timeZone)}–
+              {formatTime(current.endAt, timeZone)} ({zoneLabel})
             </dd>
           </div>
           {current.cancelledAt ? (
@@ -270,11 +319,39 @@ export function BookingDetailModal({
 
         {!isConfirmed ? (
           <p className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
-            This booking is {STATUS_LABEL[current.status].toLowerCase()} — no further
-            actions available.
+            This booking is {STATUS_LABEL[current.status].toLowerCase()} — no
+            further actions available.
           </p>
         ) : null}
 
+        <section className="space-y-2 rounded-xl border border-border p-4">
+          <h3 className="font-semibold">Participant & consent</h3>
+          <p role="status" className="text-sm">
+            {readiness}
+          </p>
+          <p className="text-sm">
+            {current.participant
+              ? `${current.participant.name} · ${current.participant.under18 ? "Under 18 — guardian consent required" : "Adult"}`
+              : "Participant age not recorded — declaration required before session"}
+          </p>
+          <a
+            className="text-sm text-primary underline"
+            href={`/clients/${current.clientId}`}
+          >
+            Review signed documents and consent
+          </a>
+          {current.changeRequestType && (
+            <p className="text-sm">
+              Pending request: {current.changeRequestType}
+              {current.proposedStartAt
+                ? ` · ${formatTime(current.proposedStartAt, timeZone)} ${timezoneShortName(timeZone, new Date(current.proposedStartAt))}`
+                : ""}
+              {current.changeRequestReason
+                ? ` · ${current.changeRequestReason}`
+                : ""}
+            </p>
+          )}
+        </section>
         {rescheduling && isConfirmed ? (
           // noValidate: native validation bubbles are forbidden — errors are custom
           <form
@@ -315,8 +392,22 @@ export function BookingDetailModal({
               />
             </div>
             <p className="text-[13px] leading-[1.45] font-medium tracking-[0.01em] text-ink-faint">
-              The new start must match an open slot, or the booking server rejects it.
+              The new start must match an open slot, or the booking server
+              rejects it.
             </p>
+            {wallClockCandidates(date, time, timeZone).length > 1 && (
+              <BrandedSelect
+                label="This time occurs twice — choose the intended instant"
+                value={foldInstant}
+                onChange={setFoldInstant}
+                options={wallClockCandidates(date, time, timeZone).map(
+                  (value) => ({
+                    value,
+                    label: `${formatTime(value, timeZone)} ${timezoneShortName(timeZone, new Date(value))} — ${value}`,
+                  }),
+                )}
+              />
+            )}
             <div className="flex justify-end gap-3">
               <Button
                 variant="ghost"
@@ -330,7 +421,11 @@ export function BookingDetailModal({
               >
                 Back
               </Button>
-              <Button type="submit" size="sm" loading={pending === "reschedule"}>
+              <Button
+                type="submit"
+                size="sm"
+                loading={pending === "reschedule"}
+              >
                 Save new time
               </Button>
             </div>

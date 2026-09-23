@@ -27,6 +27,7 @@ func NewDocumentRepository(db *mongo.Database) *DocumentRepository {
 }
 
 type documentDoc struct {
+	ExecutionKey    string         `bson:"executionKey,omitempty"`
 	ID              bson.ObjectID  `bson:"_id,omitempty"`
 	Kind            string         `bson:"kind"`
 	ClientID        *bson.ObjectID `bson:"clientId,omitempty"`
@@ -44,6 +45,7 @@ type documentDoc struct {
 
 func newDocumentDoc(d document.Document) (documentDoc, error) {
 	doc := documentDoc{
+		ExecutionKey:    d.ExecutionKey,
 		Kind:            string(d.Kind),
 		UploadedBy:      d.UploadedBy,
 		PublicID:        d.PublicID,
@@ -68,6 +70,7 @@ func newDocumentDoc(d document.Document) (documentDoc, error) {
 
 func (d documentDoc) toDomain() document.Document {
 	out := document.Document{
+		ExecutionKey:    d.ExecutionKey,
 		ID:              d.ID.Hex(),
 		Kind:            document.Kind(d.Kind),
 		UploadedBy:      d.UploadedBy,
@@ -92,8 +95,15 @@ func (r *DocumentRepository) Create(ctx context.Context, d document.Document) (d
 	if err != nil {
 		return document.Document{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) && d.ExecutionKey != "" {
+			var existing documentDoc
+			if e := r.coll.FindOne(ctx, bson.M{"executionKey": d.ExecutionKey}).Decode(&existing); e != nil {
+				return document.Document{}, e
+			}
+			return existing.toDomain(), nil
+		}
 		return document.Document{}, fmt.Errorf("insert document: %w", err)
 	}
 	if oid, ok := res.InsertedID.(bson.ObjectID); ok {
@@ -110,7 +120,7 @@ func (r *DocumentRepository) Update(ctx context.Context, d document.Document) (d
 	if err != nil {
 		return document.Document{}, document.ErrDocumentNotFound
 	}
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{
+	res, err := updateOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, bson.M{"$set": bson.M{
 		"title":           d.Title,
 		"visibleToClient": d.VisibleToClient,
 		"updatedAt":       bson.NewDateTimeFromTime(d.UpdatedAt),
@@ -129,7 +139,7 @@ func (r *DocumentRepository) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return document.ErrDocumentNotFound
 	}
-	if _, err := r.coll.DeleteOne(ctx, bson.M{"_id": oid}); err != nil {
+	if _, err := deleteOneWithEvent(ctx, r.coll, bson.M{"_id": oid}); err != nil {
 		return fmt.Errorf("delete document: %w", err)
 	}
 	return nil

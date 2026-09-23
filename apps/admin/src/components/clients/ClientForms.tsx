@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleAlert, FileText, Plus, ShieldCheck } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -131,6 +131,7 @@ export function ClientForms({
             return (
               <li
                 key={sub.id}
+                id={`submission-${sub.id}`}
                 className="rounded-lg bg-surface-sunken p-3 border border-border/60"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -149,20 +150,26 @@ export function ClientForms({
                       {isSubmitted && sub.submittedAt ? (
                         <>
                           Submitted{" "}
-                          {new Date(sub.submittedAt).toLocaleDateString("en-US", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {new Date(sub.submittedAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
                         </>
                       ) : (
                         <>
                           Assigned{" "}
-                          {new Date(sub.assignedAt).toLocaleDateString("en-US", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {new Date(sub.assignedAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
                         </>
                       )}
                     </p>

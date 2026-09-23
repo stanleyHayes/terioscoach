@@ -142,7 +142,7 @@ func (s *Service) changeRequestNotice(ctx context.Context, b booking.Booking, re
 // CreateBooking books a slot the availability engine would actually offer —
 // not merely a free one. The storage unique index is the race backstop: a
 // concurrent claim of the same slot surfaces as ErrSlotUnavailable.
-func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string, startAt time.Time, tz string) (booking.Booking, error) {
+func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string, startAt time.Time, tz string, participant ...booking.Participant) (booking.Booking, error) {
 	if _, err := time.LoadLocation(tz); err != nil {
 		return booking.Booking{}, scheduling.ErrInvalidTimezone
 	}
@@ -155,14 +155,6 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 		// than leaking that the id exists (mirrors GetSlots).
 		return booking.Booking{}, catalog.ErrServiceNotFound
 	}
-	if s.agreements != nil {
-		// Checked before the slot is taken and long before payment: a
-		// client must never be charged for a session the practice would
-		// then have to refuse for want of a signed agreement.
-		if err := s.agreements.RequireSigned(ctx, clientID, serviceID); err != nil {
-			return booking.Booking{}, err
-		}
-	}
 	if err := s.assertSlotGeneratable(ctx, svc.PractitionerID, svc.DurationMinutes, startAt, ""); err != nil {
 		return booking.Booking{}, err
 	}
@@ -174,6 +166,19 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 	if svc.PriceKobo > 0 {
 		b.RequirePayment()
 	}
+	b.ReadinessVersion = 1
+	if len(participant) > 0 {
+		p := participant[0]
+		if err := p.Validate(); err != nil {
+			return booking.Booking{}, err
+		}
+		p.Revision = 1
+		p.DeclaredAt = s.now().UTC()
+		p.DeclaredBy = clientID
+		p.AppointmentAt = b.StartAt
+		b.Participant = &p
+	}
+	b.BookingTimezone = tz
 	b, err = s.bookings.Create(ctx, b)
 	if err != nil {
 		return booking.Booking{}, err
@@ -191,7 +196,19 @@ func (s *Service) CreateBooking(ctx context.Context, clientID, serviceID string,
 
 // ListMine returns the client's own bookings, upcoming and past.
 func (s *Service) ListMine(ctx context.Context, clientID string) ([]booking.Booking, error) {
-	return s.bookings.ListByClient(ctx, clientID)
+	items, err := s.bookings.ListByClient(ctx, clientID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		if items[i].ExpirePayment(s.now()) {
+			items[i], err = s.bookings.Update(ctx, items[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return items, nil
 }
 
 // ListForPractitioner returns the practitioner's bookings, optionally
@@ -296,6 +313,16 @@ func (s *Service) RequestReschedule(ctx context.Context, clientID, bookingID str
 	if err := s.assertSlotGeneratable(ctx, b.PractitionerID, duration, proposedStartAt, b.ID); err != nil {
 		return booking.Booking{}, err
 	}
+	now := s.now().UTC()
+	b.ChangeRequestedAt = &now
+	b.ChangeRequestType = "reschedule"
+	b.ProposedStartAt = &proposedStartAt
+	b.ChangeRequestReason = ""
+	b.UpdatedAt = now
+	b, err = s.bookings.Update(ctx, b)
+	if err != nil {
+		return booking.Booking{}, err
+	}
 	if notice, ok := s.changeRequestNotice(ctx, b, "reschedule", "", proposedStartAt, tz); ok {
 		s.notifier.BookingChangeRequested(ctx, notice)
 	}
@@ -322,6 +349,16 @@ func (s *Service) RequestCancellation(ctx context.Context, clientID, bookingID, 
 	}
 	if b.Status != booking.StatusConfirmed {
 		return booking.Booking{}, booking.ErrInvalidTransition
+	}
+	now := s.now().UTC()
+	b.ChangeRequestedAt = &now
+	b.ChangeRequestType = "cancellation"
+	b.ChangeRequestReason = reason
+	b.ProposedStartAt = nil
+	b.UpdatedAt = now
+	b, err = s.bookings.Update(ctx, b)
+	if err != nil {
+		return booking.Booking{}, err
 	}
 	if notice, ok := s.changeRequestNotice(ctx, b, "cancellation", reason, time.Time{}, tz); ok {
 		s.notifier.BookingChangeRequested(ctx, notice)
@@ -478,4 +515,28 @@ func (s *Service) assertSlotGeneratable(
 		}
 	}
 	return booking.ErrSlotUnavailable
+}
+
+func (s *Service) UpdateParticipant(ctx context.Context, id identity.Identity, bookingID string, p booking.Participant) (booking.Booking, error) {
+	b, err := s.loadAuthorized(ctx, id, bookingID)
+	if err != nil {
+		return b, err
+	}
+	if b.Status != booking.StatusConfirmed && b.Status != booking.StatusPendingPayment {
+		return b, booking.ErrInvalidTransition
+	}
+	if err = p.Validate(); err != nil {
+		return b, err
+	}
+	p.Revision = 1
+	if b.Participant != nil {
+		p.Revision = b.Participant.Revision + 1
+	}
+	p.DeclaredAt = s.now().UTC()
+	p.DeclaredBy = id.UserID
+	p.AppointmentAt = b.StartAt
+	b.Participant = &p
+	b.ReadinessVersion = 1
+	b.UpdatedAt = s.now().UTC()
+	return s.bookings.Update(ctx, b)
 }

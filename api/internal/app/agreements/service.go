@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -24,6 +25,8 @@ import (
 
 // Options carries the collaborators a deployment supplies.
 type Options struct {
+	Forms    ports.FormSubmissionRepository
+	Bookings ports.BookingRepository
 	// Users resolves the signatory's name and address. The token identity
 	// carries neither, and both belong on the signature: what the practice
 	// has on file, next to what the client actually typed.
@@ -39,6 +42,8 @@ type Options struct {
 
 // Service implements ports.AgreementService.
 type Service struct {
+	forms     ports.FormSubmissionRepository
+	bookings  ports.BookingRepository
 	repo      ports.AgreementRepository
 	services  ports.ServiceRepository
 	users     ports.UserRepository
@@ -55,6 +60,7 @@ func NewService(repo ports.AgreementRepository, services ports.ServiceRepository
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &Service{
+		bookings:  opts.Bookings,
 		repo:      repo,
 		services:  services,
 		users:     opts.Users,
@@ -185,6 +191,19 @@ func (s *Service) Countersign(ctx context.Context, id identity.Identity, signatu
 	if err != nil {
 		return agreement.Signature{}, err
 	}
+	owner, err := s.repo.GetByID(ctx, sig.AgreementID)
+	if err != nil {
+		return agreement.Signature{}, err
+	}
+	if owner.PractitionerID != id.UserID {
+		return agreement.Signature{}, agreement.ErrAgreementNotFound
+	}
+	if !sig.VerifyIntegrity() {
+		return agreement.Signature{}, fmt.Errorf("signed document integrity check failed")
+	}
+	if sig.PractitionerSignedAt != nil && sig.PractitionerSignedName == strings.TrimSpace(signedName) {
+		return sig, nil
+	}
 	countersigned, err := sig.Countersign(signedName, s.now())
 	if err != nil {
 		return agreement.Signature{}, err
@@ -205,15 +224,6 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 		return agreement.Signature{}, err
 	}
 
-	// Checked before building the signature so a repeat never depends on
-	// the typed name being valid a second time — the client has already
-	// signed, and what they typed then is what stands.
-	if existing, err := s.repo.SignatureFor(ctx, req.ClientID, a.ID); err == nil {
-		return existing, nil
-	} else if !errors.Is(err, agreement.ErrAgreementNotFound) {
-		return agreement.Signature{}, err
-	}
-
 	name, email := req.ClientName, req.ClientEmail
 	if s.users != nil {
 		// The account is the source of truth for who this is; a caller
@@ -225,7 +235,7 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 
 	var sig agreement.Signature
 	if agreement.IsStatementOfWork(a.Key) {
-		if req.StatementOfWork == nil || strings.TrimSpace(req.SignedName) != "" {
+		if req.StatementOfWork == nil {
 			return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
 		}
 		sig, err = a.SubmitStatementOfWork(req.ClientID, name, email, req.BookingID, *req.StatementOfWork, s.now())
@@ -238,9 +248,99 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 	if err != nil {
 		return agreement.Signature{}, err
 	}
+	if req.BookingID != "" {
+		b, e := s.signingBooking(ctx, req.ClientID, req.BookingID)
+		if e != nil {
+			return agreement.Signature{}, e
+		}
+		if !req.Acknowledged || req.AgreementVersion != a.Version {
+			return agreement.Signature{}, agreement.ErrInvalidSignedName
+		}
+		if e = agreement.ValidateSignedName(req.SignedName); e != nil {
+			return agreement.Signature{}, e
+		}
+		required, e := s.requiredForBooking(ctx, b)
+		if e != nil {
+			return agreement.Signature{}, e
+		}
+		found := false
+		for _, doc := range required {
+			if doc.ID == a.ID {
+				found = true
+			}
+		}
+		if !found {
+			return agreement.Signature{}, agreement.ErrAgreementNotFound
+		}
+		role := "client"
+		if b.Participant.Under18 {
+			role = "guardian"
+		}
+		if req.SignerRole != role {
+			return agreement.Signature{}, agreement.ErrInvalidSignedName
+		}
+		sig.ContextID = bookingContext(b)
+		sig.SignerRole = role
+		sig.ActorID = req.ClientID
+		sig.Acknowledged = true
+		sig.ParticipantName = b.Participant.Name
+		sig.SignedName = req.SignedName
+		sig.SignedAt = s.now().UTC().Truncate(time.Millisecond)
+		if role == "guardian" {
+			sig.GuardianRelationship = b.Participant.GuardianRelationship
+			sig.GuardianEmail = b.Participant.GuardianEmail
+			consent, e := s.GuardianConsent(ctx, b.PractitionerID)
+			if e != nil {
+				return agreement.Signature{}, e
+			}
+			if req.ConsentVersion != consentVersion(consent) {
+				return agreement.Signature{}, agreement.ErrInvalidSignedName
+			}
+			sig.GuardianName = b.Participant.GuardianName
+			sig.ConsentBody = consent.Body
+			sig.ConsentVersion = consentVersion(consent)
+			sig.ContextID += ":consent:" + sig.ConsentVersion
+		}
+		if sig.StatementOfWork != nil {
+			if a.Key == "nurse_sow" && sig.StatementOfWork.Package == "" {
+				return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
+			}
+			svc, e := s.services.FindByID(ctx, b.ServiceID)
+			if e != nil {
+				return agreement.Signature{}, e
+			}
+			expected := fmt.Sprintf("%s %d.%02d", svc.Currency, svc.PriceKobo/100, svc.PriceKobo%100)
+			if sig.StatementOfWork.MonthlyFee != expected || sig.StatementOfWork.ClientName != b.Participant.Name {
+				return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
+			}
+		}
+	} else if strings.TrimSpace(req.SignedName) != "" && agreement.IsStatementOfWork(a.Key) {
+		// Signed SOWs always require an appointment context; the old unsigned endpoint remains readable.
+		return agreement.Signature{}, agreement.ErrInvalidStatementOfWork
+	}
+	// Validate before idempotency lookup. Only this participant, role and document version can cover the request.
+	prior, e := s.repo.SignaturesForClient(ctx, req.ClientID)
+	if e != nil {
+		return agreement.Signature{}, e
+	}
+	for _, existing := range prior {
+		if existing.AgreementID == sig.AgreementID && existing.ContextID == sig.ContextID && existing.AgreementVersion == sig.AgreementVersion && existing.SignerRole == sig.SignerRole {
+			if existing.SignedName != sig.SignedName || !reflect.DeepEqual(existing.StatementOfWork, sig.StatementOfWork) {
+				return agreement.Signature{}, agreement.ErrInvalidSignedName
+			}
+			return existing, nil
+		}
+	}
+	if sig.ContextID != "" {
+		sig.EvidenceHash = sig.Digest()
+	}
 	stored, err := s.repo.CreateSignature(ctx, sig)
 	if err != nil {
 		return agreement.Signature{}, err
+	}
+
+	if stored.ContextID != "" && (stored.SignedName != sig.SignedName || !reflect.DeepEqual(stored.StatementOfWork, sig.StatementOfWork)) {
+		return agreement.Signature{}, agreement.ErrInvalidSignedName
 	}
 
 	// Neither the practice's copy nor the archive is on the client's
@@ -252,7 +352,7 @@ func (s *Service) Sign(ctx context.Context, req ports.SignRequest) (agreement.Si
 	}
 	if s.notifier != nil {
 		s.notifier.AgreementSigned(ctx, ports.AgreementSignedNotice{
-			Submitted:      stored.StatementOfWork != nil,
+			Submitted:      stored.SignedAt.IsZero(),
 			ClientID:       stored.ClientID,
 			ClientName:     stored.ClientName,
 			ClientEmail:    stored.ClientEmail,
@@ -289,6 +389,18 @@ func (s *Service) SignedDocument(ctx context.Context, id identity.Identity, sign
 	}
 	if id.Role != identity.RolePractitioner && sig.ClientID != id.UserID {
 		return ports.SignedDocument{}, agreement.ErrAgreementNotFound
+	}
+	if id.Role == identity.RolePractitioner {
+		owner, err := s.repo.GetByID(ctx, sig.AgreementID)
+		if err != nil {
+			return ports.SignedDocument{}, err
+		}
+		if owner.PractitionerID != id.UserID {
+			return ports.SignedDocument{}, agreement.ErrAgreementNotFound
+		}
+	}
+	if !sig.VerifyIntegrity() {
+		return ports.SignedDocument{}, fmt.Errorf("signed document integrity check failed")
 	}
 	// The wording rendered comes off the signature, not the live
 	// agreement: this document has to show what was actually accepted,

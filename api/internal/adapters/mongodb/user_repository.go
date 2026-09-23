@@ -33,6 +33,7 @@ type userDoc struct {
 	PasswordHash           string        `bson:"passwordHash"`
 	Role                   string        `bson:"role"`
 	Name                   string        `bson:"name"`
+	Timezone               string        `bson:"timezone,omitempty"`
 	CreatedAt              bson.DateTime `bson:"createdAt"`
 	PasswordResetTokenHash string        `bson:"passwordResetTokenHash,omitempty"`
 	PasswordResetExpiresAt bson.DateTime `bson:"passwordResetExpiresAt,omitempty"`
@@ -120,6 +121,7 @@ func (r *UserRepository) Create(ctx context.Context, user identity.User) (identi
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
 		Name:         user.Name,
+		Timezone:     user.Timezone,
 		CreatedAt:    bson.NewDateTimeFromTime(user.CreatedAt),
 		MFASecret:    user.MFASecret,
 		MFAEnabled:   user.MFAEnabled,
@@ -242,6 +244,7 @@ func userFromDoc(doc userDoc) identity.User {
 		PasswordHash: doc.PasswordHash,
 		Role:         identity.Role(doc.Role),
 		Name:         doc.Name,
+		Timezone:     doc.Timezone,
 		CreatedAt:    doc.CreatedAt.Time(),
 		MFASecret:    doc.MFASecret,
 		MFAEnabled:   doc.MFAEnabled,
@@ -267,4 +270,20 @@ func permissionsFromStrings(values []string) []identity.Permission {
 		}
 	}
 	return out
+}
+
+func (r *UserRepository) UpdateTimezone(ctx context.Context, userID, timezone string) (identity.User, error) {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	var doc userDoc
+	err = r.coll.FindOneAndUpdate(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"timezone": timezone}}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	if err != nil {
+		return identity.User{}, fmt.Errorf("update profile: %w", err)
+	}
+	return userFromDoc(doc), nil
 }

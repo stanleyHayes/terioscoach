@@ -20,6 +20,7 @@ type Kind string
 
 const (
 	KindActivity               Kind = "activity"
+	KindActionRequired         Kind = "action_required"
 	KindBookingPaymentRequired Kind = "booking_payment_required"
 	KindBookingConfirmation    Kind = "booking_confirmation"
 	KindSessionReminder        Kind = "session_reminder"
@@ -36,7 +37,7 @@ const (
 // Valid reports whether k is a known kind.
 func (k Kind) Valid() bool {
 	switch k {
-	case KindActivity, KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
+	case KindActionRequired, KindActivity, KindBookingPaymentRequired, KindBookingConfirmation, KindSessionReminder, KindBookingRescheduled,
 		KindBookingCancelled, KindBookingChangeRequested, KindFeedbackShared, KindEnquiryReceived, KindAgreementSigned,
 		KindFormAssigned, KindFormSubmitted:
 		return true
@@ -76,18 +77,19 @@ const DefaultReminderLead = 10 * time.Minute
 // way it did when it was scheduled, and the dispatcher must not need to
 // re-query half the database to send an email.
 type Job struct {
-	ID        string
-	Kind      Kind
-	BookingID string
-	Recipient string
-	Data      map[string]string
-	DueAt     time.Time
-	Status    Status
-	Attempts  int
-	LastError string
-	SentAt    *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ClaimToken string
+	ID         string
+	Kind       Kind
+	BookingID  string
+	Recipient  string
+	Data       map[string]string
+	DueAt      time.Time
+	Status     Status
+	Attempts   int
+	LastError  string
+	SentAt     *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // New builds a pending job due at dueAt. A due time in the past is not an

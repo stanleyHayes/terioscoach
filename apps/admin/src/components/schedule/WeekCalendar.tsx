@@ -1,4 +1,5 @@
 "use client";
+import { serverNow } from "@/lib/server-clock";
 
 import { ChevronLeft, ChevronRight, Globe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +22,11 @@ import {
   type Booking,
   type CivilDate,
 } from "@/lib/schedule";
-import { BookingDetailModal, type BookingActionHandler, type RescheduleHandler } from "./BookingDetailModal";
+import {
+  BookingDetailModal,
+  type BookingActionHandler,
+  type RescheduleHandler,
+} from "./BookingDetailModal";
 
 /**
  * WeekCalendar — design-system §3.12 week view (admin).
@@ -52,6 +57,7 @@ for (let min = DAY_START_MIN; min < DAY_END_MIN; min += 60) {
 }
 
 const STATUS_LABEL: Record<Booking["status"], string> = {
+  pending_payment: "Awaiting payment",
   confirmed: "Confirmed",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -59,6 +65,7 @@ const STATUS_LABEL: Record<Booking["status"], string> = {
 };
 
 const STATUS_BLOCK_CLASSES: Record<Booking["status"], string> = {
+  pending_payment: "border-l-warning bg-warning-bg text-warning-ink",
   confirmed: "border-l-primary bg-eucalyptus-100 text-eucalyptus-800",
   completed: "border-l-ink-faint bg-surface-sunken text-ink-muted",
   cancelled: "border-l-danger bg-danger-bg text-danger-ink line-through",
@@ -71,12 +78,22 @@ interface PositionedBooking {
   height: number;
 }
 
-function positionBooking(booking: Booking, day: CivilDate, timeZone: string): PositionedBooking | null {
+function positionBooking(
+  booking: Booking,
+  day: CivilDate,
+  timeZone: string,
+): PositionedBooking | null {
   const start = zonedParts(booking.startAt, timeZone);
   const end = zonedParts(booking.endAt, timeZone);
   const key = dateKey(day);
-  if (dateKey(start) > key || dateKey(end) < key || Date.parse(booking.endAt) <= Date.parse(booking.startAt)) return null;
-  const startMin = dateKey(start) === key ? start.minutesSinceMidnight : DAY_START_MIN;
+  if (
+    dateKey(start) > key ||
+    dateKey(end) < key ||
+    Date.parse(booking.endAt) <= Date.parse(booking.startAt)
+  )
+    return null;
+  const startMin =
+    dateKey(start) === key ? start.minutesSinceMidnight : DAY_START_MIN;
   const endMin = dateKey(end) === key ? end.minutesSinceMidnight : DAY_END_MIN;
   if (endMin <= startMin) return null;
   const top = (startMin / 60) * HOUR_PX;
@@ -116,12 +133,12 @@ export function WeekCalendar({
 }: WeekCalendarProps) {
   const [selected, setSelected] = useState<Booking | null>(null);
   const [focusColumn, setFocusColumn] = useState(0);
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(() => serverNow());
   const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // The now-line re-evaluates once a minute.
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
+    const timer = setInterval(() => setNow(serverNow()), 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -133,17 +150,21 @@ export function WeekCalendar({
   const byDay = new Map<string, PositionedBooking[]>();
   for (const day of days) {
     const key = dateKey(day);
-    byDay.set(key, bookings.flatMap((booking) => {
-      const positioned = positionBooking(booking, day, timeZone);
-      return positioned ? [positioned] : [];
-    }));
+    byDay.set(
+      key,
+      bookings.flatMap((booking) => {
+        const positioned = positionBooking(booking, day, timeZone);
+        return positioned ? [positioned] : [];
+      }),
+    );
   }
 
   const nowParts = zonedParts(now, timeZone);
   const nowInLanes =
     nowParts.minutesSinceMidnight >= DAY_START_MIN &&
     nowParts.minutesSinceMidnight <= DAY_END_MIN;
-  const nowTop = ((nowParts.minutesSinceMidnight - DAY_START_MIN) / 60) * HOUR_PX;
+  const nowTop =
+    ((nowParts.minutesSinceMidnight - DAY_START_MIN) / 60) * HOUR_PX;
 
   function focusColumnAt(index: number) {
     const clamped = Math.min(Math.max(index, 0), 6);
@@ -291,8 +312,10 @@ export function WeekCalendar({
                     ))}
 
                     {dayBookings.map(({ booking, top, height }) => {
-                      const clientName = clientNames[booking.clientId] ?? booking.clientId;
-                      const serviceName = serviceNames[booking.serviceId] ?? booking.serviceId;
+                      const clientName =
+                        clientNames[booking.clientId] ?? booking.clientId;
+                      const serviceName =
+                        serviceNames[booking.serviceId] ?? booking.serviceId;
                       return (
                         <button
                           key={booking.id}
@@ -313,7 +336,9 @@ export function WeekCalendar({
                             <span className="block truncate">{clientName}</span>
                           ) : null}
                           {height >= 56 ? (
-                            <span className="block truncate">{serviceName}</span>
+                            <span className="block truncate">
+                              {serviceName}
+                            </span>
                           ) : null}
                         </button>
                       );
@@ -353,11 +378,25 @@ export function WeekCalendar({
 }
 
 /** Anchor instant for a lane label: `minutes` wall clock on the week's Monday. */
-function wallClockAnchor(day: CivilDate, minutes: number, timeZone: string): string {
-  const anchor = wallClockToUtcIso(dateKey(day), minutesToTimeString(minutes), timeZone);
+function wallClockAnchor(
+  day: CivilDate,
+  minutes: number,
+  timeZone: string,
+): string {
+  const anchor = wallClockToUtcIso(
+    dateKey(day),
+    minutesToTimeString(minutes),
+    timeZone,
+  );
   // The lane hours are always valid wall-clock times; fall back to UTC math.
   if (anchor) return anchor;
   return new Date(
-    Date.UTC(day.year, day.month - 1, day.day, Math.floor(minutes / 60), minutes % 60),
+    Date.UTC(
+      day.year,
+      day.month - 1,
+      day.day,
+      Math.floor(minutes / 60),
+      minutes % 60,
+    ),
   ).toISOString();
 }

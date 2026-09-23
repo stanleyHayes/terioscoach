@@ -13,6 +13,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export interface User {
+  timezone?: string;
   id: string;
   email: string;
   role: string;
@@ -171,11 +172,34 @@ export const authApi = {
 };
 
 export const accountApi = {
-  updateProfile(session: Session, callbacks: RefreshCallbacks, name: string) {
-    return authedRequest<{ user: User }>("/v1/auth/me", session, callbacks, { method: "PATCH", body: { name } });
+  updateTimezone(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    timezone: string,
+  ) {
+    return authedRequest<{ user: User }>(
+      "/v1/auth/me/timezone",
+      session,
+      callbacks,
+      { method: "PATCH", body: { timezone } },
+    );
   },
-  changePassword(session: Session, callbacks: RefreshCallbacks, currentPassword: string, newPassword: string) {
-    return authedRequest<void>("/v1/auth/change-password", session, callbacks, { method: "POST", body: { currentPassword, newPassword } });
+  updateProfile(session: Session, callbacks: RefreshCallbacks, name: string) {
+    return authedRequest<{ user: User }>("/v1/auth/me", session, callbacks, {
+      method: "PATCH",
+      body: { name },
+    });
+  },
+  changePassword(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    return authedRequest<void>("/v1/auth/change-password", session, callbacks, {
+      method: "POST",
+      body: { currentPassword, newPassword },
+    });
   },
 };
 

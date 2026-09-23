@@ -184,6 +184,9 @@ func mapSchedulingError(err error) (apiError, bool) {
 }
 
 func mapBookingError(err error) (apiError, bool) {
+	if errors.Is(err, booking.ErrParticipantRequired) || errors.Is(err, booking.ErrGuardianRequired) {
+		return validationError(err)
+	}
 	switch {
 	case errors.Is(err, booking.ErrBookingNotFound):
 		return apiError{http.StatusNotFound, "booking_not_found", "booking not found"}, true
@@ -261,6 +264,8 @@ func mapRecordingError(err error) (apiError, bool) {
 
 func mapAgreementError(err error) (apiError, bool) {
 	switch {
+	case errors.Is(err, agreement.ErrAgreementChanged):
+		return apiError{http.StatusConflict, "agreement_changed", err.Error()}, true
 	case errors.Is(err, agreement.ErrAgreementRequired):
 		// 409, not 403: nothing is forbidden to this client — a step is
 		// outstanding, and the message names which agreement it is so the

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -66,6 +67,21 @@ func (c *Client) Disconnect(ctx context.Context) error {
 	defer cancel()
 	if err := c.client.Disconnect(disconnectCtx); err != nil {
 		return fmt.Errorf("mongodb disconnect: %w", err)
+	}
+	return nil
+}
+
+// RequireTransactions rejects standalone Mongo before serving business writes.
+func (c *Client) RequireTransactions(ctx context.Context) error {
+	var hello struct {
+		SetName string `bson:"setName"`
+		Message string `bson:"msg"`
+	}
+	if err := c.client.Database("admin").RunCommand(ctx, bson.D{{Key: "hello", Value: 1}}).Decode(&hello); err != nil {
+		return err
+	}
+	if hello.SetName == "" && hello.Message != "isdbgrid" {
+		return fmt.Errorf("workflow transactions require MongoDB Atlas, a replica set, or a sharded cluster")
 	}
 	return nil
 }

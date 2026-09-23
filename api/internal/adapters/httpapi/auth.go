@@ -57,6 +57,7 @@ func WithAuth(svc ports.AuthService, opts ...AuthOption) Option {
 			r.Group(func(r chi.Router) {
 				r.Use(RequireAuth(svc))
 				r.Patch("/me", h.updateProfile)
+				r.Patch("/me/timezone", h.updateTimezone)
 				r.Post("/change-password", h.changePassword)
 				r.Post("/mfa/enroll", h.beginMFA)
 				r.Post("/mfa/confirm", h.confirmMFA)
@@ -119,6 +120,7 @@ type userBody struct {
 	Email       string   `json:"email"`
 	Role        string   `json:"role"`
 	Name        string   `json:"name"`
+	Timezone    string   `json:"timezone,omitempty"`
 	MFAEnabled  bool     `json:"mfaEnabled"`
 	RoleName    string   `json:"roleName,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
@@ -130,7 +132,7 @@ func newUserBody(u identity.User) userBody {
 	for index, permission := range permissionList {
 		permissions[index] = string(permission)
 	}
-	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name, MFAEnabled: u.MFAEnabled, RoleName: u.RoleName, Permissions: permissions}
+	return userBody{ID: u.ID, Email: u.Email, Role: string(u.Role), Name: u.Name, Timezone: u.Timezone, MFAEnabled: u.MFAEnabled, RoleName: u.RoleName, Permissions: permissions}
 }
 
 func newAuthResponse(res ports.AuthResult) authResponse {
@@ -332,4 +334,23 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 	return true
+}
+
+func (h *authHandler) updateTimezone(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Timezone string `json:"timezone"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	user, err := h.svc.UpdateTimezone(r.Context(), id, req.Timezone)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]userBody{"user": newUserBody(user)})
 }

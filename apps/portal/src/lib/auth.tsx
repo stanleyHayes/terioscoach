@@ -27,7 +27,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authApi, resetTokenRotation, type AuthTokens, type User } from "@/lib/api";
+import {
+  authApi,
+  resetTokenRotation,
+  type AuthTokens,
+  type User,
+} from "@/lib/api";
 
 export const REFRESH_TOKEN_KEY = "terios.web.refreshToken";
 export const INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
@@ -65,8 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   // Guards against the mount effect running twice in React StrictMode.
   const restoredRef = useRef(false);
-  const lastActivityRef = useRef<number>(Date.now());
-  const lastRefreshRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
+  const lastRefreshRef = useRef<number>(0);
+
+  useEffect(() => {
+    lastActivityRef.current = Date.now();
+    lastRefreshRef.current = Date.now();
+  }, []);
 
   const touchActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -156,6 +166,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [tokens, clearSession]);
 
+  useEffect(() => {
+    if (status !== "authenticated" || !tokens?.accessToken) return;
+    let cancelled = false;
+    const sync = () => {
+      void authApi
+        .me(tokens.accessToken)
+        .then(({ user: next }) => {
+          if (!cancelled)
+            setUser((current) => (current?.id === next.id ? next : current));
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("focus", sync);
+    const timer = window.setInterval(sync, 30_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", sync);
+      window.clearInterval(timer);
+    };
+  }, [status, tokens?.accessToken]);
+
   const setUserProfile = useCallback((nextUser: User) => setUser(nextUser), []);
 
   /* authedRequest rotated the access token after a 401 — persist the new set
@@ -227,7 +258,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserProfile,
       logout,
     }),
-    [status, user, tokens, onTokensRefreshed, touchActivity, login, register, logout, setUserProfile],
+    [
+      status,
+      user,
+      tokens,
+      onTokensRefreshed,
+      touchActivity,
+      login,
+      register,
+      logout,
+      setUserProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

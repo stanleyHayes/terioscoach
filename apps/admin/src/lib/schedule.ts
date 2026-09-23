@@ -1,3 +1,4 @@
+import { serverNow, synchronizeClock } from "./server-clock";
 /**
  * Typed client for the Availability (BE-04) and Bookings (BE-05) slices of the
  * API contract:
@@ -74,9 +75,25 @@ export interface TimeOffDraft {
   reason?: string;
 }
 
-export type BookingStatus = "confirmed" | "cancelled" | "completed" | "no_show";
+export type BookingStatus =
+  | "pending_payment"
+  | "confirmed"
+  | "cancelled"
+  | "completed"
+  | "no_show";
 
 export interface Booking {
+  participant?: {
+    name: string;
+    under18: boolean;
+    guardianName?: string;
+    revision: number;
+    appointmentAt: string;
+  };
+  changeRequestType?: string;
+  changeRequestReason?: string;
+  proposedStartAt?: string;
+
   id: string;
   clientId: string;
   practitionerId: string;
@@ -152,11 +169,12 @@ export const scheduleApi = {
     if (params.to) query.set("to", params.to);
     if (params.status) query.set("status", params.status);
     const suffix = query.size > 0 ? `?${query.toString()}` : "";
-    const data = await authedRequest<{ items: Booking[] }>(
+    const data = await authedRequest<{ items: Booking[]; serverTime?: string }>(
       `/v1/bookings${suffix}`,
       session,
       callbacks,
     );
+    if (data.serverTime) synchronizeClock(data.serverTime);
     return data.items;
   },
 
@@ -296,7 +314,10 @@ export function mondayOfWeek(date: CivilDate): CivilDate {
 }
 
 /** Today as a civil date in `timeZone`. */
-export function todayCivil(timeZone: string, now: Date = new Date()): CivilDate {
+export function todayCivil(
+  timeZone: string,
+  now: Date = serverNow(),
+): CivilDate {
   const parts = zonedParts(now, timeZone);
   return { year: parts.year, month: parts.month, day: parts.day };
 }
@@ -311,26 +332,8 @@ export function wallClockToUtcIso(
   time: string,
   timeZone: string,
 ): string | null {
-  const civil = parseDateInput(date);
-  const minutes = parseTimeInput(time);
-  if (!civil || minutes === null) return null;
-  const guess = Date.UTC(
-    civil.year,
-    civil.month - 1,
-    civil.day,
-    Math.floor(minutes / 60),
-    minutes % 60,
-  );
-  const wallAtGuess = zonedParts(new Date(guess), timeZone);
-  const wallGuessUtc = Date.UTC(
-    wallAtGuess.year,
-    wallAtGuess.month - 1,
-    wallAtGuess.day,
-    wallAtGuess.hour,
-    wallAtGuess.minute,
-  );
-  const offsetMs = wallGuessUtc - guess;
-  return new Date(guess - offsetMs).toISOString();
+  const matches = wallClockCandidates(date, time, timeZone);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 /* ---------- input parsing / formatting ---------- */
@@ -392,7 +395,10 @@ export function formatTime(iso: string, timeZone: string): string {
 }
 
 /** Short zone label for the always-visible timezone caption, e.g. "GMT". */
-export function timezoneShortName(timeZone: string, at: Date = new Date()): string {
+export function timezoneShortName(
+  timeZone: string,
+  at: Date = new Date(),
+): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     timeZoneName: "short",
@@ -400,7 +406,15 @@ export function timezoneShortName(timeZone: string, at: Date = new Date()): stri
   return parts.find((part) => part.type === "timeZoneName")?.value ?? timeZone;
 }
 
-const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAY_SHORT = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+] as const;
 const WEEKDAY_LONG = [
   "Sunday",
   "Monday",
@@ -455,4 +469,59 @@ export function formatWeekRange(weekStart: CivilDate): string {
     return `${startMonth} ${weekStart.day} – ${endMonth} ${weekEnd.day}, ${weekStart.year}`;
   }
   return `${startMonth} ${weekStart.day}–${weekEnd.day}, ${weekStart.year}`;
+}
+
+/** Candidate instants with matching civil parts; two means an explicit DST-fold choice is required. */
+export function wallClockCandidates(
+  date: string,
+  time: string,
+  timeZone: string,
+): string[] {
+  const civil = parseDateInput(date),
+    minutes = parseTimeInput(time);
+  if (!civil || minutes === null) return [];
+  const guess = Date.UTC(
+    civil.year,
+    civil.month - 1,
+    civil.day,
+    Math.floor(minutes / 60),
+    minutes % 60,
+  );
+  const candidates = new Set<string>();
+  // Sample offsets on both sides of the date, including half-hour DST regions.
+  for (const hours of [-48, -24, -12, 0, 12, 24, 48]) {
+    const instant = guess + hours * 3600000;
+    const parts = zonedParts(new Date(instant), timeZone);
+    const offset =
+      Date.UTC(
+        parts.year,
+        parts.month - 1,
+        parts.day,
+        parts.hour,
+        parts.minute,
+      ) - instant;
+    const candidate = new Date(guess - offset);
+    const check = zonedParts(candidate, timeZone);
+    if (dateKey(check) === date && check.minutesSinceMidnight === minutes)
+      candidates.add(candidate.toISOString());
+  }
+  return [...candidates].sort();
+}
+
+/** Earliest real instant on a civil date; DST midnight gaps advance to the
+ * first valid minute, folds use the earlier instant for inclusive day bounds. */
+export function civilDayStartUtc(
+  date: string,
+  timeZone: string,
+): string | null {
+  if (!parseDateInput(date)) return null;
+  for (let minute = 0; minute < 1440; minute++) {
+    const candidates = wallClockCandidates(
+      date,
+      minutesToTimeString(minute),
+      timeZone,
+    );
+    if (candidates.length) return candidates[0];
+  }
+  return null;
 }

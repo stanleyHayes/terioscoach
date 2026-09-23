@@ -25,8 +25,10 @@ const STATUS_LABEL: Record<string, string> = {
   no_show: "No-show",
 };
 
-function formatWhen(iso: string): string {
+function formatWhen(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleString("en-GB", {
+    timeZone,
+    timeZoneName: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -36,7 +38,7 @@ function formatWhen(iso: string): string {
 }
 
 export function ClientFilePanel({ clientId }: { clientId: string }) {
-  const { session, refreshCallbacks } = useAuth();
+  const { session, refreshCallbacks, user } = useAuth();
   const [record, setRecord] = useState<ClientRecord | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -70,9 +72,15 @@ export function ClientFilePanel({ clientId }: { clientId: string }) {
 
   if (!record) {
     return (
-      <div className="flex flex-col gap-2 py-2" aria-label="Loading the client file">
+      <div
+        className="flex flex-col gap-2 py-2"
+        aria-label="Loading the client file"
+      >
         {[0, 1, 2, 3].map((row) => (
-          <div key={row} className="h-12 animate-pulse rounded-lg bg-surface-sunken" />
+          <div
+            key={row}
+            className="h-12 animate-pulse rounded-lg bg-surface-sunken"
+          />
         ))}
       </div>
     );
@@ -82,7 +90,9 @@ export function ClientFilePanel({ clientId }: { clientId: string }) {
     <div className="flex flex-col gap-4">
       <div>
         <p className="text-sm font-semibold text-ink">{record.name}</p>
-        <p className="mt-0.5 text-xs break-all text-ink-muted">{record.email}</p>
+        <p className="mt-0.5 text-xs break-all text-ink-muted">
+          {record.email}
+        </p>
         {record.phone ? (
           <p className="mt-0.5 text-xs text-ink-muted">{record.phone}</p>
         ) : null}
@@ -131,7 +141,9 @@ export function ClientFilePanel({ clientId }: { clientId: string }) {
           Recent sessions
         </h3>
         {record.recentBookings.length === 0 ? (
-          <p className="mt-1.5 text-sm text-ink-muted">No sessions on file yet.</p>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            No sessions on file yet.
+          </p>
         ) : (
           <ul className="mt-1.5 flex flex-col gap-1.5">
             {record.recentBookings.slice(0, 8).map((booking) => (
@@ -139,11 +151,14 @@ export function ClientFilePanel({ clientId }: { clientId: string }) {
                 key={booking.id}
                 className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken px-3 py-2"
               >
-                <span className="text-xs text-ink">{formatWhen(booking.startAt)}</span>
+                <span className="text-xs text-ink">
+                  {formatWhen(booking.startAt, user?.timezone ?? "UTC")}
+                </span>
                 <span
                   className={cn(
                     "shrink-0 text-[11px] font-medium",
-                    booking.status === "cancelled" || booking.status === "no_show"
+                    booking.status === "cancelled" ||
+                      booking.status === "no_show"
                       ? "text-danger-ink"
                       : "text-ink-muted",
                   )}

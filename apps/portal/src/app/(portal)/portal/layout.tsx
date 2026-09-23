@@ -1,4 +1,5 @@
 "use client";
+import { TimezonePreference } from "@/components/ui/TimezonePreference";
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -27,8 +28,11 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
-    try { return localStorage.getItem("terios-portal-sidebar-collapsed") === "true"; }
-    catch { return false; }
+    try {
+      return localStorage.getItem("terios-portal-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -41,8 +45,12 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   }, [status, guestAllowed, router]);
 
   useEffect(() => {
-    try { localStorage.setItem("terios-portal-sidebar-collapsed", String(sidebarCollapsed)); }
-    catch {}
+    try {
+      localStorage.setItem(
+        "terios-portal-sidebar-collapsed",
+        String(sidebarCollapsed),
+      );
+    } catch {}
   }, [sidebarCollapsed]);
 
   async function handleSignOut() {
@@ -67,12 +75,29 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
     return (
       <>
         <SiteNav />
-        <main id="main-content" className="mx-auto w-full max-w-[1040px] flex-1 px-5 pt-8 pb-20 sm:px-6 lg:pt-12">
+        <main
+          id="main-content"
+          className="mx-auto w-full max-w-[1040px] flex-1 px-5 pt-8 pb-20 sm:px-6 lg:pt-12"
+        >
           {children}
         </main>
       </>
     );
   }
+
+  if (!user.timezone)
+    return (
+      <main className="mx-auto w-full max-w-xl space-y-5 px-5 py-16">
+        <h1 className="font-display text-3xl">
+          Choose your appointment timezone
+        </h1>
+        <p className="text-sm text-ink-muted">
+          Confirm the timezone you want to use across your account. Your
+          appointments keep their original instant.
+        </p>
+        <TimezonePreference />
+      </main>
+    );
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface">
@@ -86,18 +111,23 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
         onRequestExpand={() => setSidebarCollapsed(false)}
       />
       <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
-      <PortalTopbar
-        userName={user.name}
-        userEmail={user.email}
-        onSignOut={handleSignOut}
-        signingOut={signingOut}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
-        onOpenMobileNav={() => setMobileNavOpen(true)}
-      />
-      <main id="main-content" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-        <div className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-14 sm:px-6 lg:px-8 lg:pt-9">{children}</div>
-      </main>
+        <PortalTopbar
+          userName={user.name}
+          userEmail={user.email}
+          onSignOut={handleSignOut}
+          signingOut={signingOut}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
+        <main
+          id="main-content"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+        >
+          <div className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-14 sm:px-6 lg:px-8 lg:pt-9">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

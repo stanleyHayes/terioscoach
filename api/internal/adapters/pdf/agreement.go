@@ -22,12 +22,23 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 		blocks := []Block{
 			{Text: "TERIOS WELLNESS SPA", Style: Bold, Size: 13, SpaceAfter: 20},
 			Title(a.Title), Label("CLIENT NAME"), Paragraph(answers.ClientName),
-			Label("EFFECTIVE DATE"), Paragraph(answers.EffectiveDate),
-			Label("INITIAL TERM"), Paragraph(fmt.Sprintf("%d months", answers.InitialTermMonths)),
+			Label(sowDateLabel(a.Key)), Paragraph(answers.EffectiveDate),
+			Label("INITIAL TERM / PACKAGE"), Paragraph(sowTerm(answers)),
 			Label("MONTHLY FEE"), Paragraph(answers.MonthlyFee),
 		}
 		if sig.SubmittedAt != nil {
 			blocks = append(blocks, Spacer(18), Label("SUBMITTED AT"), Paragraph(sig.SubmittedAt.Format("2 January 2006 at 15:04 MST")))
+		}
+		if !sig.SignedAt.IsZero() {
+			for _, paragraph := range strings.Split(sig.AgreementBody, "\n\n") {
+				if strings.TrimSpace(paragraph) != "" {
+					blocks = append(blocks, Paragraph(paragraph))
+				}
+			}
+			blocks = append(blocks, executionBlocks(a.Key, sig)...)
+			blocks = append(blocks, Label("DOCUMENT VERSION"), Paragraph(fmt.Sprintf("%d", sig.AgreementVersion)))
+		} else {
+			blocks = append(blocks, Paragraph("Submitted — unsigned (legacy)"))
 		}
 		return Build(blocks)
 	}
@@ -76,6 +87,13 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 
 func executionBlocks(key string, sig agreement.Signature) []Block {
 	blocks := []Block{Spacer(18), Heading("Signatures & Execution")}
+	if sig.SignerRole == "guardian" {
+		blocks = append(blocks, Label("PARTICIPANT"), Paragraph(sig.ParticipantName), Label("PARENT / GUARDIAN NAME"), Paragraph(sig.GuardianName), Label("PARENT / GUARDIAN SIGNATURE"), Block{Text: sig.SignedName, Style: Italic, Size: 15, SpaceAfter: 10}, Label("RELATIONSHIP"), Paragraph(sig.GuardianRelationship), Label("DECLARED CONTACT (NOT IDENTITY VERIFIED)"), Paragraph(sig.GuardianEmail), Label("CONSENT"), Paragraph(sig.ConsentBody), Label("CONSENT VERSION"), Paragraph(sig.ConsentVersion), Label("SIGNED AT (UTC)"), Paragraph(sig.SignedAt.UTC().Format("2006-01-02 15:04:05 MST")), Label("AUTHENTICATED ACTOR / CONTEXT"), Paragraph(sig.ActorID+" / "+sig.ContextID))
+		if agreement.RequiresPractitionerSignature(key) {
+			blocks = append(blocks, Label("PRACTITIONER SIGNATURE"), practitionerSignature(sig), Label("PRACTITIONER NAME"), Paragraph(practitionerName(sig)), Label("PRACTITIONER SIGNED AT"), Paragraph(practitionerDate(sig)))
+		}
+		return blocks
+	}
 	switch key {
 	case "holistic_coaching", "nurse_coaching":
 		blocks = append(blocks,
@@ -156,4 +174,18 @@ func isClause(chunk string) bool {
 		return i > 0 && (r == '.' || r == ')')
 	}
 	return false
+}
+
+func sowTerm(a *agreement.StatementOfWork) string {
+	if a.Package != "" {
+		return a.Package
+	}
+	return fmt.Sprintf("%d months", a.InitialTermMonths)
+}
+
+func sowDateLabel(key string) string {
+	if key == "nurse_sow" {
+		return "SERVICE START DATE"
+	}
+	return "EFFECTIVE DATE"
 }

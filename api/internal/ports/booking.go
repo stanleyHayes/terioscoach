@@ -19,12 +19,13 @@ type BookingFilter struct {
 
 // BookingService is the inbound port for the booking slice.
 type BookingService interface {
+	UpdateParticipant(ctx context.Context, id identity.Identity, bookingID string, participant booking.Participant) (booking.Booking, error)
 	// CreateBooking books a slot for a client. startAt must match a slot
 	// the availability engine would generate for the service; anything
 	// else — including a slot lost to a concurrent race — returns
 	// booking.ErrSlotUnavailable. Unknown/inactive services return
 	// catalog.ErrServiceNotFound.
-	CreateBooking(ctx context.Context, clientID, serviceID string, startAt time.Time, tz string) (booking.Booking, error)
+	CreateBooking(ctx context.Context, clientID, serviceID string, startAt time.Time, tz string, participant ...booking.Participant) (booking.Booking, error)
 	// ListMine returns the client's own bookings, upcoming and past,
 	// ordered by startAt ascending.
 	ListMine(ctx context.Context, clientID string) ([]booking.Booking, error)

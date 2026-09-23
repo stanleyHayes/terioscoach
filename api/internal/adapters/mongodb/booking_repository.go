@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/booking"
 	"github.com/xcreativs/terios/api/internal/ports"
@@ -30,19 +31,30 @@ func NewBookingRepository(db *mongo.Database) *BookingRepository {
 
 // bookingDoc is the storage shape; kept separate from the domain entity.
 type bookingDoc struct {
-	ID             bson.ObjectID  `bson:"_id,omitempty"`
-	ClientID       bson.ObjectID  `bson:"clientId"`
-	PractitionerID bson.ObjectID  `bson:"practitionerId"`
-	ServiceID      bson.ObjectID  `bson:"serviceId"`
-	StartAt        bson.DateTime  `bson:"startAt"`
-	EndAt          bson.DateTime  `bson:"endAt"`
-	Status         string         `bson:"status"`
-	CreatedAt      bson.DateTime  `bson:"createdAt"`
-	UpdatedAt      bson.DateTime  `bson:"updatedAt"`
-	CancelledAt    *bson.DateTime `bson:"cancelledAt,omitempty"`
-	CompletedAt    *bson.DateTime `bson:"completedAt,omitempty"`
-	PaymentStatus  string         `bson:"paymentStatus,omitempty"`
-	PaidAt         *bson.DateTime `bson:"paidAt,omitempty"`
+	TimezoneMigration   string               `bson:"timezoneMigration,omitempty"`
+	TimezoneProvenance  string               `bson:"timezoneProvenance,omitempty"`
+	Revision            int                  `bson:"revision,omitempty"`
+	PaymentExpired      bool                 `bson:"paymentExpired,omitempty"`
+	ChangeRequestedAt   *time.Time           `bson:"changeRequestedAt,omitempty"`
+	ChangeRequestType   string               `bson:"changeRequestType,omitempty"`
+	ChangeRequestReason string               `bson:"changeRequestReason,omitempty"`
+	ProposedStartAt     *time.Time           `bson:"proposedStartAt,omitempty"`
+	Participant         *booking.Participant `bson:"participant,omitempty"`
+	ReadinessVersion    int                  `bson:"readinessVersion,omitempty"`
+	BookingTimezone     string               `bson:"bookingTimezone,omitempty"`
+	ID                  bson.ObjectID        `bson:"_id,omitempty"`
+	ClientID            bson.ObjectID        `bson:"clientId"`
+	PractitionerID      bson.ObjectID        `bson:"practitionerId"`
+	ServiceID           bson.ObjectID        `bson:"serviceId"`
+	StartAt             bson.DateTime        `bson:"startAt"`
+	EndAt               bson.DateTime        `bson:"endAt"`
+	Status              string               `bson:"status"`
+	CreatedAt           bson.DateTime        `bson:"createdAt"`
+	UpdatedAt           bson.DateTime        `bson:"updatedAt"`
+	CancelledAt         *bson.DateTime       `bson:"cancelledAt,omitempty"`
+	CompletedAt         *bson.DateTime       `bson:"completedAt,omitempty"`
+	PaymentStatus       string               `bson:"paymentStatus,omitempty"`
+	PaidAt              *bson.DateTime       `bson:"paidAt,omitempty"`
 }
 
 // Create inserts a new booking, assigning its ID. A duplicate-key error
@@ -53,7 +65,7 @@ func (r *BookingRepository) Create(ctx context.Context, b booking.Booking) (book
 	if err != nil {
 		return booking.Booking{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return booking.Booking{}, booking.ErrSlotUnavailable
@@ -97,8 +109,13 @@ func (r *BookingRepository) Update(ctx context.Context, b booking.Booking) (book
 		return booking.Booking{}, err
 	}
 	doc.ID = oid
-
-	res, err := r.coll.ReplaceOne(ctx, bson.M{"_id": oid}, doc)
+	doc.Revision = b.Revision + 1
+	filter := bson.M{"_id": oid, "revision": b.Revision}
+	if b.Revision == 0 {
+		delete(filter, "revision")
+		filter["$or"] = bson.A{bson.M{"revision": 0}, bson.M{"revision": bson.M{"$exists": false}}}
+	}
+	res, err := replaceOneWithEvent(ctx, r.coll, filter, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return booking.Booking{}, booking.ErrSlotUnavailable
@@ -106,8 +123,9 @@ func (r *BookingRepository) Update(ctx context.Context, b booking.Booking) (book
 		return booking.Booking{}, fmt.Errorf("update booking: %w", err)
 	}
 	if res.MatchedCount == 0 {
-		return booking.Booking{}, booking.ErrBookingNotFound
+		return booking.Booking{}, booking.ErrInvalidTransition
 	}
+	b.Revision = doc.Revision
 	return b, nil
 }
 
@@ -186,14 +204,20 @@ func newBookingDoc(b booking.Booking) (bookingDoc, error) {
 		return bookingDoc{}, fmt.Errorf("booking serviceId %q is not an ObjectID: %w", b.ServiceID, err)
 	}
 	doc := bookingDoc{
-		ClientID:       clientOID,
-		PractitionerID: practitionerOID,
-		ServiceID:      serviceOID,
-		StartAt:        bson.NewDateTimeFromTime(b.StartAt),
-		EndAt:          bson.NewDateTimeFromTime(b.EndAt),
-		Status:         string(b.Status),
-		CreatedAt:      bson.NewDateTimeFromTime(b.CreatedAt),
-		UpdatedAt:      bson.NewDateTimeFromTime(b.UpdatedAt),
+		TimezoneMigration: b.TimezoneMigration, TimezoneProvenance: b.TimezoneProvenance,
+		Revision:          b.Revision,
+		PaymentExpired:    b.PaymentExpired,
+		ChangeRequestedAt: b.ChangeRequestedAt, ChangeRequestType: b.ChangeRequestType, ChangeRequestReason: b.ChangeRequestReason, ProposedStartAt: b.ProposedStartAt,
+		Participant: b.Participant, ReadinessVersion: b.ReadinessVersion,
+		BookingTimezone: b.BookingTimezone,
+		ClientID:        clientOID,
+		PractitionerID:  practitionerOID,
+		ServiceID:       serviceOID,
+		StartAt:         bson.NewDateTimeFromTime(b.StartAt),
+		EndAt:           bson.NewDateTimeFromTime(b.EndAt),
+		Status:          string(b.Status),
+		CreatedAt:       bson.NewDateTimeFromTime(b.CreatedAt),
+		UpdatedAt:       bson.NewDateTimeFromTime(b.UpdatedAt),
 	}
 	if b.ID != "" {
 		oid, err := bson.ObjectIDFromHex(b.ID)
@@ -220,15 +244,21 @@ func newBookingDoc(b booking.Booking) (bookingDoc, error) {
 
 func bookingFromDoc(doc bookingDoc) booking.Booking {
 	b := booking.Booking{
-		ID:             doc.ID.Hex(),
-		ClientID:       doc.ClientID.Hex(),
-		PractitionerID: doc.PractitionerID.Hex(),
-		ServiceID:      doc.ServiceID.Hex(),
-		StartAt:        doc.StartAt.Time(),
-		EndAt:          doc.EndAt.Time(),
-		Status:         booking.Status(doc.Status),
-		CreatedAt:      doc.CreatedAt.Time(),
-		UpdatedAt:      doc.UpdatedAt.Time(),
+		TimezoneMigration: doc.TimezoneMigration, TimezoneProvenance: doc.TimezoneProvenance,
+		Revision:          doc.Revision,
+		PaymentExpired:    doc.PaymentExpired,
+		ChangeRequestedAt: doc.ChangeRequestedAt, ChangeRequestType: doc.ChangeRequestType, ChangeRequestReason: doc.ChangeRequestReason, ProposedStartAt: doc.ProposedStartAt,
+		Participant: doc.Participant, ReadinessVersion: doc.ReadinessVersion,
+		BookingTimezone: doc.BookingTimezone,
+		ID:              doc.ID.Hex(),
+		ClientID:        doc.ClientID.Hex(),
+		PractitionerID:  doc.PractitionerID.Hex(),
+		ServiceID:       doc.ServiceID.Hex(),
+		StartAt:         doc.StartAt.Time(),
+		EndAt:           doc.EndAt.Time(),
+		Status:          booking.Status(doc.Status),
+		CreatedAt:       doc.CreatedAt.Time(),
+		UpdatedAt:       doc.UpdatedAt.Time(),
 	}
 	if doc.CancelledAt != nil {
 		cancelled := doc.CancelledAt.Time()

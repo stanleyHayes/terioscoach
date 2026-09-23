@@ -17,6 +17,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export interface User {
+  timezone?: string;
   id: string;
   email: string;
   /** "client" for portal accounts; registration always yields "client". */
@@ -69,7 +70,10 @@ interface RequestOptions {
 /** Low-level contract request. Exported for public (unauthenticated) reads
  * such as availability slots; authed endpoints should go through
  * `authedRequest` instead so 401s get the refresh-and-retry treatment. */
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { method = "GET", body, accessToken, cache } = options;
 
   let response: Response;
@@ -116,7 +120,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
 /** Auth endpoints per the contract. */
 export const authApi = {
-  register(name: string, email: string, password: string): Promise<AuthResponse> {
+  register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResponse> {
     return request<AuthResponse>("/v1/auth/register", {
       method: "POST",
       body: { email, password, name },
@@ -131,11 +139,17 @@ export const authApi = {
   },
 
   forgotPassword(email: string): Promise<void> {
-    return request<void>("/v1/auth/forgot-password", { method: "POST", body: { email } });
+    return request<void>("/v1/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
   },
 
   resetPassword(token: string, password: string): Promise<void> {
-    return request<void>("/v1/auth/reset-password", { method: "POST", body: { token, password } });
+    return request<void>("/v1/auth/reset-password", {
+      method: "POST",
+      body: { token, password },
+    });
   },
 
   refresh(refreshToken: string): Promise<AuthResponse> {
@@ -158,11 +172,34 @@ export const authApi = {
 };
 
 export const accountApi = {
-  updateProfile(session: Session, callbacks: RefreshCallbacks, name: string) {
-    return authedRequest<{ user: User }>("/v1/auth/me", session, callbacks, { method: "PATCH", body: { name } });
+  updateTimezone(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    timezone: string,
+  ) {
+    return authedRequest<{ user: User }>(
+      "/v1/auth/me/timezone",
+      session,
+      callbacks,
+      { method: "PATCH", body: { timezone } },
+    );
   },
-  changePassword(session: Session, callbacks: RefreshCallbacks, currentPassword: string, newPassword: string) {
-    return authedRequest<void>("/v1/auth/change-password", session, callbacks, { method: "POST", body: { currentPassword, newPassword } });
+  updateProfile(session: Session, callbacks: RefreshCallbacks, name: string) {
+    return authedRequest<{ user: User }>("/v1/auth/me", session, callbacks, {
+      method: "PATCH",
+      body: { name },
+    });
+  },
+  changePassword(
+    session: Session,
+    callbacks: RefreshCallbacks,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    return authedRequest<void>("/v1/auth/change-password", session, callbacks, {
+      method: "POST",
+      body: { currentPassword, newPassword },
+    });
   },
 };
 
@@ -238,10 +275,16 @@ export function resetTokenRotation(tokens: AuthTokens | null = null): void {
 
 /** Rotates `session`'s refresh token, joining an in-flight rotation if there
  * is one and skipping it entirely if this caller is already behind. */
-function rotate(session: Session, callbacks: RefreshCallbacks): Promise<AuthTokens> {
+function rotate(
+  session: Session,
+  callbacks: RefreshCallbacks,
+): Promise<AuthTokens> {
   // Someone else already rotated past this caller's snapshot. Presenting the
   // token it holds is precisely the replay the server revokes for.
-  if (latestTokens !== null && latestTokens.refreshToken !== session.refreshToken) {
+  if (
+    latestTokens !== null &&
+    latestTokens.refreshToken !== session.refreshToken
+  ) {
     return Promise.resolve(latestTokens);
   }
   if (refreshInFlight !== null) {
@@ -253,7 +296,11 @@ function rotate(session: Session, callbacks: RefreshCallbacks): Promise<AuthToke
   refreshInFlight = authApi
     .refresh(session.refreshToken)
     .then(({ accessToken, accessTokenExpiresAt, refreshToken }) => {
-      const tokens: AuthTokens = { accessToken, accessTokenExpiresAt, refreshToken };
+      const tokens: AuthTokens = {
+        accessToken,
+        accessTokenExpiresAt,
+        refreshToken,
+      };
       latestTokens = tokens;
       callbacks.onTokensRefreshed(tokens);
       return tokens;
@@ -280,7 +327,10 @@ export async function authedRequest<T>(
   options: Omit<RequestOptions, "accessToken"> = {},
 ): Promise<T> {
   try {
-    return await request<T>(path, { ...options, accessToken: session.accessToken });
+    return await request<T>(path, {
+      ...options,
+      accessToken: session.accessToken,
+    });
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401) {
       throw error;
@@ -298,7 +348,10 @@ export async function authedRequest<T>(
   }
 
   try {
-    return await request<T>(path, { ...options, accessToken: tokens.accessToken });
+    return await request<T>(path, {
+      ...options,
+      accessToken: tokens.accessToken,
+    });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       throw new SessionExpiredError();

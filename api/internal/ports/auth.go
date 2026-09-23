@@ -54,6 +54,7 @@ type AuthService interface {
 	// Misses return identity.ErrUserNotFound.
 	CurrentUser(ctx context.Context, id identity.Identity) (identity.User, error)
 	UpdateProfile(ctx context.Context, id identity.Identity, name string) (identity.User, error)
+	UpdateTimezone(ctx context.Context, id identity.Identity, timezone string) (identity.User, error)
 	ChangePassword(ctx context.Context, id identity.Identity, currentPassword, newPassword string) error
 	BeginMFA(ctx context.Context, id identity.Identity) (MFAEnrollment, error)
 	ConfirmMFA(ctx context.Context, id identity.Identity, code string) error

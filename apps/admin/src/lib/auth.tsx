@@ -74,8 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   // Guards against the mount effect running twice in React StrictMode.
   const restoredRef = useRef(false);
-  const lastActivityRef = useRef<number>(Date.now());
-  const lastRefreshRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
+  const lastRefreshRef = useRef<number>(0);
+
+  useEffect(() => {
+    lastActivityRef.current = Date.now();
+    lastRefreshRef.current = Date.now();
+  }, []);
 
   const touchActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -200,6 +205,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  useEffect(() => {
+    if (status !== "authenticated" || !tokens?.accessToken) return;
+    let cancelled = false;
+    const sync = () => {
+      void authApi
+        .me(tokens.accessToken)
+        .then(({ user: next }) => {
+          if (!cancelled)
+            setUser((current) => (current?.id === next.id ? next : current));
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("focus", sync);
+    const timer = window.setInterval(sync, 30_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", sync);
+      window.clearInterval(timer);
+    };
+  }, [status, tokens?.accessToken]);
+
   const setUserProfile = useCallback((nextUser: User) => setUser(nextUser), []);
 
   // Handed to authedRequest callers: keeps the in-memory token pair (and the
@@ -235,7 +261,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       const idleTime = now - lastActivityRef.current;
       if (idleTime > INACTIVITY_TIMEOUT_MS) {
-        void logout("Your session timed out due to inactivity. Please sign in again.");
+        void logout(
+          "Your session timed out due to inactivity. Please sign in again.",
+        );
         return;
       }
       if (
@@ -276,7 +304,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserProfile,
       logout,
     }),
-    [status, user, tokens, refreshCallbacks, touchActivity, login, logout, setMfaEnabled, setUserProfile],
+    [
+      status,
+      user,
+      tokens,
+      refreshCallbacks,
+      touchActivity,
+      login,
+      logout,
+      setMfaEnabled,
+      setUserProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

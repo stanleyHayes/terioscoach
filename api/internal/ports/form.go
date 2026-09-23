@@ -53,9 +53,10 @@ type FormInput struct {
 
 // AssignInput sends a form to a client, optionally attached to a booking.
 type AssignInput struct {
-	FormID    string
-	ClientID  string
-	BookingID string
+	PractitionerID string
+	FormID         string
+	ClientID       string
+	BookingID      string
 }
 
 // SubmitInput is the client's completed form.

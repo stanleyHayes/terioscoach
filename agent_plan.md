@@ -525,3 +525,21 @@ Work order: implement one numbered source item, verify it, commit and push it be
 | Calendar 4 | Show today's remaining available times | Done — portal booking now tracks the selected day by offset from the active timezone's today, so changing display timezone cannot keep yesterday/tomorrow selected when offset 0 should show today's remaining available slots; regression covers London Sept 17 switching to Los Angeles Sept 16 plus existing slot loading. |
 | 48-hour window 1 | Practitioner-reviewed cancellation/reschedule requests with email | Done — client portal reschedule/cancel actions now submit practitioner-reviewed requests only, cancellation requests require a reason, direct mutation endpoints are practitioner-only, practice receives the new email notification, and backend/portal regressions cover unchanged bookings, cutoff enforcement, slot validation, reason validation, and request endpoints. |
 | In-app Notification 1 | Notifications for client and practitioner activity | Done — completed the partial backend feed, wired both bells, saved unread/read state, corrected practitioner destinations, decoupled feed creation from email success, and added missing workflow events. API suite and vet, 472 admin tests, 302 portal tests, both builds, targeted notification lint and desktop/mobile browser checks passed. Coverage and baseline lint exceptions: `design/in-app-notifications.md`. Live production delivery is not yet verified. |
+
+## 2026-09-20 — Timezone, guardian consent, signed SOW and notification update plan
+
+Status: **Plan prepared; awaiting owner review. No implementation claimed.**
+
+Implementation specification: [Appointment, consent, Statement of Work and notification updates](docs/implementation/appointment-timezone-consent-sow-notifications.md). It contains repository findings, contracts, phased tasks, dependencies, migration safeguards, notification recipients and acceptance checks.
+
+Owner clarification: timezone must be selectable inside the app. Persist each user's selected IANA timezone consistently across screens and recipient notifications; retain UTC appointment instants and timezone-independent lifecycle comparisons. No single fixed US zone is prescribed.
+
+The new signed Statement of Work requirement supersedes the earlier unsigned-SOW requirement under Agreements 2 and 7 above. Preserve historical unsigned submissions and existing evidence. The plan also identifies the current pending-payment-as-past classification defect and the need for participant-specific guardian consent rather than reusing account-level signatures.
+
+## 2026-09-23 — Timezone, guardian consent, signed SOW and durable notification implementation
+
+Status: **Code implemented; owner-run testing and external verification pending.** Owner authorized checkout before document completion, catalog-prefilled SOW fees, and under-18 guardian name/signature with recommended admin-editable wording. This supersedes the earlier unsigned-SOW behavior prospectively while preserving historical evidence.
+
+Delivered account timezone persistence/first-use settings and synchronization, UTC/server-clock lifecycle grouping, DST gap/fold handling, unpaid request expiry and checkout recovery; participant declarations and guardian executions bound to booking/revision/version; both source-specific signed SOW forms and PDF/archive views; session entry gates at ticket issue and redemption; transactional notification journal, recipient routing, durable retry/dedup, frozen email payloads, archival recovery and operator audit/backfill/rollback/replay tools. Details and commands: [implementation handoff](docs/implementation/appointment-timezone-consent-sow-notifications.md#11-implementation-handoff--23-september-2026), `design/api-contract.md`, `design/in-app-notifications.md`.
+
+Verification boundary: API and test-binary compilation (`go test -exec /usr/bin/true ./...`, no tests executed), portal/admin TypeScript compilation and scoped static lint. New regression tests written. No browser, live database mutation, migration execution, inbox test, deployment performed. Commit and push authorized by the user after implementation. Requires MongoDB Atlas/replica-set transaction support. Earlier test counts elsewhere in this ledger are historical and are not verification of this update.

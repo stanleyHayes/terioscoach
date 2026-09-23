@@ -11,9 +11,10 @@ import (
 // is final HTML: templating happened before this boundary, so swapping the
 // provider never touches the templates.
 type EmailMessage struct {
-	To      string
-	Subject string
-	HTML    string
+	IdempotencyKey string
+	To             string
+	Subject        string
+	HTML           string
 	// Text is the plain-text alternative. Providers that support
 	// multipart use it; the rest ignore it.
 	Text string
@@ -41,7 +42,8 @@ type NotificationJobRepository interface {
 	// Update persists lifecycle changes (sent, failed, rescheduled).
 	Update(ctx context.Context, job notification.Job) (notification.Job, error)
 	// ClaimDue atomically takes up to limit pending jobs that are due,
-	// so two dispatcher instances never send the same email twice. The
+	// so concurrent dispatchers do not share an active lease. Lease expiry
+	// can retry an accepted email; provider idempotency bounds duplicates. The
 	// returned jobs are already marked in-flight for this caller.
 	ClaimDue(ctx context.Context, now time.Time, limit int) ([]notification.Job, error)
 	// PendingByBooking lists a booking's undelivered jobs of one kind —
@@ -167,4 +169,9 @@ func NotifyActivity(ctx context.Context, notifier any, notice ActivityNotice) {
 	if n, ok := notifier.(ActivityNotifier); ok && n != nil {
 		n.Activity(ctx, notice)
 	}
+}
+
+// NotificationDeliveryPreparer freezes rendered payload without releasing the claim.
+type NotificationDeliveryPreparer interface {
+	PrepareDelivery(context.Context, notification.Job) (notification.Job, error)
 }

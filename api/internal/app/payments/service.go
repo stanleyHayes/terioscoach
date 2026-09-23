@@ -83,7 +83,7 @@ func (s *Service) InitializePayment(ctx context.Context, id identity.Identity, b
 		// Cross-owner access is reported as not-found — no existence leak.
 		return ports.Initialization{}, booking.ErrBookingNotFound
 	}
-	if b.Status != booking.StatusPendingPayment && b.Status != booking.StatusConfirmed {
+	if !b.StartAt.After(s.now()) || (b.Status != booking.StatusPendingPayment && b.Status != booking.StatusConfirmed) {
 		return ports.Initialization{}, booking.ErrInvalidTransition
 	}
 
@@ -244,6 +244,22 @@ func (s *Service) confirmBooking(ctx context.Context, p *payment.Payment, paidAt
 		return nil
 	}
 	if err != nil || (b.Status == booking.StatusConfirmed && b.PaymentStatus == booking.PaymentPaid) {
+		return err
+	}
+	if !b.StartAt.After(s.now()) || (b.Status != booking.StatusPendingPayment && b.Status != booking.StatusConfirmed) {
+		if err := s.gateway.Refund(ctx, p.ProviderReference); err != nil {
+			return err
+		}
+		if err := p.MarkRefunded(s.now()); err != nil {
+			return err
+		}
+		if _, err := s.payments.Update(ctx, *p); err != nil {
+			return err
+		}
+		_ = b.Cancel(s.now())
+		b.PaymentExpired = !b.StartAt.After(s.now())
+		b.MarkRefunded()
+		_, err = s.bookings.Update(ctx, b)
 		return err
 	}
 	b.MarkPaid(paidAt)

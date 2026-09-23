@@ -85,8 +85,9 @@ var allowedExtensions = map[string]ResourceType{
 
 // Document is the record of one stored asset.
 type Document struct {
-	ID   string
-	Kind Kind
+	ExecutionKey string
+	ID           string
+	Kind         Kind
 	// ClientID is the owner. Empty for CMS assets, required for anything
 	// private — a private asset with no owner could not be scoped to
 	// anyone, which is the same as being unprotected.

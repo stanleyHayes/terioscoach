@@ -35,6 +35,7 @@ func WithBooking(svc ports.BookingService, auth ports.AuthService) Option {
 			r.With(client...).Post("/{id}/cancel-request", h.requestCancellation)
 			r.With(practitioner...).Get("/", h.listForPractitioner)
 			r.With(both...).Get("/{id}", h.get)
+			r.With(both...).Patch("/{id}/participant", h.updateParticipant)
 			r.With(practitioner...).Post("/{id}/reschedule", h.reschedule)
 			r.With(practitioner...).Post("/{id}/cancel", h.cancel)
 			r.With(practitioner...).Post("/{id}/complete", h.complete)
@@ -55,45 +56,63 @@ type bookingHandler struct {
 
 // bookingBody is the contract booking shape.
 type bookingBody struct {
-	ID             string     `json:"id"`
-	ClientID       string     `json:"clientId"`
-	PractitionerID string     `json:"practitionerId"`
-	ServiceID      string     `json:"serviceId"`
-	StartAt        time.Time  `json:"startAt"`
-	EndAt          time.Time  `json:"endAt"`
-	Status         string     `json:"status"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
-	CancelledAt    *time.Time `json:"cancelledAt,omitempty"`
-	CompletedAt    *time.Time `json:"completedAt,omitempty"`
-	PaymentStatus  string     `json:"paymentStatus,omitempty"`
-	PaidAt         *time.Time `json:"paidAt,omitempty"`
+	PaymentExpired      bool                 `json:"paymentExpired,omitempty"`
+	PaymentExpiresAt    *time.Time           `json:"paymentExpiresAt,omitempty"`
+	ChangeRequestedAt   *time.Time           `json:"changeRequestedAt,omitempty"`
+	ChangeRequestType   string               `json:"changeRequestType,omitempty"`
+	ChangeRequestReason string               `json:"changeRequestReason,omitempty"`
+	ProposedStartAt     *time.Time           `json:"proposedStartAt,omitempty"`
+	Participant         *booking.Participant `json:"participant,omitempty"`
+	ReadinessVersion    int                  `json:"readinessVersion,omitempty"`
+	BookingTimezone     string               `json:"bookingTimezone,omitempty"`
+	ID                  string               `json:"id"`
+	ClientID            string               `json:"clientId"`
+	PractitionerID      string               `json:"practitionerId"`
+	ServiceID           string               `json:"serviceId"`
+	StartAt             time.Time            `json:"startAt"`
+	EndAt               time.Time            `json:"endAt"`
+	Status              string               `json:"status"`
+	CreatedAt           time.Time            `json:"createdAt"`
+	UpdatedAt           time.Time            `json:"updatedAt"`
+	CancelledAt         *time.Time           `json:"cancelledAt,omitempty"`
+	CompletedAt         *time.Time           `json:"completedAt,omitempty"`
+	PaymentStatus       string               `json:"paymentStatus,omitempty"`
+	PaidAt              *time.Time           `json:"paidAt,omitempty"`
 }
 
 func newBookingBody(b booking.Booking) bookingBody {
+	var expires *time.Time
+	if b.Status == booking.StatusPendingPayment {
+		t := b.StartAt.UTC()
+		expires = &t
+	}
 	return bookingBody{
-		ID:             b.ID,
-		ClientID:       b.ClientID,
-		PractitionerID: b.PractitionerID,
-		ServiceID:      b.ServiceID,
-		StartAt:        b.StartAt.UTC(),
-		EndAt:          b.EndAt.UTC(),
-		Status:         string(b.Status),
-		CreatedAt:      b.CreatedAt.UTC(),
-		UpdatedAt:      b.UpdatedAt.UTC(),
-		CancelledAt:    b.CancelledAt,
-		CompletedAt:    b.CompletedAt,
-		PaymentStatus:  string(b.PaymentStatus),
-		PaidAt:         b.PaidAt,
+		PaymentExpired: b.PaymentExpired, PaymentExpiresAt: expires,
+		ChangeRequestedAt: b.ChangeRequestedAt, ChangeRequestType: b.ChangeRequestType, ChangeRequestReason: b.ChangeRequestReason, ProposedStartAt: b.ProposedStartAt,
+		Participant: b.Participant, ReadinessVersion: b.ReadinessVersion,
+		BookingTimezone: b.BookingTimezone,
+		ID:              b.ID,
+		ClientID:        b.ClientID,
+		PractitionerID:  b.PractitionerID,
+		ServiceID:       b.ServiceID,
+		StartAt:         b.StartAt.UTC(),
+		EndAt:           b.EndAt.UTC(),
+		Status:          string(b.Status),
+		CreatedAt:       b.CreatedAt.UTC(),
+		UpdatedAt:       b.UpdatedAt.UTC(),
+		CancelledAt:     b.CancelledAt,
+		CompletedAt:     b.CompletedAt,
+		PaymentStatus:   string(b.PaymentStatus),
+		PaidAt:          b.PaidAt,
 	}
 }
 
-func newBookingList(bookings []booking.Booking) map[string][]bookingBody {
+func newBookingList(bookings []booking.Booking) map[string]any {
 	items := make([]bookingBody, 0, len(bookings))
 	for _, b := range bookings {
 		items = append(items, newBookingBody(b))
 	}
-	return map[string][]bookingBody{"items": items}
+	return map[string]any{"items": items, "serverTime": time.Now().UTC()}
 }
 
 // identityOr401 pulls the principal RequireAuth attached.
@@ -113,9 +132,10 @@ func (h *bookingHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		ServiceID string    `json:"serviceId"`
-		StartAt   time.Time `json:"startAt"`
-		TZ        string    `json:"tz"`
+		Participant *booking.Participant `json:"participant"`
+		ServiceID   string               `json:"serviceId"`
+		StartAt     time.Time            `json:"startAt"`
+		TZ          string               `json:"tz"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
@@ -128,7 +148,15 @@ func (h *bookingHandler) create(w http.ResponseWriter, r *http.Request) {
 	if tz == "" {
 		tz = defaultBookingTimezone
 	}
-	b, err := h.svc.CreateBooking(r.Context(), id.UserID, req.ServiceID, req.StartAt, tz)
+	if req.Participant == nil {
+		writeError(w, 400, "participant_required", "Confirm who will attend this appointment.")
+		return
+	}
+	if err := req.Participant.Validate(); err != nil {
+		writeError(w, 400, "validation_error", err.Error())
+		return
+	}
+	b, err := h.svc.CreateBooking(r.Context(), id.UserID, req.ServiceID, req.StartAt, tz, *req.Participant)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -328,4 +356,25 @@ func (h *bookingHandler) markNoShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bookingBody{"booking": newBookingBody(b)})
+}
+
+func (h *bookingHandler) updateParticipant(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	var p booking.Participant
+	if !decodeJSON(w, r, &p) {
+		return
+	}
+	if err := p.Validate(); err != nil {
+		writeError(w, 400, "validation_error", err.Error())
+		return
+	}
+	b, err := h.svc.UpdateParticipant(r.Context(), id, chi.URLParam(r, "id"), p)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]bookingBody{"booking": newBookingBody(b)})
 }

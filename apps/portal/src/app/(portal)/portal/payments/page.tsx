@@ -1,5 +1,9 @@
 "use client";
 
+import { useMyBookings } from "@/components/booking/use-my-bookings";
+import { SessionRow } from "@/components/booking/SessionRow";
+import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/auth";
 import { Receipt } from "lucide-react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -10,7 +14,11 @@ import {
   PortalPage,
 } from "@/components/portal/PortalPage";
 import { formatMoney } from "@/lib/format";
-import { paymentsApi, type ClientPayment, type PaymentStatus } from "@/lib/portal";
+import {
+  paymentsApi,
+  type ClientPayment,
+  type PaymentStatus,
+} from "@/lib/portal";
 import { usePortalAction, usePortalData } from "@/lib/use-portal-data";
 
 /**
@@ -42,10 +50,19 @@ export default function PaymentsPage() {
     [],
   );
   const action = usePortalAction();
+  const { user } = useAuth();
+  const {
+    bookings,
+    servicesById,
+    error: bookingError,
+    refresh: refreshBookings,
+  } = useMyBookings();
+  const pendingBookings =
+    bookings?.filter((b) => b.status === "pending_payment") ?? [];
 
-  async function pay(payment: ClientPayment) {
-    const url = await action.run(payment.id, (session, callbacks) =>
-      paymentsApi.initialize(session, callbacks, payment.bookingId),
+  async function pay(bookingId: string) {
+    const url = await action.run(bookingId, (session, callbacks) =>
+      paymentsApi.initialize(session, callbacks, bookingId),
     );
     if (url) {
       // assign() rather than setting location.href: same navigation, but
@@ -67,6 +84,37 @@ export default function PaymentsPage() {
         </Card>
       ) : null}
 
+      {bookingError && (
+        <PortalError message={bookingError} onRetry={refreshBookings} />
+      )}
+      {pendingBookings.length > 0 && (
+        <section className="mb-6 space-y-3">
+          <h2 className="font-display text-xl">
+            Appointments awaiting payment
+          </h2>
+          <p className="text-sm text-ink-muted">
+            An unpaid request expires at the appointment start. Payment confirms
+            the slot only while it is still available.
+          </p>
+          {pendingBookings.map((booking) => (
+            <div id={`booking-${booking.id}`} key={booking.id}>
+              <SessionRow
+                booking={booking}
+                serviceName={servicesById.get(booking.serviceId)?.name}
+                timeZone={user?.timezone ?? "UTC"}
+                actions={
+                  <Button
+                    loading={action.pending === booking.id}
+                    onClick={() => void pay(booking.id)}
+                  >
+                    Continue to payment
+                  </Button>
+                }
+              />
+            </div>
+          ))}
+        </section>
+      )}
       {payments.error ? (
         <PortalError message={payments.error} onRetry={payments.refresh} />
       ) : payments.data === null ? (
@@ -81,7 +129,7 @@ export default function PaymentsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {payments.data.map((payment) => (
-            <li key={payment.id}>
+            <li key={payment.id} id={`payment-${payment.id}`}>
               <Card className="terios-record-card">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -95,14 +143,21 @@ export default function PaymentsPage() {
                     </div>
                     <p className="mt-1 text-[13px] tabular-nums text-ink-muted">
                       <time dateTime={payment.paidAt ?? payment.createdAt}>
-                        {new Date(payment.paidAt ?? payment.createdAt).toLocaleDateString(
-                          "en-GB",
-                          { day: "numeric", month: "short", year: "numeric" },
-                        )}
+                        {new Date(
+                          payment.paidAt ?? payment.createdAt,
+                        ).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: user?.timezone ?? "UTC",
+                        })}
                       </time>
                       {payment.channel ? (
                         <>
-                          <span aria-hidden="true" className="mx-2 text-ink-faint">
+                          <span
+                            aria-hidden="true"
+                            className="mx-2 text-ink-faint"
+                          >
                             ·
                           </span>
                           {payment.channel.replace(/_/g, " ")}
@@ -110,19 +165,6 @@ export default function PaymentsPage() {
                       ) : null}
                     </p>
                   </div>
-
-                  {/* Only an unfinished payment can be picked up again. A
-                      failed attempt re-opens the same checkout. */}
-                  {payment.status === "pending" || payment.status === "failed" ? (
-                    <button
-                      type="button"
-                      disabled={action.pending === payment.id}
-                      onClick={() => void pay(payment)}
-                      className="inline-flex shrink-0 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors duration-instant ease-out hover:bg-primary-hover disabled:opacity-50"
-                    >
-                      {action.pending === payment.id ? "Opening…" : "Pay now"}
-                    </button>
-                  ) : null}
                 </div>
               </Card>
             </li>

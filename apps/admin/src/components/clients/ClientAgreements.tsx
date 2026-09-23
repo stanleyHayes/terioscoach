@@ -30,9 +30,12 @@ import { TextInput } from "@/components/ui/TextInput";
  */
 export function ClientAgreements({ clientId }: { clientId: string }) {
   const { session, user, refreshCallbacks } = useAuth();
-  const [signatures, setSignatures] = useState<AgreementSignature[] | null>(null);
+  const [signatures, setSignatures] = useState<AgreementSignature[] | null>(
+    null,
+  );
   const [downloading, setDownloading] = useState<string | null>(null);
-  const [countersignTarget, setCountersignTarget] = useState<AgreementSignature | null>(null);
+  const [countersignTarget, setCountersignTarget] =
+    useState<AgreementSignature | null>(null);
   const [practitionerName, setPractitionerName] = useState("");
   const [countersigning, setCountersigning] = useState(false);
   const [countersignError, setCountersignError] = useState<string | null>(null);
@@ -125,13 +128,19 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
         {signatures.map((signature) => {
           const submission = signature.statementOfWork;
           const isPendingCountersign =
-            signature.requiresCountersignature && !signature.practitionerSignedAt;
+            signature.requiresCountersignature &&
+            !signature.practitionerSignedAt;
           const isCountersigned = Boolean(
-            signature.requiresCountersignature && signature.practitionerSignedAt,
+            signature.requiresCountersignature &&
+              signature.practitionerSignedAt,
           );
 
           return (
-            <li key={signature.id} className="rounded-lg bg-surface-sunken p-3.5 border border-border/60">
+            <li
+              id={`execution-${signature.id}`}
+              key={signature.id}
+              className="rounded-lg bg-surface-sunken p-3.5 border border-border/60"
+            >
               <div className="flex items-start gap-2.5">
                 <FileCheck2
                   size={16}
@@ -148,34 +157,87 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
                     ) : isCountersigned ? (
                       <Badge variant="success">Countersigned</Badge>
                     ) : (
-                      <Badge variant="neutral">{submission ? "Submitted" : "Signed"}</Badge>
+                      <Badge variant="neutral">
+                        {submission && !signature.signedName
+                          ? "Submitted — unsigned (legacy)"
+                          : "Signed"}
+                      </Badge>
                     )}
                   </div>
 
+                  {signature.archiveStatus === "pending" && (
+                    <p className="text-xs text-ink-muted">
+                      Signed evidence saved · PDF archive pending
+                    </p>
+                  )}
+                  {signature.signedName && (
+                    <p className="mt-2 text-xs">
+                      Signed by {signature.signedName} (
+                      {signature.signerRole || "client"})
+                      {signature.participantName
+                        ? ` for ${signature.participantName}`
+                        : ""}
+                      {signature.consentVersion
+                        ? ` · Consent ${signature.consentVersion}`
+                        : ""}
+                    </p>
+                  )}
                   {submission ? (
                     <dl className="mt-2 grid gap-2 text-xs text-ink-muted sm:grid-cols-2">
-                      <div><dt className="font-medium text-ink">Client name</dt><dd>{submission.clientName}</dd></div>
-                      <div><dt className="font-medium text-ink">Effective date</dt><dd>{submission.effectiveDate}</dd></div>
-                      <div><dt className="font-medium text-ink">Initial term</dt><dd>{submission.initialTermMonths} months</dd></div>
-                      <div><dt className="font-medium text-ink">Monthly fee</dt><dd>{submission.monthlyFee}</dd></div>
-                      <div><dt className="font-medium text-ink">Submitted at</dt><dd>{signature.submittedAt ? new Date(signature.submittedAt).toLocaleString() : "—"}</dd></div>
+                      <div>
+                        <dt className="font-medium text-ink">Client name</dt>
+                        <dd>{submission.clientName}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-ink">Effective date</dt>
+                        <dd>{submission.effectiveDate}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-ink">Initial term</dt>
+                        <dd>
+                          {submission.package ||
+                            `${submission.initialTermMonths} months`}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-ink">Monthly fee</dt>
+                        <dd>{submission.monthlyFee}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-ink">Submitted at</dt>
+                        <dd>
+                          {signature.submittedAt
+                            ? new Date(signature.submittedAt).toLocaleString()
+                            : "—"}
+                        </dd>
+                      </div>
                     </dl>
-                  ) : <div className="mt-2 text-xs text-ink-muted">
-                    <span className="font-medium text-ink">Client signature:</span>{" "}
-                    <span className="font-display italic text-ink">{signature.signedName}</span>
-                    <span className="ml-1 text-[11px] text-ink-faint">
-                      ({new Date(signature.signedAt).toLocaleString("en-US", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })})
-                    </span>
-                  </div>}
+                  ) : (
+                    <div className="mt-2 text-xs text-ink-muted">
+                      <span className="font-medium text-ink">
+                        Client signature:
+                      </span>{" "}
+                      <span className="font-display italic text-ink">
+                        {signature.signedName}
+                      </span>
+                      <span className="ml-1 text-[11px] text-ink-faint">
+                        (
+                        {new Date(signature.signedAt).toLocaleString("en-US", {
+                          timeZone: user?.timezone ?? "UTC",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        )
+                      </span>
+                    </div>
+                  )}
 
-                  {!submission && signature.signedName.trim().toLowerCase() !==
-                  signature.clientName.trim().toLowerCase() ? (
+                  {!submission &&
+                  signature.signedName.trim().toLowerCase() !==
+                    signature.clientName.trim().toLowerCase() ? (
                     <p className="mt-0.5 text-[11px] text-ink-faint">
                       Account name: {signature.clientName}
                     </p>
@@ -183,17 +245,26 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
 
                   {isCountersigned ? (
                     <div className="mt-1 text-xs text-ink-muted">
-                      <span className="font-medium text-ink">Practitioner countersignature:</span>{" "}
-                      <span className="font-display italic text-ink">{signature.practitionerSignedName}</span>
+                      <span className="font-medium text-ink">
+                        Practitioner countersignature:
+                      </span>{" "}
+                      <span className="font-display italic text-ink">
+                        {signature.practitionerSignedName}
+                      </span>
                       {signature.practitionerSignedAt ? (
                         <span className="ml-1 text-[11px] text-ink-faint">
-                          ({new Date(signature.practitionerSignedAt).toLocaleString("en-US", {
+                          (
+                          {new Date(
+                            signature.practitionerSignedAt,
+                          ).toLocaleString("en-US", {
+                            timeZone: user?.timezone ?? "UTC",
                             day: "numeric",
                             month: "short",
                             year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          })})
+                          })}
+                          )
                         </span>
                       ) : null}
                     </div>
@@ -217,7 +288,11 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
                         onClick={() => startCountersigning(signature)}
                         className="text-xs h-7 px-3"
                       >
-                        <PenTool size={12} className="mr-1" aria-hidden="true" />
+                        <PenTool
+                          size={12}
+                          className="mr-1"
+                          aria-hidden="true"
+                        />
                         Countersign
                       </Button>
                     ) : null}
@@ -269,7 +344,8 @@ export function ClientAgreements({ clientId }: { clientId: string }) {
               placeholder="Stanley Hayes, BSN, RN"
             />
             <p className="text-xs text-ink-muted">
-              By typing your name, you execute the countersignature block on this document on behalf of Terios Wellness Spa.
+              By typing your name, you execute the countersignature block on
+              this document on behalf of Terios Wellness Spa.
             </p>
           </div>
         </Modal>

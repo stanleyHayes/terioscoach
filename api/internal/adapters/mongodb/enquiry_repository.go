@@ -68,7 +68,7 @@ func (d enquiryDoc) toDomain() enquiry.Enquiry {
 }
 
 func (r *EnquiryRepository) Create(ctx context.Context, e enquiry.Enquiry) (enquiry.Enquiry, error) {
-	res, err := r.coll.InsertOne(ctx, newEnquiryDoc(e))
+	res, err := insertOneWithEvent(ctx, r.coll, newEnquiryDoc(e))
 	if err != nil {
 		return enquiry.Enquiry{}, fmt.Errorf("insert enquiry: %w", err)
 	}
@@ -85,7 +85,7 @@ func (r *EnquiryRepository) Update(ctx context.Context, e enquiry.Enquiry) (enqu
 	if err != nil {
 		return enquiry.Enquiry{}, enquiry.ErrEnquiryNotFound
 	}
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{
+	res, err := updateOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, bson.M{"$set": bson.M{
 		"status":    string(e.Status),
 		"updatedAt": bson.NewDateTimeFromTime(e.UpdatedAt),
 	}})

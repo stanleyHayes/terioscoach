@@ -44,7 +44,7 @@ func (r *RecordingRepository) Create(ctx context.Context, rec recording.SessionR
 	if err != nil {
 		return recording.SessionRecording{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return recording.SessionRecording{}, recording.ErrRecordingExists

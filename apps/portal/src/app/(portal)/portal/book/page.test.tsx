@@ -63,7 +63,13 @@ vi.mock("@/components/booking/SlotPicker", () => ({
 
 const authValue = {
   status: "authenticated" as const,
-  user: { id: "client-1", email: "ama@example.com", role: "client" as const, name: "Ama" },
+  user: {
+    id: "client-1",
+    email: "ama@example.com",
+    role: "client" as const,
+    name: "Ama",
+    timezone: "UTC",
+  },
   session: { accessToken: "a1", refreshToken: "r1" },
   onTokensRefreshed: vi.fn(),
   logout: vi.fn(),
@@ -99,11 +105,25 @@ async function confirmABooking() {
   render(<BookPage />);
   // A RadioCard (design-system §3.8): the whole card is the control, and
   // it is a custom radio rather than a native one.
-  fireEvent.click(await screen.findByRole("radio", { name: /aromatherapy massage/i }));
+  fireEvent.click(
+    await screen.findByRole("radio", { name: /aromatherapy massage/i }),
+  );
   fireEvent.click(await screen.findByRole("button", { name: /pick 09:00/i }));
+  fireEvent.change(screen.getByLabelText(/participant full name/i), {
+    target: { value: "Ama" },
+  });
+  fireEvent.click(
+    screen.getByRole("checkbox", {
+      name: /confirm these participant details/i,
+    }),
+  );
   // Picking a slot arms Continue; it does not skip the review step.
   fireEvent.click(await screen.findByRole("button", { name: /^continue$/i }));
-  fireEvent.click(await screen.findByRole("button", { name: /confirm booking|continue to payment/i }));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: /confirm booking|continue to payment/i,
+    }),
+  );
 }
 
 describe("Booking flow → checkout", () => {
@@ -113,11 +133,18 @@ describe("Booking flow → checkout", () => {
     vi.clearAllMocks();
     listServices.mockResolvedValue([service]);
     createBooking.mockResolvedValue(booking);
-    initialize.mockResolvedValue("https://checkout.stripe.com/c/pay/cs_test_abc");
+    initialize.mockResolvedValue(
+      "https://checkout.stripe.com/c/pay/cs_test_abc",
+    );
 
     assign = vi.fn<(url: string) => void>();
     Object.defineProperty(window, "location", {
-      value: { assign, set href(value: string) { assign(value); } },
+      value: {
+        assign,
+        set href(value: string) {
+          assign(value);
+        },
+      },
       writable: true,
     });
   });
@@ -129,11 +156,19 @@ describe("Booking flow → checkout", () => {
 
     render(<BookPage />);
 
-    expect(await screen.findByRole("heading", { name: "No sessions are available to book yet" })).toBeTruthy();
-    expect(screen.getByText(/has not published its service details, duration and price/i)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Ask about care" }).getAttribute("href")).toBe(
-      "https://terioscoach.com/contact",
-    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "No sessions are available to book yet",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /has not published its service details, duration and price/i,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Ask about care" }).getAttribute("href"),
+    ).toBe("https://terioscoach.com/contact");
   });
 
   it("books the session and then sends the client to checkout", async () => {
@@ -150,20 +185,22 @@ describe("Booking flow → checkout", () => {
     // The booking's own id, not the slot or the service: initializing
     // against the wrong id would charge for someone else's session.
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_abc"),
+      expect(assign).toHaveBeenCalledWith(
+        "https://checkout.stripe.com/c/pay/cs_test_abc",
+      ),
     );
   });
 
   it("confirms a free introductory session without opening Stripe", async () => {
-	listServices.mockResolvedValueOnce([{ ...service, priceKobo: 0 }]);
-	createBooking.mockResolvedValueOnce({ ...booking, status: "confirmed" });
+    listServices.mockResolvedValueOnce([{ ...service, priceKobo: 0 }]);
+    createBooking.mockResolvedValueOnce({ ...booking, status: "confirmed" });
 
-	await confirmABooking();
+    await confirmABooking();
 
-	expect(await screen.findByText(/you.re booked/i)).toBeTruthy();
-	expect(initialize).not.toHaveBeenCalled();
-	expect(assign).not.toHaveBeenCalled();
-	expect(screen.queryByText(/couldn.t open the payment page/i)).toBeNull();
+    expect(await screen.findByText(/you.re booked/i)).toBeTruthy();
+    expect(initialize).not.toHaveBeenCalled();
+    expect(assign).not.toHaveBeenCalled();
+    expect(screen.queryByText(/couldn.t open the payment page/i)).toBeNull();
   });
 
   it("books first and pays second, never the other way round", async () => {
@@ -179,31 +216,41 @@ describe("Booking flow → checkout", () => {
   });
 
   it("keeps the session when checkout cannot be opened", async () => {
-    initialize.mockRejectedValue(new ApiError(503, "service_unavailable", "payments are down"));
+    initialize.mockRejectedValue(
+      new ApiError(503, "service_unavailable", "payments are down"),
+    );
 
     await confirmABooking();
 
-	// The request remains payable, but it is not called booked or placed on
-	// the calendar before Stripe confirms payment.
-	expect(await screen.findByRole("heading", { name: /payment required/i })).toBeTruthy();
+    // The request remains payable, but it is not called booked or placed on
+    // the calendar before Stripe confirms payment.
+    expect(
+      await screen.findByRole("heading", { name: /payment required/i }),
+    ).toBeTruthy();
     expect(await screen.findByRole("status")).toHaveProperty(
       "textContent",
-	  expect.stringContaining("This time is not booked yet"),
+      expect.stringContaining("This time is not booked yet"),
     );
     expect(assign).not.toHaveBeenCalled();
   });
 
   it("offers a way to pay after a failed hand-off", async () => {
-    initialize.mockRejectedValue(new ApiError(503, "service_unavailable", "down"));
+    initialize.mockRejectedValue(
+      new ApiError(503, "service_unavailable", "down"),
+    );
 
     await confirmABooking();
 
-    const payLink = await screen.findByRole("link", { name: /pay for this session/i });
+    const payLink = await screen.findByRole("link", {
+      name: /pay for this session/i,
+    });
     expect(payLink.getAttribute("href")).toBe("/portal/payments");
   });
 
   it("does not try to pay for a booking that was never created", async () => {
-    createBooking.mockRejectedValue(new ApiError(409, "slot_unavailable", "taken"));
+    createBooking.mockRejectedValue(
+      new ApiError(409, "slot_unavailable", "taken"),
+    );
 
     await confirmABooking();
 

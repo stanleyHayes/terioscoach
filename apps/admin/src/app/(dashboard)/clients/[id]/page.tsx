@@ -17,6 +17,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextInput } from "@/components/ui/TextInput";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import {
   clientsApi,
@@ -29,7 +30,12 @@ import {
   type SessionNote,
 } from "@/lib/clients";
 import { formatMoney } from "@/lib/format";
-import { formatCivilDate, formatTime, PRACTICE_TIMEZONE, timezoneShortName, zonedParts } from "@/lib/schedule";
+import {
+  formatCivilDate,
+  formatTime,
+  timezoneShortName,
+  zonedParts,
+} from "@/lib/schedule";
 import { useAction, useResource } from "@/lib/use-resource";
 
 /**
@@ -59,6 +65,7 @@ const statusLabel: Record<ClientBooking["status"], string> = {
 };
 
 export default function ClientRecordPage() {
+  const { user } = useAuth();
   const params = useParams<{ id: string }>();
   const clientId = params.id;
 
@@ -232,7 +239,11 @@ export default function ClientRecordPage() {
               </h1>
               {data.profileCreatedAt ? (
                 <span className="text-xs text-ink-muted">
-                  Client since {new Date(data.profileCreatedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                  Client since{" "}
+                  {new Date(data.profileCreatedAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </span>
               ) : null}
             </div>
@@ -293,14 +304,33 @@ export default function ClientRecordPage() {
                   Sessions
                 </h2>
 
-                <div className="flex flex-wrap items-center gap-1.5" role="tablist">
+                <div
+                  className="flex flex-wrap items-center gap-1.5"
+                  role="tablist"
+                >
                   {(
                     [
                       { id: "all", label: "All", count: counts.all },
-                      { id: "upcoming", label: "Upcoming", count: counts.upcoming },
-                      { id: "completed", label: "Completed", count: counts.completed },
-                      { id: "cancelled", label: "Cancelled", count: counts.cancelled },
-                      { id: "no_show", label: "No show", count: counts.no_show },
+                      {
+                        id: "upcoming",
+                        label: "Upcoming",
+                        count: counts.upcoming,
+                      },
+                      {
+                        id: "completed",
+                        label: "Completed",
+                        count: counts.completed,
+                      },
+                      {
+                        id: "cancelled",
+                        label: "Cancelled",
+                        count: counts.cancelled,
+                      },
+                      {
+                        id: "no_show",
+                        label: "No show",
+                        count: counts.no_show,
+                      },
                     ] as const
                   ).map((tab) => {
                     const active = sessionFilter === tab.id;
@@ -354,10 +384,28 @@ export default function ClientRecordPage() {
                         >
                           <span className="flex flex-wrap items-center gap-3">
                             <span className="text-sm font-medium tabular-nums text-ink">
-                              {formatCivilDate(zonedParts(booking.startAt, PRACTICE_TIMEZONE))} ·{" "}
-                              {formatTime(booking.startAt, PRACTICE_TIMEZONE)}–
-                              {formatTime(booking.endAt, PRACTICE_TIMEZONE)}{" "}
-                              ({timezoneShortName(PRACTICE_TIMEZONE, new Date(booking.startAt))})
+                              {formatCivilDate(
+                                zonedParts(
+                                  booking.startAt,
+                                  user?.timezone ?? "UTC",
+                                ),
+                              )}{" "}
+                              ·{" "}
+                              {formatTime(
+                                booking.startAt,
+                                user?.timezone ?? "UTC",
+                              )}
+                              –
+                              {formatTime(
+                                booking.endAt,
+                                user?.timezone ?? "UTC",
+                              )}{" "}
+                              (
+                              {timezoneShortName(
+                                user?.timezone ?? "UTC",
+                                new Date(booking.startAt),
+                              )}
+                              )
                             </span>
                             <Badge variant={statusVariant[booking.status]}>
                               {statusLabel[booking.status]}
@@ -522,7 +570,9 @@ function RecordingList({ recordings }: { recordings: SessionRecording[] }) {
                 className="aspect-video w-full rounded-md bg-ink"
               />
               <p className="mt-2 text-xs text-ink-muted">
-                Recorded {new Date(recording.createdAt).toLocaleDateString("en-GB")} · retained until{" "}
+                Recorded{" "}
+                {new Date(recording.createdAt).toLocaleDateString("en-GB")} ·
+                retained until{" "}
                 {new Date(recording.retainUntil).toLocaleDateString("en-GB")}
               </p>
             </li>

@@ -36,6 +36,13 @@ export default function ClientSessionRoomPage() {
         Your session
       </h1>
 
+      <Link
+        href={`/portal/sessions/${params.id}/documents`}
+        className="text-sm text-primary underline"
+      >
+        Review required consent, documents and forms
+      </Link>
+
       <VideoRoom
         bookingId={params.id}
         peerLabel="your practitioner"

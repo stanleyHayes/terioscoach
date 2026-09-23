@@ -5,6 +5,7 @@ import "errors"
 // Domain errors for the agreements slice.
 var (
 	// Lookup.
+	ErrAgreementChanged  = errors.New("this document changed while you were editing; reload and try again")
 	ErrAgreementNotFound = errors.New("agreement not found")
 	ErrAgreementInactive = errors.New("this agreement is no longer in use")
 	// ErrAlreadySigned is not a failure the client ever sees: signing is
@@ -17,7 +18,7 @@ var (
 	ErrAgreementRequired = errors.New("this service requires a signed agreement")
 
 	// Validation.
-	ErrInvalidStatementOfWork = errors.New("complete the statement of work with client name, effective date (YYYY-MM-DD), initial term (1-1200 months), and monthly fee; no signature is required")
+	ErrInvalidStatementOfWork = errors.New("complete the Statement of Work with participant name, valid start date, initial term or package, service fee, and electronic signature")
 	ErrInvalidAgreement       = errors.New("a practitioner and key are required")
 	ErrInvalidTitle           = errors.New("title is required")
 	ErrTitleTooLong           = errors.New("title is too long")
@@ -30,7 +31,7 @@ var (
 	// Countersignature & Collections
 	ErrCountersignatureNotRequired = errors.New("only holistic and nurse coaching agreements require a practitioner countersignature")
 	ErrAlreadyCountersigned        = errors.New("this agreement has already been countersigned")
-	ErrSignatureNotRequired        = errors.New("statement of work documents are fill-in forms and do not require a client signature")
+	ErrSignatureNotRequired        = errors.New("complete and sign the Statement of Work using the form submission endpoint")
 	ErrSignatureNotFound           = errors.New("signature not found")
 	ErrCollectionNotFound          = errors.New("agreement collection not found")
 	ErrInvalidCollection           = errors.New("invalid agreement collection")

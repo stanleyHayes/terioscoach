@@ -1,14 +1,18 @@
 "use client";
+import { TimezonePreference } from "@/components/ui/TimezonePreference";
 
 import { CalendarDays, CircleAlert, List } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { BrandedSelect } from "@/components/ui/ChoiceControls";
 import { UpcomingConsultations } from "@/components/schedule/UpcomingConsultations";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
 import { KpiStrip } from "@/components/insights/KpiStrip";
-import type { BookingAction } from "@/components/schedule/BookingDetailModal";
-import { ApiError, SessionExpiredError } from "@/lib/api";
+import {
+  BookingDetailModal,
+  type BookingAction,
+} from "@/components/schedule/BookingDetailModal";
+import { ApiError, SessionExpiredError, authedRequest } from "@/lib/api";
+import { serverNow } from "@/lib/server-clock";
 import { useAuth } from "@/lib/auth";
 import { clientsApi } from "@/lib/clients";
 import { cn } from "@/lib/cn";
@@ -18,10 +22,8 @@ import {
   dateKey,
   mondayOfWeek,
   scheduleApi,
-  SUPPORTED_TIME_ZONES,
   todayCivil,
-  wallClockToUtcIso,
-  PRACTICE_TIMEZONE,
+  civilDayStartUtc,
   type Booking,
   type BookingStatus,
   type CivilDate,
@@ -52,11 +54,12 @@ function errorMessage(error: unknown): string {
 }
 
 export default function CalendarPage() {
-  const { session, refreshCallbacks, logout } = useAuth();
+  const { session, user, refreshCallbacks, logout } = useAuth();
   const [weekStart, setWeekStart] = useState<CivilDate>(() =>
-    mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)),
+    mondayOfWeek(todayCivil(user?.timezone ?? "UTC")),
   );
-  const [timeZone, setTimeZone] = useState(PRACTICE_TIMEZONE);
+  const timeZone = user?.timezone ?? "UTC";
+  const [linkedBooking, setLinkedBooking] = useState<Booking | null>(null);
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
@@ -80,18 +83,22 @@ export default function CalendarPage() {
     let cancelled = false;
     const weekEnd = addDaysCivil(weekStart, 7);
     scheduleApi
-      .listBookings(session, refreshCallbacks, view === "list" ? {
-        from: new Date().toISOString(),
-        status: "confirmed",
-      } : {
-        from: wallClockToUtcIso(
-          dateKey(weekStart),
-          "00:00",
-        timeZone,
-        )!,
-        to: wallClockToUtcIso(dateKey(weekEnd), "00:00", timeZone)!,
-        ...(filter === "all" ? {} : { status: filter }),
-      })
+      .listBookings(
+        session,
+        refreshCallbacks,
+        view === "list"
+          ? {
+              from: new Date(
+                serverNow().getTime() - 24 * 60 * 60 * 1000,
+              ).toISOString(),
+              status: "confirmed",
+            }
+          : {
+              from: civilDayStartUtc(dateKey(weekStart), timeZone)!,
+              to: civilDayStartUtc(dateKey(weekEnd), timeZone)!,
+              ...(filter === "all" ? {} : { status: filter }),
+            },
+      )
       .then((items) => {
         if (!cancelled) {
           setError(null);
@@ -107,9 +114,54 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, refreshCallbacks, weekStart, timeZone, filter, view, handleSessionExpiry]);
+  }, [
+    session,
+    refreshCallbacks,
+    weekStart,
+    timeZone,
+    filter,
+    view,
+    handleSessionExpiry,
+  ]);
 
-  useEffect(() => load(), [load]);
+  useEffect(() => {
+    let dispose = load();
+    const refresh = () => {
+      dispose?.();
+      dispose = load();
+    };
+    window.addEventListener("focus", refresh);
+    const timer = setInterval(refresh, 30000);
+    return () => {
+      dispose?.();
+      window.removeEventListener("focus", refresh);
+      clearInterval(timer);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    if (!session) return;
+    const bookingID = new URLSearchParams(window.location.search).get(
+      "booking",
+    );
+    if (!bookingID) return;
+    let disposed = false;
+    authedRequest<{ booking: Booking }>(
+      `/v1/bookings/${encodeURIComponent(bookingID)}`,
+      session,
+      refreshCallbacks,
+    )
+      .then((result) => {
+        if (!disposed) setLinkedBooking(result.booking);
+      })
+      .catch(() => {
+        if (!disposed)
+          setError("This appointment is unavailable or no longer accessible.");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [session, refreshCallbacks]);
 
   // Load the client and service directories once per session so calendar
   // blocks and the detail modal can resolve booking.clientId/serviceId to
@@ -124,7 +176,9 @@ export default function CalendarPage() {
       .then(([clients, services]) => {
         if (cancelled) return;
         setClientNames(Object.fromEntries(clients.map((c) => [c.id, c.name])));
-        setServiceNames(Object.fromEntries(services.map((s) => [s.id, s.name])));
+        setServiceNames(
+          Object.fromEntries(services.map((s) => [s.id, s.name])),
+        );
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -194,70 +248,98 @@ export default function CalendarPage() {
 
   return (
     <div data-admin-page="calendar" className="flex flex-col gap-6">
+      {linkedBooking && (
+        <BookingDetailModal
+          key={linkedBooking.id}
+          booking={linkedBooking}
+          clientName={clientNames[linkedBooking.clientId]}
+          serviceName={serviceNames[linkedBooking.serviceId]}
+          timeZone={timeZone}
+          onClose={() => setLinkedBooking(null)}
+          onAction={handleAction}
+          onReschedule={handleReschedule}
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-[22px] leading-[1.3] font-semibold tracking-[-0.005em] text-ink">
             Calendar & consultations
           </h1>
           <p className="mt-1 text-sm leading-[1.55] text-ink-muted">
-            Open a confirmed booking to start its secure video consultation, or manage its status and timing.
+            Open a confirmed booking to start its secure video consultation, or
+            manage its status and timing.
           </p>
         </div>
         {/* status filter chips (§3.20): selected = eucalyptus-100 + primary border */}
-        {view === "calendar" ? <div
-          role="group"
-          aria-label="Filter by status"
-          className="flex flex-wrap gap-2"
-        >
-          {FILTERS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => {
-                setBookings(null);
-                setError(null);
-                setFilter(value);
-              }}
-              className={cn(
-                "h-7 rounded-full border px-3 text-[13px] leading-[1.45] font-medium tracking-[0.01em] transition-colors duration-fast ease-out",
-                filter === value
-                  ? "border-primary bg-primary text-on-primary shadow-sm"
-                  : "border-border-strong bg-surface-raised text-ink hover:border-ink-faint",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div> : null}
+        {view === "calendar" ? (
+          <div
+            role="group"
+            aria-label="Filter by status"
+            className="flex flex-wrap gap-2"
+          >
+            {FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={filter === value}
+                onClick={() => {
+                  setBookings(null);
+                  setError(null);
+                  setFilter(value);
+                }}
+                className={cn(
+                  "h-7 rounded-full border px-3 text-[13px] leading-[1.45] font-medium tracking-[0.01em] transition-colors duration-fast ease-out",
+                  filter === value
+                    ? "border-primary bg-primary text-on-primary shadow-sm"
+                    : "border-border-strong bg-surface-raised text-ink hover:border-ink-faint",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      <div role="group" aria-label="Consultation view" className="flex w-fit gap-1 rounded-full border border-border bg-surface-raised p-1">
-        {([ ["calendar", "Weekly calendar", CalendarDays], ["list", "Upcoming list", List] ] as const).map(([value, label, Icon]) => (
-          <button key={value} type="button" aria-pressed={view === value} onClick={() => {
-            if (view === value) return;
-            setBookings(null);
-            setError(null);
-            setView(value);
-          }} className={cn("flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors", view === value ? "bg-primary text-on-primary" : "text-ink-muted hover:bg-surface-sunken")}>
-            <Icon size={16} aria-hidden="true" />{label}
+      <div
+        role="group"
+        aria-label="Consultation view"
+        className="flex w-fit gap-1 rounded-full border border-border bg-surface-raised p-1"
+      >
+        {(
+          [
+            ["calendar", "Weekly calendar", CalendarDays],
+            ["list", "Upcoming list", List],
+          ] as const
+        ).map(([value, label, Icon]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={view === value}
+            onClick={() => {
+              if (view === value) return;
+              setBookings(null);
+              setError(null);
+              setView(value);
+            }}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+              view === value
+                ? "bg-primary text-on-primary"
+                : "text-ink-muted hover:bg-surface-sunken",
+            )}
+          >
+            <Icon size={16} aria-hidden="true" />
+            {label}
           </button>
         ))}
       </div>
 
       <div className="max-w-xs">
-        <BrandedSelect
-          label="Display timezone"
-          value={timeZone}
-          options={SUPPORTED_TIME_ZONES.map((zone) => ({
-            value: zone.value,
-            label: zone.label,
-            description: zone.value,
-          }))}
-          onChange={(next) => {
+        <TimezonePreference
+          onSaved={(next) => {
             setBookings(null);
             setError(null);
-            setTimeZone(next);
             setWeekStart(mondayOfWeek(todayCivil(next)));
           }}
         />
@@ -331,9 +413,29 @@ export default function CalendarPage() {
       ) : null}
 
       {bookings === null && !error ? (
-        view === "calendar" ? <CalendarSkeleton /> : <div role="status" aria-busy="true" className="flex flex-col gap-4"><span className="sr-only">Loading upcoming consultations…</span>{[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="skeleton-shimmer h-36 rounded-[1.5rem]" />)}</div>
+        view === "calendar" ? (
+          <CalendarSkeleton />
+        ) : (
+          <div role="status" aria-busy="true" className="flex flex-col gap-4">
+            <span className="sr-only">Loading upcoming consultations…</span>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="skeleton-shimmer h-36 rounded-[1.5rem]"
+              />
+            ))}
+          </div>
+        )
       ) : error ? null : view === "list" ? (
-        <UpcomingConsultations bookings={bookings ?? []} clientNames={clientNames} serviceNames={serviceNames} timeZone={timeZone} onAction={handleAction} onReschedule={handleReschedule} />
+        <UpcomingConsultations
+          bookings={bookings ?? []}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
+          timeZone={timeZone}
+          onAction={handleAction}
+          onReschedule={handleReschedule}
+        />
       ) : (
         <WeekCalendar
           weekStart={weekStart}

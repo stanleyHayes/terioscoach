@@ -1008,6 +1008,13 @@ func (f *FakeNotificationJobRepository) Create(_ context.Context, job notificati
 	if f.CreateErr != nil {
 		return notification.Job{}, f.CreateErr
 	}
+	if event := job.Data["eventId"]; event != "" {
+		for _, existing := range f.byID {
+			if existing.Data["eventId"] == event && existing.Kind == job.Kind && strings.EqualFold(existing.Recipient, job.Recipient) {
+				return existing, nil
+			}
+		}
+	}
 	f.next++
 	job.ID = fmt.Sprintf("job-%d", f.next)
 	f.byID[job.ID] = job
@@ -2157,4 +2164,16 @@ func (f *FakeMediaStore) Delete(_ context.Context, asset ports.Asset) error {
 	}
 	f.Deleted = append(f.Deleted, asset)
 	return nil
+}
+
+func (f *FakeUserRepository) UpdateTimezone(_ context.Context, userID, timezone string) (identity.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[userID]
+	if !ok {
+		return identity.User{}, identity.ErrUserNotFound
+	}
+	user.Timezone = timezone
+	f.byID[userID] = user
+	return user, nil
 }

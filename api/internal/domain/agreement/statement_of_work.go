@@ -8,6 +8,7 @@ import (
 
 // StatementOfWork contains form answers, not an electronic signature.
 type StatementOfWork struct {
+	Package           string `json:"package,omitempty" bson:"package,omitempty"`
 	ClientName        string `json:"clientName" bson:"clientName"`
 	EffectiveDate     string `json:"effectiveDate" bson:"effectiveDate"`
 	InitialTermMonths int    `json:"initialTermMonths" bson:"initialTermMonths"`
@@ -31,7 +32,15 @@ func (a Agreement) SubmitStatementOfWork(clientID, clientName, clientEmail, book
 	answers.ClientName = strings.TrimSpace(answers.ClientName)
 	answers.EffectiveDate = strings.TrimSpace(answers.EffectiveDate)
 	answers.MonthlyFee = strings.TrimSpace(answers.MonthlyFee)
-	if answers.ClientName == "" || utf8.RuneCountInString(answers.ClientName) > MaxSignedNameLen || answers.MonthlyFee == "" || utf8.RuneCountInString(answers.MonthlyFee) > 120 || answers.InitialTermMonths < 1 || answers.InitialTermMonths > 1200 {
+	answers.Package = strings.TrimSpace(answers.Package)
+	if answers.ClientName == "" || utf8.RuneCountInString(answers.ClientName) > MaxSignedNameLen || answers.MonthlyFee == "" || utf8.RuneCountInString(answers.MonthlyFee) > 120 {
+		return Signature{}, ErrInvalidStatementOfWork
+	}
+	if a.Key == "nurse_sow" && answers.Package != "" {
+		if len(strings.TrimSpace(answers.Package)) > 200 {
+			return Signature{}, ErrInvalidStatementOfWork
+		}
+	} else if answers.InitialTermMonths < 1 || answers.InitialTermMonths > 1200 {
 		return Signature{}, ErrInvalidStatementOfWork
 	}
 	if _, err := time.Parse("2006-01-02", answers.EffectiveDate); err != nil {

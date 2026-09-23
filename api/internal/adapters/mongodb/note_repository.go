@@ -51,7 +51,7 @@ func (r *SessionNoteRepository) Create(ctx context.Context, n note.SessionNote) 
 	if err != nil {
 		return note.SessionNote{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return note.SessionNote{}, note.ErrNoteExists
@@ -95,7 +95,7 @@ func (r *SessionNoteRepository) Update(ctx context.Context, n note.SessionNote) 
 	}
 	doc.ID = oid
 
-	res, err := r.coll.ReplaceOne(ctx, bson.M{"_id": oid}, doc)
+	res, err := replaceOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return note.SessionNote{}, note.ErrNoteExists

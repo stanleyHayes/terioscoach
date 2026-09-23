@@ -38,8 +38,10 @@ const (
 // rendered by the client, never as HTML from the server, so the text can
 // never carry markup into a page.
 type Agreement struct {
-	ID             string
-	PractitionerID string
+	// ExpectedVersion is the optimistic write precondition set by Apply.
+	ExpectedVersion int
+	ID              string
+	PractitionerID  string
 	/** Stable machine name, e.g. "holistic_coaching". Services point at the
 	 * ID, but the key is what seeds and fixtures refer to. */
 	Key                      string
@@ -74,11 +76,10 @@ func RequiresPractitionerSignature(key string) bool {
 	return key == "holistic_coaching" || key == "nurse_coaching"
 }
 
-// RequiresClientSignature returns whether a document is a legal agreement the
-// client must sign. Statement-of-work documents are fill-in forms only and do
-// not stand as a signature gate.
+// RequiresClientSignature includes signed Statement of Work submissions.
+// Historical unsigned answers remain readable but do not grant readiness.
 func RequiresClientSignature(key string) bool {
-	return key != "holistic_sow" && key != "nurse_sow"
+	return true
 }
 
 // New builds an active agreement at version 1. The legacy boolean argument is
@@ -123,6 +124,7 @@ type Patch struct {
 
 // Apply validates and applies p, returning the updated agreement.
 func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
+	a.ExpectedVersion = a.Version
 	if p.Title != nil {
 		title := strings.TrimSpace(*p.Title)
 		if err := ValidateTitle(title); err != nil {
@@ -159,13 +161,25 @@ func (a Agreement) Apply(p Patch, now time.Time) (Agreement, error) {
 // signature — and is never normalised or corrected to the name on the
 // account, which is stored alongside it so the two can be compared later.
 type Signature struct {
-	StatementOfWork  *StatementOfWork
-	SubmittedAt      *time.Time
-	ID               string
-	AgreementID      string
-	AgreementKey     string
-	AgreementTitle   string
-	AgreementVersion int
+	EvidenceHash         string
+	GuardianName         string
+	ArchiveStatus        string
+	ContextID            string
+	SignerRole           string
+	ParticipantName      string
+	GuardianRelationship string
+	GuardianEmail        string
+	ActorID              string
+	Acknowledged         bool
+	ConsentBody          string
+	ConsentVersion       string
+	StatementOfWork      *StatementOfWork
+	SubmittedAt          *time.Time
+	ID                   string
+	AgreementID          string
+	AgreementKey         string
+	AgreementTitle       string
+	AgreementVersion     int
 	/** The wording as it stood when this was signed. Snapshotted, not
 	 * looked up: an agreement edited later must not silently change what a
 	 * past signatory is recorded as having accepted. */

@@ -23,6 +23,7 @@ import (
 type AgreementRepository struct {
 	agreements *mongo.Collection
 	signatures *mongo.Collection
+	executions *mongo.Collection
 }
 
 var _ ports.AgreementRepository = (*AgreementRepository)(nil)
@@ -31,6 +32,7 @@ func NewAgreementRepository(db *mongo.Database) *AgreementRepository {
 	return &AgreementRepository{
 		agreements: db.Collection("agreements"),
 		signatures: db.Collection("agreement_signatures"),
+		executions: db.Collection("agreement_executions"),
 	}
 }
 
@@ -49,6 +51,19 @@ type agreementDoc struct {
 }
 
 type agreementSignatureDoc struct {
+	EvidenceHash         string `bson:"evidenceHash,omitempty"`
+	GuardianName         string `bson:"guardianName,omitempty"`
+	ArchiveStatus        string `bson:"archiveStatus,omitempty"`
+	Acknowledged         bool   `bson:"acknowledged,omitempty"`
+	ContextID            string `bson:"contextId,omitempty"`
+	SignerRole           string `bson:"signerRole,omitempty"`
+	ParticipantName      string `bson:"participantName,omitempty"`
+	GuardianRelationship string `bson:"guardianRelationship,omitempty"`
+	GuardianEmail        string `bson:"guardianEmail,omitempty"`
+	ActorID              string `bson:"actorId,omitempty"`
+	ConsentBody          string `bson:"consentBody,omitempty"`
+	ConsentVersion       string `bson:"consentVersion,omitempty"`
+
 	StatementOfWork          *agreement.StatementOfWork `bson:"statementOfWork,omitempty"`
 	SubmittedAt              *time.Time                 `bson:"submittedAt,omitempty"`
 	ID                       bson.ObjectID              `bson:"_id,omitempty"`
@@ -112,6 +127,18 @@ func (d agreementDoc) toDomain() agreement.Agreement {
 
 func (d agreementSignatureDoc) toDomain() agreement.Signature {
 	sig := agreement.Signature{
+		EvidenceHash: d.EvidenceHash, GuardianName: d.GuardianName,
+		ArchiveStatus:        d.ArchiveStatus,
+		Acknowledged:         d.Acknowledged,
+		ContextID:            d.ContextID,
+		SignerRole:           d.SignerRole,
+		ParticipantName:      d.ParticipantName,
+		GuardianRelationship: d.GuardianRelationship,
+		GuardianEmail:        d.GuardianEmail,
+		ActorID:              d.ActorID,
+		ConsentBody:          d.ConsentBody,
+		ConsentVersion:       d.ConsentVersion,
+
 		StatementOfWork: d.StatementOfWork, SubmittedAt: d.SubmittedAt,
 		ID:                       d.ID.Hex(),
 		AgreementID:              d.AgreementID.Hex(),
@@ -221,12 +248,16 @@ func (r *AgreementRepository) Update(ctx context.Context, a agreement.Agreement)
 		"active":                   a.Active,
 		"updatedAt":                bson.NewDateTimeFromTime(a.UpdatedAt),
 	}}
-	res, err := r.agreements.UpdateOne(ctx, bson.M{"_id": oid}, update)
+	filter := bson.M{"_id": oid}
+	if a.ExpectedVersion > 0 {
+		filter["version"] = a.ExpectedVersion
+	}
+	res, err := updateOneWithEvent(ctx, r.agreements, filter, update)
 	if err != nil {
 		return agreement.Agreement{}, fmt.Errorf("update agreement: %w", err)
 	}
 	if res.MatchedCount == 0 {
-		return agreement.Agreement{}, agreement.ErrAgreementNotFound
+		return agreement.Agreement{}, agreement.ErrAgreementChanged
 	}
 	return a, nil
 }
@@ -245,6 +276,18 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 		return agreement.Signature{}, agreement.ErrInvalidClient
 	}
 	doc := agreementSignatureDoc{
+		EvidenceHash: sig.EvidenceHash, GuardianName: sig.GuardianName,
+		ArchiveStatus:        "pending",
+		Acknowledged:         sig.Acknowledged,
+		ContextID:            sig.ContextID,
+		SignerRole:           sig.SignerRole,
+		ParticipantName:      sig.ParticipantName,
+		GuardianRelationship: sig.GuardianRelationship,
+		GuardianEmail:        sig.GuardianEmail,
+		ActorID:              sig.ActorID,
+		ConsentBody:          sig.ConsentBody,
+		ConsentVersion:       sig.ConsentVersion,
+
 		StatementOfWork: sig.StatementOfWork, SubmittedAt: sig.SubmittedAt,
 		AgreementID:              aid,
 		AgreementKey:             sig.AgreementKey,
@@ -265,9 +308,18 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 		dt := bson.NewDateTimeFromTime(*sig.PractitionerSignedAt)
 		doc.PractitionerSignedAt = &dt
 	}
-	res, err := r.signatures.InsertOne(ctx, doc)
+	coll := r.signatures
+	if sig.ContextID != "" {
+		coll = r.executions
+	}
+	res, err := insertOneWithEvent(ctx, coll, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
+			if sig.ContextID != "" {
+				var existing agreementSignatureDoc
+				err := coll.FindOne(ctx, bson.M{"clientId": cid, "agreementId": aid, "contextId": sig.ContextID, "agreementVersion": sig.AgreementVersion, "signerRole": sig.SignerRole}).Decode(&existing)
+				return existing.toDomain(), err
+			}
 			return r.SignatureFor(ctx, sig.ClientID, sig.AgreementID)
 		}
 		return agreement.Signature{}, fmt.Errorf("insert signature: %w", err)
@@ -275,6 +327,7 @@ func (r *AgreementRepository) CreateSignature(ctx context.Context, sig agreement
 	if oid, ok := res.InsertedID.(bson.ObjectID); ok {
 		sig.ID = oid.Hex()
 	}
+	sig.ArchiveStatus = "pending"
 	return sig, nil
 }
 
@@ -290,7 +343,11 @@ func (r *AgreementRepository) UpdateSignature(ctx context.Context, sig agreement
 	if sig.PractitionerSignedAt != nil {
 		setDoc["practitionerSignedAt"] = bson.NewDateTimeFromTime(*sig.PractitionerSignedAt)
 	}
-	res, err := r.signatures.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": setDoc})
+	coll := r.signatures
+	if sig.ContextID != "" {
+		coll = r.executions
+	}
+	res, err := updateOneWithEvent(ctx, coll, bson.M{"_id": oid, "practitionerSignedAt": nil}, bson.M{"$set": setDoc})
 	if err != nil {
 		return agreement.Signature{}, fmt.Errorf("update signature: %w", err)
 	}
@@ -325,33 +382,55 @@ func (r *AgreementRepository) SignatureByID(ctx context.Context, id string) (agr
 	if err != nil {
 		return agreement.Signature{}, agreement.ErrAgreementNotFound
 	}
-	var doc agreementSignatureDoc
-	if err := r.signatures.FindOne(ctx, bson.M{"_id": oid}).Decode(&doc); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return agreement.Signature{}, agreement.ErrAgreementNotFound
+	for _, coll := range []*mongo.Collection{r.executions, r.signatures} {
+		var doc agreementSignatureDoc
+		err = coll.FindOne(ctx, bson.M{"_id": oid}).Decode(&doc)
+		if err == nil {
+			return doc.toDomain(), nil
 		}
-		return agreement.Signature{}, fmt.Errorf("get signature by id: %w", err)
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			return agreement.Signature{}, err
+		}
 	}
-	return doc.toDomain(), nil
+	return agreement.Signature{}, agreement.ErrAgreementNotFound
 }
 
 func (r *AgreementRepository) SignaturesForClient(ctx context.Context, clientID string) ([]agreement.Signature, error) {
 	cid, err := bson.ObjectIDFromHex(clientID)
 	if err != nil {
-		return []agreement.Signature{}, nil
+		return nil, agreement.ErrInvalidClient
 	}
-	cursor, err := r.signatures.Find(ctx, bson.M{"clientId": cid},
-		options.Find().SetSort(bson.D{{Key: "signedAt", Value: -1}}))
-	if err != nil {
-		return nil, fmt.Errorf("list signatures: %w", err)
-	}
-	var docs []agreementSignatureDoc
-	if err := cursor.All(ctx, &docs); err != nil {
-		return nil, fmt.Errorf("decode signatures: %w", err)
-	}
-	out := make([]agreement.Signature, 0, len(docs))
-	for _, doc := range docs {
-		out = append(out, doc.toDomain())
+	out := []agreement.Signature{}
+	for _, coll := range []*mongo.Collection{r.executions, r.signatures} {
+		cursor, err := coll.Find(ctx, bson.M{"clientId": cid}, options.Find().SetSort(bson.D{{Key: "signedAt", Value: -1}}))
+		if err != nil {
+			return nil, err
+		}
+		var docs []agreementSignatureDoc
+		if err = cursor.All(ctx, &docs); err != nil {
+			return nil, err
+		}
+		for _, doc := range docs {
+			out = append(out, doc.toDomain())
+		}
 	}
 	return out, nil
+}
+
+// SetArchiveStatus only changes delivery metadata; the signed snapshot is never rewritten.
+func (r *AgreementRepository) SetArchiveStatus(ctx context.Context, id, status string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	for _, coll := range []*mongo.Collection{r.executions, r.signatures} {
+		result, err := coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{"archiveStatus": status}})
+		if err != nil {
+			return err
+		}
+		if result.MatchedCount > 0 {
+			return nil
+		}
+	}
+	return agreement.ErrSignatureNotFound
 }

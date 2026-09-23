@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/xcreativs/terios/api/internal/domain/agreement"
 	"log/slog"
 	"net/http"
 	"os"
@@ -87,7 +88,10 @@ func run() error {
 
 		db := mongoClient.Database(cfg.MongoDBName)
 		indexCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		err = mongodb.EnsureIndexes(indexCtx, db)
+		err = mongoClient.RequireTransactions(indexCtx)
+		if err == nil {
+			err = mongodb.EnsureIndexes(indexCtx, db)
+		}
 		cancel()
 		if err != nil {
 			return fmt.Errorf("ensure indexes: %w", err)
@@ -128,6 +132,30 @@ func run() error {
 		defer stopPurge()
 		agreementService := buildAgreementService(db, notifier, documentService)
 		seedAgreements(agreementService, userRepository)
+		notifier.SetExecutionArchiver(func(ctx context.Context, id string) error {
+			repo := mongodb.NewAgreementRepository(db)
+			sig, err := repo.SignatureByID(ctx, id)
+			if err != nil {
+				return err
+			}
+			snapshot := agreement.Agreement{ID: sig.AgreementID, Key: sig.AgreementKey, Title: sig.AgreementTitle, Body: sig.AgreementBody, Version: sig.AgreementVersion}
+			if !sig.VerifyIntegrity() {
+				return fmt.Errorf("execution integrity check failed")
+			}
+			archivist := agreementsapp.NewDocumentArchivist(documentService, slog.Default())
+			original := sig
+			original.PractitionerSignedAt = nil
+			original.PractitionerSignedName = ""
+			if _, err = archivist.Archive(ctx, snapshot, original); err != nil {
+				return err
+			}
+			_, err = archivist.Archive(ctx, snapshot, sig)
+			if err != nil {
+				_ = repo.SetArchiveStatus(ctx, id, "pending")
+				return err
+			}
+			return repo.SetArchiveStatus(ctx, id, "archived")
+		})
 		stopDispatcher := startDispatcher(notifier, cfg.NotificationPollInterval)
 		defer stopDispatcher()
 
@@ -397,6 +425,8 @@ func buildAgreementService(
 		mongodb.NewAgreementRepository(db),
 		mongodb.NewServiceRepository(db),
 		agreementsapp.Options{
+			Forms:     mongodb.NewFormSubmissionRepository(db),
+			Bookings:  mongodb.NewBookingRepository(db),
 			Users:     mongodb.NewUserRepository(db),
 			Notifier:  notifier,
 			Archivist: archivist,
@@ -426,6 +456,10 @@ func buildNotificationService(cfg config.Config, db *mongo.Database) *notificati
 		renderer,
 		mailer,
 		notificationsapp.Options{
+			Events:          mongodb.NewWorkflowEventRepository(db),
+			Bookings:        mongodb.NewBookingRepository(db),
+			Catalog:         mongodb.NewServiceRepository(db),
+			JournalOnly:     true,
 			Users:           mongodb.NewUserRepository(db),
 			ReminderLead:    cfg.ReminderLead,
 			DefaultTimezone: cfg.DefaultTimezone,
@@ -660,9 +694,10 @@ func buildSignalingService(cfg config.Config, db *mongo.Database) *signalingapp.
 		mongodb.NewBookingRepository(db),
 		memory.NewTicketStore(),
 		signalingapp.Options{
-			Policy: cfg.JoinPolicy(),
-			ICE:    ice,
-			Report: func(err error) { slog.Error("ice servers", "error", err) },
+			Readiness: buildAgreementService(db, nil, nil),
+			Policy:    cfg.JoinPolicy(),
+			ICE:       ice,
+			Report:    func(err error) { slog.Error("ice servers", "error", err) },
 		},
 	)
 }

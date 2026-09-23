@@ -49,8 +49,9 @@ type Signature struct {
 
 // Submission is one client's copy of one form.
 type Submission struct {
-	ID     string
-	FormID string
+	PractitionerID string
+	ID             string
+	FormID         string
 	// FormTitle is snapshotted so an old consent record still says what it
 	// was called when it was signed, even if the form is later renamed.
 	FormTitle   string

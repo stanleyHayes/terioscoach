@@ -68,6 +68,9 @@ func (f *fakeRepo) Update(_ context.Context, a agreement.Agreement) (agreement.A
 
 func (f *fakeRepo) CreateSignature(_ context.Context, sig agreement.Signature) (agreement.Signature, error) {
 	key := sig.ClientID + "|" + sig.AgreementID
+	if sig.ContextID != "" {
+		key += fmt.Sprintf("|%s|%d|%s", sig.ContextID, sig.AgreementVersion, sig.SignerRole)
+	}
 	if existing, ok := f.signatures[key]; ok {
 		return existing, nil
 	}
@@ -281,7 +284,7 @@ func TestSigningTwiceIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sign: %v", err)
 	}
-	req.SignedName = "Someone Else"
+	// An exact replay returns the original execution.
 	second, err := r.svc.Sign(ctx, req)
 	if err != nil {
 		t.Fatalf("Sign again: %v", err)
@@ -343,7 +346,7 @@ func TestDanglingAgreementReferenceDoesNotBlock(t *testing.T) {
 	}
 }
 
-func TestEditingTheTextDoesNotReopenTheGate(t *testing.T) {
+func TestEditingTheTextRequiresCurrentVersionWithoutRewritingEvidence(t *testing.T) {
 	r := newRig(t)
 	ctx := context.Background()
 	if _, err := r.svc.Sign(ctx, ports.SignRequest{
@@ -358,12 +361,8 @@ func TestEditingTheTextDoesNotReopenTheGate(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 
-	// A signed client keeps their access; what they signed is recorded as
-	// version 1 and is not rewritten. Re-consent to new wording is a
-	// decision for the practice, not something to spring on a client
-	// mid-booking.
-	if err := r.svc.RequireSigned(ctx, "client-1", "svc-holistic"); err != nil {
-		t.Errorf("RequireSigned = %v, want nil", err)
+	if err := r.svc.RequireSigned(ctx, "client-1", "svc-holistic"); !errors.Is(err, agreement.ErrAgreementRequired) {
+		t.Errorf("RequireSigned=%v, want current version required", err)
 	}
 	sigs, _ := r.svc.SignaturesForClient(ctx, "client-1")
 	if len(sigs) != 1 || sigs[0].AgreementVersion != 1 {

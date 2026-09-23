@@ -4,6 +4,15 @@ import type { ClientPayment } from "@/lib/portal";
 import PaymentsPage from "./page";
 
 const listMine = vi.hoisted(() => vi.fn());
+const useMyBookings = vi.hoisted(() => vi.fn());
+vi.mock("@/components/booking/use-my-bookings", () => ({ useMyBookings }));
+const pendingBooking = {
+  id: "booking-1",
+  serviceId: "s1",
+  startAt: "2099-08-20T09:00:00Z",
+  endAt: "2099-08-20T10:00:00Z",
+  status: "pending_payment",
+};
 const initialize = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/portal", async (importOriginal) => {
@@ -17,9 +26,18 @@ vi.mock("@/lib/auth", async (importOriginal) => {
     ...original,
     useAuth: () => ({
       status: "authenticated",
-      user: { id: "u1", email: "ama@example.com", role: "client", name: "Ama Serwaa" },
+      user: {
+        id: "u1",
+        email: "ama@example.com",
+        role: "client",
+        name: "Ama Serwaa",
+      },
       accessToken: "a1",
-      session: { accessToken: "a1", accessTokenExpiresAt: "2099-01-01T00:00:00Z", refreshToken: "r1" },
+      session: {
+        accessToken: "a1",
+        accessTokenExpiresAt: "2099-01-01T00:00:00Z",
+        refreshToken: "r1",
+      },
       onTokensRefreshed: vi.fn(),
       login: vi.fn(),
       register: vi.fn(),
@@ -45,8 +63,16 @@ function payment(overrides: Partial<ClientPayment> = {}): ClientPayment {
 describe("Portal PaymentsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useMyBookings.mockReturnValue({
+      bookings: [],
+      servicesById: new Map(),
+      error: null,
+      refresh: vi.fn(),
+    });
     listMine.mockResolvedValue([payment()]);
-    initialize.mockResolvedValue("https://checkout.stripe.com/c/pay/cs_test_abc");
+    initialize.mockResolvedValue(
+      "https://checkout.stripe.com/c/pay/cs_test_abc",
+    );
   });
 
   it("shows the payment history with amounts and status", async () => {
@@ -61,51 +87,112 @@ describe("Portal PaymentsPage", () => {
     render(<PaymentsPage />);
     await screen.findByText(/GH₵250.00/);
 
-    expect(screen.queryByRole("button", { name: /pay now/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /continue to payment/i }),
+    ).toBeNull();
   });
 
   it("sends an unpaid session to the hosted checkout", async () => {
-    listMine.mockResolvedValue([payment({ status: "pending", paidAt: undefined })]);
+    useMyBookings.mockReturnValue({
+      bookings: [pendingBooking],
+      servicesById: new Map(),
+      error: null,
+      refresh: vi.fn(),
+    });
+    listMine.mockResolvedValue([
+      payment({ status: "pending", paidAt: undefined }),
+    ]);
     const assign = vi.fn();
     Object.defineProperty(window, "location", {
       // Both routes to a navigation, so the test does not quietly pass
       // because the page happened to pick the one that was stubbed.
-      value: { assign, set href(value: string) { assign(value); } },
+      value: {
+        assign,
+        set href(value: string) {
+          assign(value);
+        },
+      },
       writable: true,
     });
 
     render(<PaymentsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /continue to payment/i }),
+    );
 
     await waitFor(() => {
-      expect(initialize).toHaveBeenCalledWith(expect.anything(), expect.anything(), "booking-1");
+      expect(initialize).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        "booking-1",
+      );
     });
     // Card details never touch this app: the browser leaves for Stripe.
-    expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_abc");
+    expect(assign).toHaveBeenCalledWith(
+      "https://checkout.stripe.com/c/pay/cs_test_abc",
+    );
   });
 
   it("lets a failed payment be tried again", async () => {
-    listMine.mockResolvedValue([payment({ status: "failed", paidAt: undefined })]);
+    useMyBookings.mockReturnValue({
+      bookings: [pendingBooking],
+      servicesById: new Map(),
+      error: null,
+      refresh: vi.fn(),
+    });
+    listMine.mockResolvedValue([
+      payment({ status: "failed", paidAt: undefined }),
+    ]);
 
     render(<PaymentsPage />);
 
     expect(await screen.findByText(/payment failed/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /pay now/i })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /continue to payment/i }),
+    ).toBeTruthy();
   });
 
   it("explains a checkout that could not be opened", async () => {
     const { ApiError } = await import("@/lib/api");
     initialize.mockRejectedValueOnce(
-      new ApiError(502, "payment_gateway_error", "The payment gateway could not respond."),
+      new ApiError(
+        502,
+        "payment_gateway_error",
+        "The payment gateway could not respond.",
+      ),
     );
-    listMine.mockResolvedValue([payment({ status: "pending", paidAt: undefined })]);
+    useMyBookings.mockReturnValue({
+      bookings: [pendingBooking],
+      servicesById: new Map(),
+      error: null,
+      refresh: vi.fn(),
+    });
+    listMine.mockResolvedValue([
+      payment({ status: "pending", paidAt: undefined }),
+    ]);
 
     render(<PaymentsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /continue to payment/i }),
+    );
 
     expect((await screen.findByRole("alert")).textContent).toContain(
       "The payment gateway could not respond.",
     );
+  });
+
+  it("recovers checkout when no payment record was created", async () => {
+    listMine.mockResolvedValue([]);
+    useMyBookings.mockReturnValue({
+      bookings: [pendingBooking],
+      servicesById: new Map(),
+      error: null,
+      refresh: vi.fn(),
+    });
+    render(<PaymentsPage />);
+    expect(
+      await screen.findByRole("button", { name: /continue to payment/i }),
+    ).toBeTruthy();
   });
 
   it("points an empty history at booking a session", async () => {
@@ -113,7 +200,9 @@ describe("Portal PaymentsPage", () => {
 
     render(<PaymentsPage />);
 
-    expect(await screen.findByRole("heading", { name: /no payments yet/i })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: /no payments yet/i }),
+    ).toBeTruthy();
     expect(screen.getByRole("link", { name: /book a session/i })).toBeTruthy();
   });
 });

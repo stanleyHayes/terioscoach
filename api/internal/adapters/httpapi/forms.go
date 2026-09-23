@@ -295,6 +295,10 @@ func (h *formHandler) delete(w http.ResponseWriter, r *http.Request) {
 // ---- Practitioner: assignment and review ----
 
 func (h *formHandler) assign(w http.ResponseWriter, r *http.Request) {
+	actor, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
 	var req struct {
 		FormID    string `json:"formId"`
 		ClientID  string `json:"clientId"`
@@ -304,9 +308,10 @@ func (h *formHandler) assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	submission, err := h.svc.AssignForm(r.Context(), ports.AssignInput{
-		FormID:    req.FormID,
-		ClientID:  req.ClientID,
-		BookingID: req.BookingID,
+		PractitionerID: actor.UserID,
+		FormID:         req.FormID,
+		ClientID:       req.ClientID,
+		BookingID:      req.BookingID,
 	})
 	if err != nil {
 		writeDomainError(w, err)

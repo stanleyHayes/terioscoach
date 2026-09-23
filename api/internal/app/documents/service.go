@@ -101,6 +101,17 @@ func (s *Service) RecordUpload(ctx context.Context, uploadedBy string, in ports.
 // form is a practice record, not something shared back to the client — so
 // callers cannot accidentally publish one by omission.
 func (s *Service) StoreDocument(ctx context.Context, uploadedBy string, in ports.StoreDocumentInput) (document.Document, error) {
+	if in.ExecutionKey != "" {
+		existing, err := s.documents.ListByClient(ctx, in.ClientID)
+		if err != nil {
+			return document.Document{}, err
+		}
+		for _, doc := range existing {
+			if doc.ExecutionKey == in.ExecutionKey {
+				return doc, nil
+			}
+		}
+	}
 	if !in.Kind.Valid() {
 		return document.Document{}, document.ErrInvalidKind
 	}
@@ -125,6 +136,7 @@ func (s *Service) StoreDocument(ctx context.Context, uploadedBy string, in ports
 	uploaded, err := s.media.Upload(ctx,
 		ports.UploadParams{
 			Folder:       document.Folder(in.Kind, in.ClientID),
+			PublicID:     in.ExecutionKey,
 			ResourceType: resourceType,
 			Private:      in.Kind.Private(),
 		},
@@ -142,6 +154,7 @@ func (s *Service) StoreDocument(ctx context.Context, uploadedBy string, in ports
 	if err != nil {
 		return document.Document{}, err
 	}
+	d.ExecutionKey = in.ExecutionKey
 	if in.Title != "" {
 		d.Title = in.Title
 	}

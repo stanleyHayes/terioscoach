@@ -103,7 +103,7 @@ func (d formDoc) toDomain() form.Form {
 }
 
 func (r *FormRepository) Create(ctx context.Context, f form.Form) (form.Form, error) {
-	res, err := r.coll.InsertOne(ctx, newFormDoc(f))
+	res, err := insertOneWithEvent(ctx, r.coll, newFormDoc(f))
 	if err != nil {
 		return form.Form{}, fmt.Errorf("insert form: %w", err)
 	}
@@ -119,7 +119,7 @@ func (r *FormRepository) Update(ctx context.Context, f form.Form) (form.Form, er
 		return form.Form{}, form.ErrFormNotFound
 	}
 	doc := newFormDoc(f)
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{
+	res, err := updateOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, bson.M{"$set": bson.M{
 		"title":       doc.Title,
 		"description": doc.Description,
 		"fields":      doc.Fields,
@@ -214,18 +214,19 @@ type signatureDoc struct {
 }
 
 type submissionDoc struct {
-	ID          bson.ObjectID        `bson:"_id,omitempty"`
-	FormID      bson.ObjectID        `bson:"formId"`
-	FormTitle   string               `bson:"formTitle"`
-	ClientID    bson.ObjectID        `bson:"clientId"`
-	BookingID   string               `bson:"bookingId,omitempty"`
-	Status      string               `bson:"status"`
-	Answers     map[string]answerDoc `bson:"answers"`
-	Signature   *signatureDoc        `bson:"signature,omitempty"`
-	AssignedAt  bson.DateTime        `bson:"assignedAt"`
-	SubmittedAt *bson.DateTime       `bson:"submittedAt,omitempty"`
-	CreatedAt   bson.DateTime        `bson:"createdAt"`
-	UpdatedAt   bson.DateTime        `bson:"updatedAt"`
+	PractitionerID string               `bson:"practitionerId,omitempty"`
+	ID             bson.ObjectID        `bson:"_id,omitempty"`
+	FormID         bson.ObjectID        `bson:"formId"`
+	FormTitle      string               `bson:"formTitle"`
+	ClientID       bson.ObjectID        `bson:"clientId"`
+	BookingID      string               `bson:"bookingId,omitempty"`
+	Status         string               `bson:"status"`
+	Answers        map[string]answerDoc `bson:"answers"`
+	Signature      *signatureDoc        `bson:"signature,omitempty"`
+	AssignedAt     bson.DateTime        `bson:"assignedAt"`
+	SubmittedAt    *bson.DateTime       `bson:"submittedAt,omitempty"`
+	CreatedAt      bson.DateTime        `bson:"createdAt"`
+	UpdatedAt      bson.DateTime        `bson:"updatedAt"`
 }
 
 func newSubmissionDoc(s form.Submission) (submissionDoc, error) {
@@ -244,15 +245,16 @@ func newSubmissionDoc(s form.Submission) (submissionDoc, error) {
 	}
 
 	doc := submissionDoc{
-		FormID:     formID,
-		FormTitle:  s.FormTitle,
-		ClientID:   clientID,
-		BookingID:  s.BookingID,
-		Status:     string(s.Status),
-		Answers:    answers,
-		AssignedAt: bson.NewDateTimeFromTime(s.AssignedAt),
-		CreatedAt:  bson.NewDateTimeFromTime(s.CreatedAt),
-		UpdatedAt:  bson.NewDateTimeFromTime(s.UpdatedAt),
+		PractitionerID: s.PractitionerID,
+		FormID:         formID,
+		FormTitle:      s.FormTitle,
+		ClientID:       clientID,
+		BookingID:      s.BookingID,
+		Status:         string(s.Status),
+		Answers:        answers,
+		AssignedAt:     bson.NewDateTimeFromTime(s.AssignedAt),
+		CreatedAt:      bson.NewDateTimeFromTime(s.CreatedAt),
+		UpdatedAt:      bson.NewDateTimeFromTime(s.UpdatedAt),
 	}
 	if s.SubmittedAt != nil {
 		stamp := bson.NewDateTimeFromTime(*s.SubmittedAt)
@@ -276,16 +278,17 @@ func (d submissionDoc) toDomain() form.Submission {
 		answers[key] = form.Answer{Value: answer.Value, Values: answer.Values}
 	}
 	s := form.Submission{
-		ID:         d.ID.Hex(),
-		FormID:     d.FormID.Hex(),
-		FormTitle:  d.FormTitle,
-		ClientID:   d.ClientID.Hex(),
-		BookingID:  d.BookingID,
-		Status:     form.SubmissionStatus(d.Status),
-		Answers:    answers,
-		AssignedAt: d.AssignedAt.Time().UTC(),
-		CreatedAt:  d.CreatedAt.Time().UTC(),
-		UpdatedAt:  d.UpdatedAt.Time().UTC(),
+		PractitionerID: d.PractitionerID,
+		ID:             d.ID.Hex(),
+		FormID:         d.FormID.Hex(),
+		FormTitle:      d.FormTitle,
+		ClientID:       d.ClientID.Hex(),
+		BookingID:      d.BookingID,
+		Status:         form.SubmissionStatus(d.Status),
+		Answers:        answers,
+		AssignedAt:     d.AssignedAt.Time().UTC(),
+		CreatedAt:      d.CreatedAt.Time().UTC(),
+		UpdatedAt:      d.UpdatedAt.Time().UTC(),
 	}
 	if d.SubmittedAt != nil {
 		at := d.SubmittedAt.Time().UTC()
@@ -308,7 +311,7 @@ func (r *FormSubmissionRepository) Create(ctx context.Context, s form.Submission
 	if err != nil {
 		return form.Submission{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
 		return form.Submission{}, fmt.Errorf("insert form submission: %w", err)
 	}
@@ -327,7 +330,7 @@ func (r *FormSubmissionRepository) Update(ctx context.Context, s form.Submission
 	if err != nil {
 		return form.Submission{}, err
 	}
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{
+	res, err := updateOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, bson.M{"$set": bson.M{
 		"status":      doc.Status,
 		"answers":     doc.Answers,
 		"signature":   doc.Signature,

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/identity"
+	"github.com/xcreativs/terios/api/internal/domain/scheduling"
 	"github.com/xcreativs/terios/api/internal/ports"
 )
 
@@ -460,4 +461,15 @@ func (s *Service) openSession(ctx context.Context, user identity.User) (ports.Au
 		AccessTokenExpiry: accessExpiry,
 		RefreshToken:      plain,
 	}, nil
+}
+
+// UpdateTimezone changes display preference only; appointment instants and authored schedules are immutable here.
+func (s *Service) UpdateTimezone(ctx context.Context, id identity.Identity, zone string) (identity.User, error) {
+	if (zone != "UTC" && !strings.Contains(zone, "/")) || zone == "Local" || strings.TrimSpace(zone) != zone {
+		return identity.User{}, scheduling.ErrInvalidTimezone
+	}
+	if _, err := time.LoadLocation(zone); err != nil {
+		return identity.User{}, scheduling.ErrInvalidTimezone
+	}
+	return s.users.UpdateTimezone(ctx, id.UserID, zone)
 }

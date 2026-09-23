@@ -6,9 +6,8 @@
  *   GET  /v1/agreements/mine                    → {items}
  *   GET  /v1/agreements/signatures/{id}/pdf     → the signed agreement as a PDF
  *
- * One signature covers every service the agreement is attached to, and
- * every later booking of them — the client is asked once per agreement, not
- * once per booking.
+ * New executions cover a booking participant revision, document version and
+ * signer role. Legacy account-level signatures remain readable.
  */
 
 import { authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
@@ -25,6 +24,7 @@ export interface Agreement {
 }
 
 export interface StatementOfWork {
+  package?: string;
   clientName: string;
   effectiveDate: string;
   initialTermMonths: number;
@@ -32,6 +32,10 @@ export interface StatementOfWork {
 }
 
 export interface AgreementSignature {
+  archiveStatus?: "pending" | "archived";
+  signerRole?: string;
+  participantName?: string;
+  consentVersion?: string;
   statementOfWork?: StatementOfWork;
   submittedAt?: string;
   id: string;
@@ -76,12 +80,12 @@ export const agreementsApi = {
     signedName: string,
     bookingId?: string,
   ): Promise<AgreementSignature> {
-    const { signature } = await authedRequest<{ signature: AgreementSignature }>(
-      `/v1/agreements/${agreementId}/sign`,
-      session,
-      callbacks,
-      { method: "POST", body: { signedName, bookingId } },
-    );
+    const { signature } = await authedRequest<{
+      signature: AgreementSignature;
+    }>(`/v1/agreements/${agreementId}/sign`, session, callbacks, {
+      method: "POST",
+      body: { signedName, bookingId },
+    });
     return signature;
   },
 
@@ -91,10 +95,12 @@ export const agreementsApi = {
     agreementId: string,
     statementOfWork: StatementOfWork,
   ): Promise<AgreementSignature> {
-    const { signature } = await authedRequest<{ signature: AgreementSignature }>(
-      `/v1/agreements/${agreementId}/submit`, session, callbacks,
-      { method: "POST", body: { statementOfWork } },
-    );
+    const { signature } = await authedRequest<{
+      signature: AgreementSignature;
+    }>(`/v1/agreements/${agreementId}/submit`, session, callbacks, {
+      method: "POST",
+      body: { statementOfWork },
+    });
     return signature;
   },
 

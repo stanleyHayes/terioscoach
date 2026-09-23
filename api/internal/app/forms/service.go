@@ -147,6 +147,7 @@ func (s *Service) AssignForm(ctx context.Context, in ports.AssignInput) (form.Su
 	if err != nil {
 		return form.Submission{}, err
 	}
+	submission.PractitionerID = in.PractitionerID
 	stored, err := s.submissions.Create(ctx, submission)
 	if err != nil {
 		return form.Submission{}, err

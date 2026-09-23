@@ -1,5 +1,6 @@
 "use client";
 
+import { serverNow } from "@/lib/server-clock";
 import { useCallback, useEffect, useState } from "react";
 import { listServices, type ServiceSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -13,6 +14,11 @@ import { myBookings, type Booking } from "@/lib/bookings";
  */
 export function useMyBookings() {
   const { session, onTokensRefreshed } = useAuth();
+  const [now, setNow] = useState(serverNow);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(serverNow()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [servicesById, setServicesById] = useState<Map<string, ServiceSummary>>(
     new Map(),
@@ -27,12 +33,16 @@ export function useMyBookings() {
       .then(([items, services]) => {
         if (cancelled) return;
         setBookings(items);
-        setServicesById(new Map(services.map((service) => [service.id, service])));
+        setServicesById(
+          new Map(services.map((service) => [service.id, service])),
+        );
         setError(null);
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Your sessions didn't load. Check your connection and try again.");
+          setError(
+            "Your sessions didn't load. Check your connection and try again.",
+          );
         }
       });
     return () => {
@@ -42,5 +52,14 @@ export function useMyBookings() {
 
   const refresh = useCallback(() => setRefreshIndex((index) => index + 1), []);
 
-  return { bookings, servicesById, error, refresh };
+  useEffect(() => {
+    window.addEventListener("focus", refresh);
+    const timer = setInterval(refresh, 30000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      clearInterval(timer);
+    };
+  }, [refresh]);
+
+  return { now, bookings, servicesById, error, refresh };
 }

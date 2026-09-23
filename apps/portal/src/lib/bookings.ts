@@ -14,6 +14,7 @@
  * callback (from useAuth).
  */
 
+import { synchronizeClock, serverNow } from "./server-clock";
 import {
   authedRequest,
   request,
@@ -35,9 +36,29 @@ export interface AvailabilitySlots {
   slots: Slot[];
 }
 
-export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "completed" | "no_show";
+export type BookingStatus =
+  | "pending_payment"
+  | "confirmed"
+  | "cancelled"
+  | "completed"
+  | "no_show";
 
+export interface Participant {
+  name: string;
+  under18: boolean;
+  accurate: boolean;
+  guardianName?: string;
+  guardianRelationship?: string;
+  guardianEmail?: string;
+  revision?: number;
+  appointmentAt?: string;
+}
 export interface Booking {
+  paymentExpired?: boolean;
+  paymentExpiresAt?: string;
+  participant?: Participant;
+  bookingTimezone?: string;
+  readinessVersion?: number;
   id: string;
   clientId: string;
   practitionerId: string;
@@ -73,9 +94,12 @@ export function getSlots(params: GetSlotsParams): Promise<AvailabilitySlots> {
     to: params.to,
     tz: params.tz,
   });
-  return request<AvailabilitySlots>(`/v1/availability/slots?${query.toString()}`, {
-    cache: "no-store",
-  });
+  return request<AvailabilitySlots>(
+    `/v1/availability/slots?${query.toString()}`,
+    {
+      cache: "no-store",
+    },
+  );
 }
 
 /** POST /v1/bookings → 201 {booking}. Throws ApiError 409 slot_unavailable
@@ -83,7 +107,12 @@ export function getSlots(params: GetSlotsParams): Promise<AvailabilitySlots> {
 export async function createBooking(
   session: Session,
   callbacks: RefreshCallbacks,
-  input: { serviceId: string; startAt: string; tz: string },
+  input: {
+    serviceId: string;
+    startAt: string;
+    tz: string;
+    participant: Participant;
+  },
 ): Promise<Booking> {
   const { booking } = await authedRequest<{ booking: Booking }>(
     "/v1/bookings",
@@ -99,11 +128,11 @@ export async function myBookings(
   session: Session,
   callbacks: RefreshCallbacks,
 ): Promise<Booking[]> {
-  const { items } = await authedRequest<{ items: Booking[] }>(
-    "/v1/bookings/mine",
-    session,
-    callbacks,
-  );
+  const { items, serverTime } = await authedRequest<{
+    items: Booking[];
+    serverTime?: string;
+  }>("/v1/bookings/mine", session, callbacks);
+  if (serverTime) synchronizeClock(serverTime);
   return items;
 }
 
@@ -151,7 +180,10 @@ export const RESCHEDULE_CUTOFF_HOURS = 48;
  * The boundary matches the server exactly: the domain allows a change while
  * `now.Before(startAt - cutoff)`, so landing *on* the 48-hour mark is already
  * closed (booking.ReschedulePolicy.CanChange, api/internal/domain/booking). */
-export function cutoffPassed(startAt: string, now: Date = new Date()): boolean {
+export function cutoffPassed(
+  startAt: string,
+  now: Date = serverNow(),
+): boolean {
   return (
     new Date(startAt).getTime() - now.getTime() <=
     RESCHEDULE_CUTOFF_HOURS * 60 * 60 * 1000
@@ -161,6 +193,8 @@ export function cutoffPassed(startAt: string, now: Date = new Date()): boolean {
 export interface SplitBookings {
   /** Confirmed sessions that have not ended yet, soonest first. */
   upcoming: Booking[];
+  pending: Booking[];
+  inProgress: Booking[];
   /** Terminal or already-ended sessions, most recent first. */
   past: Booking[];
 }
@@ -168,13 +202,35 @@ export interface SplitBookings {
 /** Splits a client's bookings for the portal views. A confirmed booking moves
  * to `past` once its end time has passed (the practitioner marks it completed
  * afterwards); terminal statuses are always past. */
-export function splitBookings(bookings: Booking[], now: Date = new Date()): SplitBookings {
-  const nowMs = now.getTime();
-  const upcoming = bookings
-    .filter((b) => b.status === "confirmed" && new Date(b.endAt).getTime() > nowMs)
-    .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  const past = bookings
-    .filter((b) => !(b.status === "confirmed" && new Date(b.endAt).getTime() > nowMs))
-    .sort((a, b) => b.startAt.localeCompare(a.startAt));
-  return { upcoming, past };
+export function splitBookings(
+  bookings: Booking[],
+  now: Date = serverNow(),
+): SplitBookings {
+  const groups: SplitBookings = {
+    upcoming: [],
+    pending: [],
+    inProgress: [],
+    past: [],
+  };
+  for (const booking of bookings)
+    groups[bookingGroup(booking, now)].push(booking);
+  for (const group of [groups.upcoming, groups.pending, groups.inProgress])
+    group.sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+  groups.past.sort((a, b) => Date.parse(b.startAt) - Date.parse(a.startAt));
+  return groups;
+}
+
+export function bookingGroup(
+  booking: Booking,
+  now = serverNow(),
+): keyof SplitBookings {
+  if (booking.status === "pending_payment") return "pending";
+  if (
+    booking.status !== "confirmed" ||
+    Date.parse(booking.endAt) <= now.getTime()
+  )
+    return "past";
+  return Date.parse(booking.startAt) <= now.getTime()
+    ? "inProgress"
+    : "upcoming";
 }

@@ -18,6 +18,11 @@ import (
 // slice of the data.
 func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes := map[string][]mongo.IndexModel{
+		"workflow_events": {{Keys: bson.D{{Key: "status", Value: 1}, {Key: "dueAt", Value: 1}, {Key: "createdAt", Value: 1}}}},
+		"agreement_executions": {
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "agreementId", Value: 1}, {Key: "contextId", Value: 1}, {Key: "agreementVersion", Value: 1}, {Key: "signerRole", Value: 1}}, Options: options.Index().SetUnique(true)},
+			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "signedAt", Value: -1}}},
+		},
 		"in_app_notifications": {
 			{Keys: bson.D{{Key: "recipientEmail", Value: 1}, {Key: "createdAt", Value: -1}, {Key: "_id", Value: -1}}},
 			{Keys: bson.D{{Key: "recipientEmail", Value: 1}, {Key: "read", Value: 1}}},
@@ -164,6 +169,7 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 
 		// Uploaded files (medical history, etc.) — strictly client-scoped.
 		"documents": {
+			{Keys: bson.D{{Key: "executionKey", Value: 1}}, Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"executionKey": bson.M{"$type": "string"}})},
 			{Keys: bson.D{{Key: "clientId", Value: 1}, {Key: "createdAt", Value: -1}}},
 		},
 
@@ -209,6 +215,7 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		// stay indexed. The booking+kind index backs "cancel this
 		// booking's reminder" when a session moves or is called off.
 		"notification_jobs": {
+			{Keys: bson.D{{Key: "eventKey", Value: 1}}, Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"eventKey": bson.M{"$type": "string"}})},
 			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "dueAt", Value: 1}}},
 			{Keys: bson.D{{Key: "bookingId", Value: 1}, {Key: "kind", Value: 1}, {Key: "status", Value: 1}}},
 		},

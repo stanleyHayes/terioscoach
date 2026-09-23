@@ -1,4 +1,5 @@
 "use client";
+import { TimezonePreference } from "@/components/ui/TimezonePreference";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -58,6 +59,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return <AppSplash />;
   }
 
+  if (!user.timezone)
+    return (
+      <main className="mx-auto w-full max-w-xl space-y-5 px-5 py-16">
+        <h1 className="font-display text-3xl">
+          Choose your appointment timezone
+        </h1>
+        <p className="text-sm text-ink-muted">
+          Confirm the timezone you want to use across your account. Your
+          appointments keep their original instant.
+        </p>
+        <TimezonePreference />
+      </main>
+    );
+
   return (
     <div className="flex h-dvh overflow-hidden bg-surface">
       <RouteFeedback />
@@ -77,7 +92,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
         <AdminTopbar
           userName={user.name}
-          userRole={user.role === "practitioner" ? "Owner" : user.roleName || "Staff"}
+          userRole={
+            user.role === "practitioner" ? "Owner" : user.roleName || "Staff"
+          }
           onSignOut={handleSignOut}
           signingOut={signingOut}
           collapsed={sidebarCollapsed}

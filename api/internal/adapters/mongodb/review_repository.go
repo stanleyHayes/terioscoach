@@ -80,7 +80,7 @@ func (d reviewDoc) toDomain() review.Review {
 }
 
 func (r *ReviewRepository) Create(ctx context.Context, rev review.Review) (review.Review, error) {
-	res, err := r.coll.InsertOne(ctx, newReviewDoc(rev))
+	res, err := insertOneWithEvent(ctx, r.coll, newReviewDoc(rev))
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return review.Review{}, review.ErrReviewExists
@@ -99,7 +99,7 @@ func (r *ReviewRepository) Update(ctx context.Context, rev review.Review) (revie
 		return review.Review{}, review.ErrReviewNotFound
 	}
 	doc := newReviewDoc(rev)
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": bson.M{
+	res, err := updateOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, bson.M{"$set": bson.M{
 		"rating":      doc.Rating,
 		"comment":     doc.Comment,
 		"status":      doc.Status,

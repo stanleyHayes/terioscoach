@@ -57,7 +57,7 @@ func (r *PaymentRepository) Create(ctx context.Context, p payment.Payment) (paym
 	if err != nil {
 		return payment.Payment{}, err
 	}
-	res, err := r.coll.InsertOne(ctx, doc)
+	res, err := insertOneWithEvent(ctx, r.coll, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return payment.Payment{}, payment.ErrAlreadyPaid
@@ -127,7 +127,7 @@ func (r *PaymentRepository) Update(ctx context.Context, p payment.Payment) (paym
 	}
 	doc.ID = oid
 
-	res, err := r.coll.ReplaceOne(ctx, bson.M{"_id": oid}, doc)
+	res, err := replaceOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return payment.Payment{}, payment.ErrAlreadyPaid

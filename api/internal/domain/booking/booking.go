@@ -49,19 +49,30 @@ const (
 // and what the double-booking unique index guards — field names are fixed
 // by BE-03/BE-04. PaymentStatus/PaidAt are the additive BE-06 stamp.
 type Booking struct {
-	ID             string
-	ClientID       string
-	PractitionerID string
-	ServiceID      string
-	StartAt        time.Time
-	EndAt          time.Time
-	Status         Status
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	CancelledAt    *time.Time
-	CompletedAt    *time.Time
-	PaymentStatus  PaymentStatus
-	PaidAt         *time.Time
+	TimezoneMigration   string
+	TimezoneProvenance  string
+	Revision            int
+	PaymentExpired      bool
+	ChangeRequestedAt   *time.Time
+	ChangeRequestType   string
+	ChangeRequestReason string
+	ProposedStartAt     *time.Time
+	Participant         *Participant
+	ReadinessVersion    int
+	BookingTimezone     string
+	ID                  string
+	ClientID            string
+	PractitionerID      string
+	ServiceID           string
+	StartAt             time.Time
+	EndAt               time.Time
+	Status              Status
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	CancelledAt         *time.Time
+	CompletedAt         *time.Time
+	PaymentStatus       PaymentStatus
+	PaidAt              *time.Time
 }
 
 // New builds a confirmed booking for a slot. durationMinutes comes from the
@@ -94,6 +105,7 @@ func (b *Booking) Cancel(now time.Time) error {
 	now = now.UTC()
 	b.Status = StatusCancelled
 	b.CancelledAt = &now
+	b.clearChangeRequest()
 	b.UpdatedAt = now
 	return nil
 }
@@ -162,6 +174,7 @@ func (b *Booking) Reschedule(startAt time.Time, now time.Time) error {
 	startAt = startAt.UTC()
 	b.StartAt = startAt
 	b.EndAt = startAt.Add(duration)
+	b.clearChangeRequest()
 	b.UpdatedAt = now
 	return nil
 }
@@ -189,4 +202,20 @@ func (p ReschedulePolicy) ClientCanModify(startAt, now time.Time) bool {
 		cutoff = DefaultCutoff
 	}
 	return now.UTC().Before(startAt.UTC().Add(-cutoff))
+}
+
+func (b *Booking) ExpirePayment(now time.Time) bool {
+	if b.Status != StatusPendingPayment || now.Before(b.StartAt) {
+		return false
+	}
+	b.PaymentExpired = true
+	_ = b.Cancel(now)
+	return true
+}
+
+func (b *Booking) clearChangeRequest() {
+	b.ChangeRequestedAt = nil
+	b.ChangeRequestType = ""
+	b.ChangeRequestReason = ""
+	b.ProposedStartAt = nil
 }

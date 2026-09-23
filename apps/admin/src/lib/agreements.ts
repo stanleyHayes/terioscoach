@@ -30,10 +30,15 @@ export interface StatementOfWork {
   clientName: string;
   effectiveDate: string;
   initialTermMonths: number;
+  package?: string;
   monthlyFee: string;
 }
 
 export interface AgreementSignature {
+  archiveStatus?: "pending" | "archived";
+  signerRole?: string;
+  participantName?: string;
+  consentVersion?: string;
   statementOfWork?: StatementOfWork;
   submittedAt?: string;
   id: string;
@@ -58,7 +63,10 @@ export interface AgreementPatch {
 }
 
 export const agreementsApi = {
-  async list(session: Session, callbacks: RefreshCallbacks): Promise<Agreement[]> {
+  async list(
+    session: Session,
+    callbacks: RefreshCallbacks,
+  ): Promise<Agreement[]> {
     const { items } = await authedRequest<{ items: Agreement[] }>(
       "/v1/admin/agreements",
       session,
@@ -115,12 +123,12 @@ export const agreementsApi = {
     signatureId: string,
     practitionerSignedName: string,
   ): Promise<AgreementSignature> {
-    const { signature } = await authedRequest<{ signature: AgreementSignature }>(
-      `/v1/admin/signatures/${signatureId}/countersign`,
-      session,
-      callbacks,
-      { method: "POST", body: { signedName: practitionerSignedName } },
-    );
+    const { signature } = await authedRequest<{
+      signature: AgreementSignature;
+    }>(`/v1/admin/signatures/${signatureId}/countersign`, session, callbacks, {
+      method: "POST",
+      body: { signedName: practitionerSignedName },
+    });
     return signature;
   },
 };

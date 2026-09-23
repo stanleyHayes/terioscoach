@@ -27,14 +27,19 @@ const defaultBatchSize = 50
 
 // Service queues and delivers notifications.
 type Service struct {
-	users    ports.UserRepository
-	jobs     ports.NotificationJobRepository
-	inApp    ports.InAppNotificationRepository
-	renderer ports.EmailRenderer
-	mailer   ports.Mailer
-	retry    notification.RetryPolicy
-	lead     time.Duration
-	timezone string
+	archiveExecution func(context.Context, string) error
+	events           ports.WorkflowEventRepository
+	bookings         ports.BookingRepository
+	catalog          ports.ServiceRepository
+	journalOnly      bool
+	users            ports.UserRepository
+	jobs             ports.NotificationJobRepository
+	inApp            ports.InAppNotificationRepository
+	renderer         ports.EmailRenderer
+	mailer           ports.Mailer
+	retry            notification.RetryPolicy
+	lead             time.Duration
+	timezone         string
 	// practiceEmail receives practice-facing alerts (new enquiries).
 	practiceEmail string
 	// report receives failures that cannot be returned to the caller,
@@ -52,7 +57,11 @@ var (
 
 // Options configure a Service. Zero values fall back to platform defaults.
 type Options struct {
-	Users ports.UserRepository
+	Events      ports.WorkflowEventRepository
+	Bookings    ports.BookingRepository
+	Catalog     ports.ServiceRepository
+	JournalOnly bool
+	Users       ports.UserRepository
 	// ReminderLead is how far ahead of a session its reminder goes out.
 	ReminderLead time.Duration
 	// Retry bounds redelivery of a failing job.
@@ -87,6 +96,7 @@ func NewService(
 		report = func(error) {}
 	}
 	return &Service{
+		events: opts.Events, bookings: opts.Bookings, catalog: opts.Catalog, journalOnly: opts.JournalOnly,
 		jobs:          jobs,
 		users:         opts.Users,
 		inApp:         inApp,
@@ -292,6 +302,9 @@ func (s *Service) DispatchDue(ctx context.Context, limit int) (ports.DispatchRes
 	if limit <= 0 {
 		limit = defaultBatchSize
 	}
+	if s.events != nil {
+		s.reconcile(ctx, limit)
+	}
 	claimed, err := s.jobs.ClaimDue(ctx, s.now(), limit)
 	if err != nil {
 		return ports.DispatchResult{}, fmt.Errorf("claim due notifications: %w", err)
@@ -311,6 +324,43 @@ func (s *Service) DispatchDue(ctx context.Context, limit int) (ports.DispatchRes
 // deliver sends one job and records the outcome. It reports whether the
 // message went out.
 func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
+	if job.Kind == notification.KindSessionReminder && s.bookings != nil {
+		b, err := s.bookings.FindByID(ctx, job.BookingID)
+		if err != nil {
+			s.report(err)
+			_ = job.RecordFailure("booking unavailable", s.retry, s.now())
+			_, _ = s.jobs.Update(ctx, job)
+			return false
+		}
+		expected, err := time.Parse(time.RFC3339Nano, job.Data["startAt"])
+		if b.Status != "confirmed" || (!expected.IsZero() && !b.StartAt.Equal(expected)) || !b.StartAt.After(s.now()) {
+			_ = job.Cancel(s.now())
+			_, err = s.jobs.Update(ctx, job)
+			if err != nil {
+				s.report(err)
+			}
+			return false
+		}
+		if uid := job.Data["recipientId"]; uid != "" && s.users != nil && job.Data["renderedTimezone"] == "" {
+			u, e := s.users.FindByID(ctx, uid)
+			if e != nil {
+				s.report(e)
+				_ = job.RecordFailure("recipient unavailable", s.retry, s.now())
+				_, _ = s.jobs.Update(ctx, job)
+				return false
+			}
+			zone := u.Timezone
+			if zone == "" {
+				zone = "UTC"
+			}
+			job.Data["timezone"] = zone
+			job.Data["startTime"] = s.formatTime(b.StartAt, zone)
+			job.Data["renderedTimezone"] = zone
+			// Persist rendered-zone evidence before sending; sent records never re-render.
+
+		}
+	}
+
 	if err := s.recordInApp(ctx, job); err != nil {
 		s.report(err)
 		_ = job.RecordFailure(err.Error(), s.retry, s.now())
@@ -329,6 +379,10 @@ func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
 		return true
 	}
 	msg, err := s.renderer.Render(job)
+	if job.Data["deliveryPrepared"] == "true" {
+		msg = ports.EmailMessage{To: job.Recipient, Subject: job.Data["renderedSubject"], HTML: job.Data["renderedHTML"], Text: job.Data["renderedText"]}
+		err = nil
+	}
 	if err != nil {
 		// An unrenderable job will never render; spend the whole retry
 		// budget at once rather than retrying a certainty.
@@ -337,6 +391,20 @@ func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
 		return false
 	}
 
+	if prep, ok := s.jobs.(ports.NotificationDeliveryPreparer); ok {
+		job.Data["renderedSubject"] = msg.Subject
+		job.Data["renderedHTML"] = msg.HTML
+		job.Data["renderedText"] = msg.Text
+		job.Data["deliveryPrepared"] = "true"
+		frozen, e := prep.PrepareDelivery(ctx, job)
+		if e != nil {
+			s.report(e)
+			return false
+		}
+		job = frozen
+		msg = ports.EmailMessage{To: job.Recipient, Subject: job.Data["renderedSubject"], HTML: job.Data["renderedHTML"], Text: job.Data["renderedText"]}
+	}
+	msg.IdempotencyKey = "notification-" + job.ID
 	if err := s.mailer.Send(ctx, msg); err != nil {
 		s.report(fmt.Errorf("send notification %s (%s): %w", job.ID, job.Kind, err))
 		if recordErr := job.RecordFailure(err.Error(), s.retry, s.now()); recordErr != nil {
@@ -368,18 +436,23 @@ func (s *Service) recordInApp(ctx context.Context, job notification.Job) error {
 		return nil
 	}
 	title, body, link := inAppContent(job)
+	if job.Kind == notification.KindActionRequired {
+		title = job.Data["title"]
+		body = job.Data["body"]
+		link = job.Data["link"]
+	}
 	if title == "" {
 		return nil
 	}
 	recipient := job.Recipient
-	if strings.EqualFold(recipient, s.practiceAddress(ctx)) && s.users != nil {
+	if job.Data["recipientId"] == "" && strings.EqualFold(recipient, s.practiceAddress(ctx)) && s.users != nil {
 		practitioner, err := s.users.FindFirstByRole(ctx, identity.RolePractitioner)
 		if err != nil {
 			return fmt.Errorf("resolve practitioner notification: %w", err)
 		}
 		recipient = practitioner.Email
 	}
-	if strings.EqualFold(job.Recipient, s.practiceAddress(ctx)) && strings.HasPrefix(link, "/portal/") {
+	if (job.Data["audience"] == "practitioner" || strings.EqualFold(job.Recipient, s.practiceAddress(ctx))) && strings.HasPrefix(link, "/portal/") {
 		link = "/calendar"
 		if job.Kind == notification.KindBookingPaymentRequired {
 			link = "/payments"
@@ -444,6 +517,9 @@ func (s *Service) failPermanently(ctx context.Context, job notification.Job, rea
 // queue writes one job. Failures are reported, never returned: the business
 // event that triggered this has already happened.
 func (s *Service) queue(ctx context.Context, kind notification.Kind, recipient, bookingID string, data map[string]string, dueAt time.Time) {
+	if s.journalOnly {
+		return
+	}
 	job, err := notification.New(kind, recipient, data, dueAt, s.now())
 	if err != nil {
 		s.report(fmt.Errorf("build %s notification: %w", kind, err))
@@ -508,7 +584,7 @@ func (s *Service) formatTime(at time.Time, timezone string) string {
 	if at.IsZero() {
 		return ""
 	}
-	return at.In(location(timezone)).Format("Monday 2 January 2006, 15:04")
+	return at.In(location(timezone)).Format("Monday 2 January 2006, 15:04 MST (UTC-07:00)")
 }
 
 // formatDate renders just the day, for messages that reference a session
@@ -565,7 +641,14 @@ func inAppContent(job notification.Job) (title, body, link string) {
 		if until := data["timeUntil"]; until != "" {
 			title = "Reminder: your session is " + until
 		}
-		return title, data["serviceName"] + " · " + data["startTime"], "/portal/sessions"
+		link := "/portal/sessions"
+		if job.BookingID != "" && data["recipientId"] != "" {
+			link += "/" + job.BookingID + "/room"
+			if data["audience"] == "practitioner" {
+				link = "/sessions/" + job.BookingID + "/room"
+			}
+		}
+		return title, data["serviceName"] + " · " + data["startTime"], link
 	case notification.KindBookingRescheduled:
 		return "Your session has been rescheduled", data["serviceName"] + " is now " + data["newStartTime"], "/portal/sessions"
 	case notification.KindBookingCancelled:
@@ -613,4 +696,9 @@ func inAppContent(job notification.Job) (title, body, link string) {
 	default:
 		return "", "", ""
 	}
+}
+
+// SetExecutionArchiver is called once during composition, before the worker starts.
+func (s *Service) SetExecutionArchiver(fn func(context.Context, string) error) {
+	s.archiveExecution = fn
 }

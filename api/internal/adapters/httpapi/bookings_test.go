@@ -109,9 +109,10 @@ func seedBookableSlot(t *testing.T, rig bookingTestRig) (string, time.Time) {
 func bookViaHTTP(t *testing.T, rig bookingTestRig, token, serviceID string, startAt time.Time, wantStatus int) bookingTestBody {
 	t.Helper()
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings", map[string]any{
-		"serviceId": serviceID,
-		"startAt":   startAt.Format(time.RFC3339),
-		"tz":        "UTC",
+		"participant": map[string]any{"name": "Participant", "accurate": true},
+		"serviceId":   serviceID,
+		"startAt":     startAt.Format(time.RFC3339),
+		"tz":          "UTC",
 	}, bearer(token))
 	if rec.Code != wantStatus {
 		t.Fatalf("book status = %d, want %d (body %s)", rec.Code, wantStatus, rec.Body.String())
@@ -160,6 +161,7 @@ func TestBookingCreateSlotValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.body["participant"] = map[string]any{"name": "Participant", "accurate": true}
 			rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings", tc.body, bearer(rig.clientToken))
 			if rec.Code != tc.wantCode {
 				t.Fatalf("status = %d, want %d (body %s)", rec.Code, tc.wantCode, rec.Body.String())
@@ -180,7 +182,7 @@ func TestBookingDoubleBookConflict(t *testing.T) {
 
 	bookViaHTTP(t, rig, rig.clientToken, serviceID, start, http.StatusCreated)
 	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings", map[string]any{
-		"serviceId": serviceID, "startAt": start, "tz": "UTC",
+		"serviceId": serviceID, "startAt": start, "tz": "UTC", "participant": map[string]any{"name": "Participant", "accurate": true},
 	}, bearer(rig.otherClientToken))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("double-book status = %d, want 409 (body %s)", rec.Code, rec.Body.String())
@@ -459,5 +461,20 @@ func TestBookingUnavailableWithoutService(t *testing.T) {
 		if errRes.Error.Code != "service_unavailable" {
 			t.Errorf("%s error code = %q, want service_unavailable", path, errRes.Error.Code)
 		}
+	}
+}
+
+func TestBookingRequiresExplicitParticipantAndGuardianDeclaration(t *testing.T) {
+	rig := newBookingTestRig(t)
+	serviceID, day := seedBookableSlot(t, rig)
+	for _, p := range []any{nil, map[string]any{"name": "Child", "under18": true, "accurate": true}, map[string]any{"name": "Adult", "accurate": false}} {
+		rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings", map[string]any{"serviceId": serviceID, "startAt": day.Add(9 * time.Hour), "tz": "UTC", "participant": p}, bearer(rig.clientToken))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("invalid declaration accepted: %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	rec := doJSON(t, rig.srv, http.MethodPost, "/v1/bookings", map[string]any{"serviceId": serviceID, "startAt": "2026-09-23T09:00:00", "tz": "UTC", "participant": map[string]any{"name": "Adult", "accurate": true}}, bearer(rig.clientToken))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatal("offset-free appointment accepted")
 	}
 }

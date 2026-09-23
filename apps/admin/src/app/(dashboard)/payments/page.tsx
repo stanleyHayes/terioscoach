@@ -188,7 +188,7 @@ export default function PaymentsPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {items.map((payment) => (
-                <tr key={payment.id}>
+                <tr key={payment.id} id={`payment-${payment.id}`}>
                   <td className="px-5 py-4 text-sm tabular-nums text-ink-muted">
                     <time dateTime={payment.createdAt}>
                       {new Date(payment.createdAt).toLocaleDateString("en-GB", {
@@ -244,8 +244,8 @@ export default function PaymentsPage() {
               Refund {formatMoney(confirming.amountKobo, confirming.currency)}?
             </h2>
             <p className="mt-3 text-sm leading-[1.55] text-ink-muted">
-              This sends the money back through Stripe. It cannot be undone
-              from here.
+              This sends the money back through Stripe. It cannot be undone from
+              here.
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setConfirming(null)}>

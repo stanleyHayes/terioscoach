@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
@@ -11,6 +17,20 @@ import {
   type Booking,
 } from "@/lib/schedule";
 import CalendarPage from "./page";
+
+let accountTimezone = "Africa/Accra";
+vi.mock("@/lib/api", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...original,
+    accountApi: {
+      updateTimezone: vi.fn(async (_session, _callbacks, timezone: string) => ({
+        user: { timezone },
+      })),
+    },
+    authedRequest: vi.fn().mockResolvedValue({ ready: true, items: [] }),
+  };
+});
 
 const logoutMock = vi.fn();
 const listBookingsMock = vi.fn();
@@ -28,10 +48,19 @@ vi.mock("@/lib/auth", async (importOriginal) => {
     ...original,
     useAuth: () => ({
       status: "authenticated",
-      user: { id: "u1", email: "akosua@terios.com", role: "practitioner", name: "Akosua" },
+      user: {
+        id: "u1",
+        email: "akosua@terios.com",
+        role: "practitioner",
+        name: "Akosua",
+        timezone: accountTimezone,
+      },
       accessToken: session.accessToken,
       session,
       refreshCallbacks,
+      setUserProfile: (user: { timezone: string }) => {
+        accountTimezone = user.timezone;
+      },
       login: vi.fn(),
       logout: logoutMock,
     }),
@@ -106,6 +135,7 @@ function currentWeekRange(timeZone = PRACTICE_TIMEZONE) {
 }
 
 afterEach(() => {
+  accountTimezone = "Africa/Accra";
   logoutMock.mockReset();
   listBookingsMock.mockReset();
   completeBookingMock.mockReset();
@@ -135,8 +165,10 @@ describe("CalendarPage", () => {
     render(<CalendarPage />);
     await screen.findByRole("grid");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Display timezone" }));
-    fireEvent.click(screen.getByRole("option", { name: /Eastern Time/ }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Appointment timezone" }),
+    );
+    fireEvent.click(screen.getByRole("option", { name: /America\/New York/ }));
 
     await waitFor(() =>
       expect(listBookingsMock).toHaveBeenLastCalledWith(
@@ -155,50 +187,92 @@ describe("CalendarPage", () => {
 
   it("lists future consultations beyond the current week in date order and restores the calendar", async () => {
     listBookingsMock.mockResolvedValue([
-      booking({ id: "later", clientId: "Later client", startAt: "2099-10-20T09:00:00Z", endAt: "2099-10-20T10:00:00Z" }),
-      booking({ id: "nearer", clientId: "Nearer client", startAt: "2099-10-15T09:00:00Z", endAt: "2099-10-15T10:00:00Z" }),
+      booking({
+        id: "later",
+        clientId: "Later client",
+        startAt: "2099-10-20T09:00:00Z",
+        endAt: "2099-10-20T10:00:00Z",
+      }),
+      booking({
+        id: "nearer",
+        clientId: "Nearer client",
+        startAt: "2099-10-15T09:00:00Z",
+        endAt: "2099-10-15T10:00:00Z",
+      }),
     ]);
     render(<CalendarPage />);
     await screen.findByRole("grid");
     const before = Date.now();
     fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
-    const list = await screen.findByRole("region", { name: "Upcoming consultations" });
+    const list = await screen.findByRole("region", {
+      name: "Upcoming consultations",
+    });
     const params = listBookingsMock.mock.lastCall?.[2];
     expect(params.status).toBe("confirmed");
     expect(params.to).toBeUndefined();
-    expect(Date.parse(params.from)).toBeGreaterThanOrEqual(before);
-    expect(within(list).getAllByRole("listitem")[0].textContent).toContain("Nearer client");
-    expect(within(list).getAllByRole("listitem")[1].textContent).toContain("Later client");
+    expect(Date.parse(params.from)).toBeGreaterThanOrEqual(before - 86400000);
+    expect(within(list).getAllByRole("listitem")[0].textContent).toContain(
+      "Nearer client",
+    );
+    expect(within(list).getAllByRole("listitem")[1].textContent).toContain(
+      "Later client",
+    );
     expect(list.textContent).toContain("Africa/Accra");
     fireEvent.click(screen.getByRole("button", { name: "Weekly calendar" }));
     await screen.findByRole("grid");
-    expect(listBookingsMock).toHaveBeenLastCalledWith(session, refreshCallbacks, currentWeekRange());
+    expect(listBookingsMock).toHaveBeenLastCalledWith(
+      session,
+      refreshCallbacks,
+      currentWeekRange(),
+    );
   });
 
   it("opens existing booking controls from the list and removes cancelled consultations", async () => {
-    const upcoming = booking({ startAt: "2099-10-15T09:00:00Z", endAt: "2099-10-15T10:00:00Z" });
+    const upcoming = booking({
+      startAt: "2099-10-15T09:00:00Z",
+      endAt: "2099-10-15T10:00:00Z",
+    });
     listBookingsMock.mockResolvedValue([upcoming]);
     cancelBookingMock.mockResolvedValue({ ...upcoming, status: "cancelled" });
     render(<CalendarPage />);
     await screen.findByRole("grid");
     fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
-    const list = await screen.findByRole("region", { name: "Upcoming consultations" });
+    const list = await screen.findByRole("region", {
+      name: "Upcoming consultations",
+    });
     fireEvent.click(within(list).getByRole("button", { name: /client-1/ }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("link", { name: "Start session" }).getAttribute("href")).toContain("/sessions/bk-1/room");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel booking" }));
-    await waitFor(() => expect(cancelBookingMock).toHaveBeenCalledWith(session, refreshCallbacks, "bk-1"));
+    expect(
+      within(dialog)
+        .getByRole("link", { name: "Start session" })
+        .getAttribute("href"),
+    ).toContain("/sessions/bk-1/room");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel booking" }),
+    );
+    await waitFor(() =>
+      expect(cancelBookingMock).toHaveBeenCalledWith(
+        session,
+        refreshCallbacks,
+        "bk-1",
+      ),
+    );
     expect(await screen.findByText("No upcoming consultations")).toBeTruthy();
   });
 
   it("shows list loading and retry states before an empty result", async () => {
-    listBookingsMock.mockResolvedValue([]).mockResolvedValueOnce([]).mockReturnValueOnce(new Promise(() => {}));
+    listBookingsMock
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([])
+      .mockReturnValueOnce(new Promise(() => {}));
     render(<CalendarPage />);
     await screen.findByRole("grid");
     fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
     expect(screen.getByText("Loading upcoming consultations…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Weekly calendar" }));
-    listBookingsMock.mockRejectedValueOnce(new ApiError(0, "network_error", "List unavailable"));
+    listBookingsMock.mockRejectedValueOnce(
+      new ApiError(0, "network_error", "List unavailable"),
+    );
     await screen.findByRole("grid");
     fireEvent.click(screen.getByRole("button", { name: "Upcoming list" }));
     const alert = await screen.findByRole("alert");
@@ -212,7 +286,7 @@ describe("CalendarPage", () => {
     listBookingsMock.mockReturnValue(new Promise(() => {}));
     render(<CalendarPage />);
 
-    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(await screen.findByText(/Loading your calendar/)).toBeTruthy();
     expect(screen.getByText("Loading your calendar…")).toBeTruthy();
   });
 
@@ -224,15 +298,21 @@ describe("CalendarPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "No-show" }));
 
     await waitFor(() =>
-      expect(listBookingsMock).toHaveBeenLastCalledWith(session, refreshCallbacks, {
-        from: currentWeekRange().from,
-        to: currentWeekRange().to,
-        status: "no_show",
-      }),
+      expect(listBookingsMock).toHaveBeenLastCalledWith(
+        session,
+        refreshCallbacks,
+        {
+          from: currentWeekRange().from,
+          to: currentWeekRange().to,
+          status: "no_show",
+        },
+      ),
     );
-    expect(screen.getByRole("button", { name: "No-show" }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    expect(
+      screen
+        .getByRole("button", { name: "No-show" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 
   it("week navigation refetches with the new range", async () => {
@@ -242,18 +322,35 @@ describe("CalendarPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
 
-    const nextMonday = addDaysCivil(mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)), 7);
+    const nextMonday = addDaysCivil(
+      mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)),
+      7,
+    );
     await waitFor(() =>
-      expect(listBookingsMock).toHaveBeenLastCalledWith(session, refreshCallbacks, {
-        from: wallClockToUtcIso(dateKey(nextMonday), "00:00", PRACTICE_TIMEZONE)!,
-        to: wallClockToUtcIso(dateKey(addDaysCivil(nextMonday, 7)), "00:00", PRACTICE_TIMEZONE)!,
-      }),
+      expect(listBookingsMock).toHaveBeenLastCalledWith(
+        session,
+        refreshCallbacks,
+        {
+          from: wallClockToUtcIso(
+            dateKey(nextMonday),
+            "00:00",
+            PRACTICE_TIMEZONE,
+          )!,
+          to: wallClockToUtcIso(
+            dateKey(addDaysCivil(nextMonday, 7)),
+            "00:00",
+            PRACTICE_TIMEZONE,
+          )!,
+        },
+      ),
     );
   });
 
   it("shows an error banner with retry on failure", async () => {
     listBookingsMock
-      .mockRejectedValueOnce(new ApiError(0, "network_error", "Can't reach the server."))
+      .mockRejectedValueOnce(
+        new ApiError(0, "network_error", "Can't reach the server."),
+      )
       .mockResolvedValueOnce([booking()]);
     render(<CalendarPage />);
 
@@ -269,7 +366,10 @@ describe("CalendarPage", () => {
   });
 
   it("completing a booking from the detail modal calls the API and updates the block", async () => {
-    const done = booking({ status: "completed", completedAt: "2026-08-11T10:00:00.000Z" });
+    const done = booking({
+      status: "completed",
+      completedAt: "2026-08-11T10:00:00.000Z",
+    });
     listBookingsMock.mockResolvedValue([booking()]);
     completeBookingMock.mockResolvedValue(done);
     render(<CalendarPage />);
@@ -283,7 +383,11 @@ describe("CalendarPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Complete" }));
 
     await waitFor(() =>
-      expect(completeBookingMock).toHaveBeenCalledWith(session, refreshCallbacks, "bk-1"),
+      expect(completeBookingMock).toHaveBeenCalledWith(
+        session,
+        refreshCallbacks,
+        "bk-1",
+      ),
     );
     expect(
       await screen.findByRole("button", {

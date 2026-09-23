@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { splitBookings } from "@/lib/bookings";
 import { useAuth } from "@/lib/auth";
-import { browserTimeZone } from "@/lib/format";
 
 const UPCOMING_PREVIEW_COUNT = 3;
 
@@ -22,15 +21,18 @@ const UPCOMING_PREVIEW_COUNT = 3;
  */
 export default function PortalOverviewPage() {
   const { user } = useAuth();
-  const timeZone = useMemo(() => browserTimeZone(), []);
-  const { bookings, servicesById, error, refresh } = useMyBookings();
+  const timeZone = user?.timezone ?? "UTC";
+  const { now, bookings, servicesById, error, refresh } = useMyBookings();
 
   const upcoming = useMemo(
     () =>
       bookings
-        ? splitBookings(bookings).upcoming.slice(0, UPCOMING_PREVIEW_COUNT)
+        ? [
+            ...splitBookings(bookings, now).inProgress,
+            ...splitBookings(bookings, now).upcoming,
+          ].slice(0, UPCOMING_PREVIEW_COUNT)
         : [],
-    [bookings],
+    [bookings, now],
   );
 
   return (
@@ -38,8 +40,22 @@ export default function PortalOverviewPage() {
       data-portal-page="overview"
       className="animate-fade-in flex flex-col gap-8"
     >
+      {bookings?.some((booking) => booking.status === "pending_payment") && (
+        <Card>
+          <p className="text-sm">
+            You have appointments awaiting payment. They are not confirmed yet.
+          </p>
+          <Link href="/portal/sessions" className="text-primary underline">
+            Review pending appointments
+          </Link>
+        </Card>
+      )}
+
       <Card className="relative overflow-hidden border-border/70 bg-surface-raised/85 p-8 shadow-[0_28px_90px_rgba(31,41,34,.08)] backdrop-blur-xl sm:p-10">
-        <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-1 bg-primary"
+        />
         <div
           aria-hidden="true"
           className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl"
@@ -54,7 +70,18 @@ export default function PortalOverviewPage() {
           This is your private space for sessions, forms and documents —
           everything between you and your practitioner, in one calm place.
         </p>
-        {upcoming[0] ? <Link href={`/portal/sessions/${upcoming[0].id}/room`} className={buttonClasses({ size: "sm", className: "relative mt-6" })}><Video size={16}/>Join next consultation</Link> : null}
+        {upcoming[0] ? (
+          <Link
+            href={`/portal/sessions/${upcoming[0].id}/room`}
+            className={buttonClasses({
+              size: "sm",
+              className: "relative mt-6",
+            })}
+          >
+            <Video size={16} />
+            Join next consultation
+          </Link>
+        ) : null}
       </Card>
 
       <section aria-labelledby="upcoming-sessions-heading">

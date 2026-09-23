@@ -113,6 +113,22 @@ func NewRenderer(opts Options) *Renderer {
 // programming error rather than a runtime condition, so they surface as
 // notification.ErrTemplateNotFound rather than an empty email.
 func (r *Renderer) Render(job notification.Job) (ports.EmailMessage, error) {
+	if job.Kind == notification.KindActionRequired {
+		base := r.defaults["portalUrl"]
+		path := job.Data["link"]
+		if job.Data["audience"] == "practitioner" {
+			base = r.defaults["dashboardUrl"]
+		} else {
+			path = strings.TrimPrefix(path, "/portal")
+		}
+		if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+			return ports.EmailMessage{}, fmt.Errorf("invalid action link")
+		}
+		link := base + path
+		title := job.Data["title"]
+		body := job.Data["body"]
+		return ports.EmailMessage{To: job.Recipient, Subject: title, Text: title + "\n" + body + "\n" + link, HTML: `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#FAF7F2;color:#1F2922;padding:32px"><main style="max-width:560px;margin:auto"><p>Terios Wellness Spa</p><h1>` + html.EscapeString(title) + `</h1><p>` + html.EscapeString(body) + `</p><p><a href="` + html.EscapeString(link) + `">Review in your account</a></p></main></body></html>`}, nil
+	}
 	file, ok := templateFiles[job.Kind]
 	if !ok {
 		return ports.EmailMessage{}, fmt.Errorf("%w: %s", notification.ErrTemplateNotFound, job.Kind)
@@ -135,6 +151,12 @@ func (r *Renderer) Render(job notification.Job) (ports.EmailMessage, error) {
 		data[k] = v
 	}
 
+	if job.Kind == notification.KindSessionReminder && job.BookingID != "" {
+		data["joinUrl"] = r.defaults["portalUrl"] + "/sessions/" + job.BookingID + "/room"
+		if job.Data["audience"] == "practitioner" {
+			data["joinUrl"] = r.defaults["dashboardUrl"] + "/sessions/" + job.BookingID + "/room"
+		}
+	}
 	return ports.EmailMessage{
 		To:      job.Recipient,
 		Subject: subject(job, data),

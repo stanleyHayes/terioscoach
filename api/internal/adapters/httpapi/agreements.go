@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"errors"
+	"github.com/xcreativs/terios/api/internal/domain/booking"
 	"net/http"
 	"time"
 
@@ -32,8 +34,12 @@ func WithAgreements(svc ports.AgreementService, auth ports.AuthService) Option {
 		s.Router.Group(func(r chi.Router) {
 			r.Use(RequireAuth(auth))
 			r.Get("/v1/services/{id}/agreement", h.forService)
+			r.Get("/v1/services/{id}/guardian-consent", h.guardianForService)
+			r.Get("/v1/guardian-consent", h.guardianSettings)
+			r.Patch("/v1/guardian-consent", h.guardianSettings)
 			r.Post("/v1/agreements/{id}/sign", h.sign)
 			r.Post("/v1/agreements/{id}/submit", h.sign)
+			r.Get("/v1/bookings/{id}/agreements", h.forBooking)
 			r.Get("/v1/agreements/mine", h.mine)
 			r.Get("/v1/agreements/signatures/{signatureId}/pdf", h.document)
 		})
@@ -85,6 +91,11 @@ func newAgreementBody(a agreement.Agreement) agreementBody {
 }
 
 type agreementSignatureBody struct {
+	ArchiveStatus            string                     `json:"archiveStatus,omitempty"`
+	SignerRole               string                     `json:"signerRole,omitempty"`
+	ParticipantName          string                     `json:"participantName,omitempty"`
+	ConsentVersion           string                     `json:"consentVersion,omitempty"`
+	ContextID                string                     `json:"contextId,omitempty"`
 	StatementOfWork          *agreement.StatementOfWork `json:"statementOfWork,omitempty"`
 	SubmittedAt              *time.Time                 `json:"submittedAt,omitempty"`
 	ID                       string                     `json:"id"`
@@ -105,6 +116,8 @@ type agreementSignatureBody struct {
 
 func newAgreementSignatureBody(s agreement.Signature) agreementSignatureBody {
 	return agreementSignatureBody{
+		ArchiveStatus: s.ArchiveStatus,
+		SignerRole:    s.SignerRole, ParticipantName: s.ParticipantName, ConsentVersion: s.ConsentVersion, ContextID: s.ContextID,
 		StatementOfWork: s.StatementOfWork, SubmittedAt: s.SubmittedAt,
 		ID:                       s.ID,
 		AgreementID:              s.AgreementID,
@@ -124,10 +137,13 @@ func newAgreementSignatureBody(s agreement.Signature) agreementSignatureBody {
 }
 
 type agreementStatusItem struct {
-	Required  bool                    `json:"required"`
-	Signed    bool                    `json:"signed"`
-	Agreement *agreementBody          `json:"agreement,omitempty"`
-	Signature *agreementSignatureBody `json:"signature,omitempty"`
+	ConsentVersion       string                  `json:"consentVersion,omitempty"`
+	Fee                  string                  `json:"fee,omitempty"`
+	GuardianConsentReady bool                    `json:"guardianConsentReady"`
+	Required             bool                    `json:"required"`
+	Signed               bool                    `json:"signed"`
+	Agreement            *agreementBody          `json:"agreement,omitempty"`
+	Signature            *agreementSignatureBody `json:"signature,omitempty"`
 }
 
 // forService answers the booking wizard's question: is there an agreement
@@ -225,14 +241,20 @@ func (h *agreementHandler) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		SignedName      string                     `json:"signedName"`
-		BookingID       string                     `json:"bookingId"`
-		StatementOfWork *agreement.StatementOfWork `json:"statementOfWork"`
+		ConsentVersion   string                     `json:"consentVersion"`
+		Acknowledged     bool                       `json:"acknowledged"`
+		SignerRole       string                     `json:"signerRole"`
+		AgreementVersion int                        `json:"agreementVersion"`
+		SignedName       string                     `json:"signedName"`
+		BookingID        string                     `json:"bookingId"`
+		StatementOfWork  *agreement.StatementOfWork `json:"statementOfWork"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	sig, err := h.svc.Sign(r.Context(), ports.SignRequest{
+		ConsentVersion: req.ConsentVersion,
+		Acknowledged:   req.Acknowledged, SignerRole: req.SignerRole, AgreementVersion: req.AgreementVersion,
 		StatementOfWork: req.StatementOfWork,
 		AgreementID:     chi.URLParam(r, "id"),
 		ClientID:        id.UserID,
@@ -286,6 +308,12 @@ func (h *agreementHandler) writeSignatures(w http.ResponseWriter, r *http.Reques
 	}
 	out := make([]agreementSignatureBody, 0, len(items))
 	for _, sig := range items {
+		if caller, ok := IdentityFromContext(r.Context()); ok && caller.Role == identity.RolePractitioner {
+			owner, err := h.svc.Get(r.Context(), sig.AgreementID)
+			if err != nil || owner.PractitionerID != caller.UserID {
+				continue
+			}
+		}
 		out = append(out, newAgreementSignatureBody(sig))
 	}
 	writeJSON(w, http.StatusOK, map[string][]agreementSignatureBody{"items": out})
@@ -334,6 +362,15 @@ func (h *agreementHandler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *agreementHandler) update(w http.ResponseWriter, r *http.Request) {
+	caller, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	owner, err := h.svc.Get(r.Context(), chi.URLParam(r, "id"))
+	if err != nil || owner.PractitionerID != caller.UserID {
+		writeDomainError(w, agreement.ErrAgreementNotFound)
+		return
+	}
 	var req struct {
 		Title  *string `json:"title"`
 		Body   *string `json:"body"`
@@ -352,4 +389,82 @@ func (h *agreementHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]agreementBody{"agreement": newAgreementBody(a)})
+}
+
+func (h *agreementHandler) forBooking(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	statuses, err := h.svc.StatusesForBooking(r.Context(), id, chi.URLParam(r, "id"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	items := make([]agreementStatusItem, 0, len(statuses))
+	for _, st := range statuses {
+		item := agreementStatusItem{Required: st.Agreement != nil, Signed: st.Signed(), Fee: st.Fee, GuardianConsentReady: st.GuardianConsentReady, ConsentVersion: st.ConsentVersion}
+		if st.Agreement != nil {
+			a := newAgreementBody(*st.Agreement)
+			item.Agreement = &a
+		}
+		if st.Signature != nil {
+			sig := newAgreementSignatureBody(*st.Signature)
+			item.Signature = &sig
+		}
+		items = append(items, item)
+	}
+	ready, message := false, "Session readiness unavailable"
+	if gate, ok := h.svc.(ports.BookingReadiness); ok {
+		if err := gate.RequireBookingReady(r.Context(), chi.URLParam(r, "id")); err != nil {
+			message = "Session requirements could not be checked. Try again."
+			if errors.Is(err, agreement.ErrAgreementRequired) || errors.Is(err, booking.ErrInvalidTransition) {
+				message = err.Error()
+			}
+		} else {
+			ready = true
+			message = "All session requirements are complete"
+		}
+	}
+	writeJSON(w, 200, map[string]any{"items": items, "ready": ready, "readinessMessage": message})
+}
+
+func (h *agreementHandler) guardianForService(w http.ResponseWriter, r *http.Request) {
+	a, err := h.svc.GuardianConsentForService(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]agreementBody{"agreement": newAgreementBody(a)})
+}
+func (h *agreementHandler) guardianSettings(w http.ResponseWriter, r *http.Request) {
+	id, ok := identityOr401(w, r)
+	if !ok {
+		return
+	}
+	if id.Role != identity.RolePractitioner {
+		writeError(w, 403, "forbidden", "practitioner access required")
+		return
+	}
+	if r.Method == http.MethodPatch {
+		var req struct {
+			Body string `json:"body"`
+		}
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		a, err := h.svc.UpdateGuardianConsent(r.Context(), id.UserID, req.Body)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]agreementBody{"agreement": newAgreementBody(a)})
+		return
+	}
+	a, err := h.svc.GuardianConsent(r.Context(), id.UserID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]agreementBody{"agreement": newAgreementBody(a)})
 }

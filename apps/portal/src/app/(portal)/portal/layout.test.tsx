@@ -13,7 +13,13 @@ vi.mock("next/navigation", () => ({
 
 let authState = {
   status: "loading",
-  user: null as { id: string; email: string; role: string; name: string } | null,
+  user: null as {
+    id: string;
+    email: string;
+    role: string;
+    name: string;
+    timezone?: string;
+  } | null,
 };
 
 vi.mock("@/lib/auth", async (importOriginal) => {
@@ -58,14 +64,26 @@ describe("PortalLayout guard", () => {
   it("renders the shell and children for authenticated clients", () => {
     authState = {
       status: "authenticated",
-      user: { id: "u1", email: "ama@example.com", role: "client", name: "Ama Serwaa" },
+      user: {
+        id: "u1",
+        email: "ama@example.com",
+        role: "client",
+        name: "Ama Serwaa",
+        timezone: "UTC",
+      },
     };
     render(<PortalLayout>Secret content</PortalLayout>);
 
     expect(screen.getByText("Secret content")).toBeTruthy();
-    expect(screen.getByRole("complementary", { name: "Client portal navigation" })).toBeTruthy();
+    expect(
+      screen.getByRole("complementary", { name: "Client portal navigation" }),
+    ).toBeTruthy();
     expect(replaceMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: "Visit Terios website" }).getAttribute("href")).toBe("https://terioscoach.com");
+    expect(
+      screen
+        .getByRole("link", { name: "Visit Terios website" })
+        .getAttribute("href"),
+    ).toBe("https://terioscoach.com");
   });
 
   it("keeps the public website header around the guest booking flow", () => {
@@ -75,7 +93,11 @@ describe("PortalLayout guard", () => {
 
     expect(screen.getByText("Choose your session")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Main" })).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "Terios Wellness" })[0]?.getAttribute("href")).toBe("/");
+    expect(
+      screen
+        .getAllByRole("link", { name: "Terios Wellness" })[0]
+        ?.getAttribute("href"),
+    ).toBe("/");
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
@@ -83,7 +105,13 @@ describe("PortalLayout guard", () => {
     logoutMock.mockResolvedValueOnce(undefined);
     authState = {
       status: "authenticated",
-      user: { id: "u1", email: "ama@example.com", role: "client", name: "Ama Serwaa" },
+      user: {
+        id: "u1",
+        email: "ama@example.com",
+        role: "client",
+        name: "Ama Serwaa",
+        timezone: "UTC",
+      },
     };
     render(<PortalLayout>Secret content</PortalLayout>);
 

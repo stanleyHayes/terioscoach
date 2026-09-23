@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError } from "@/lib/api";
 import type { Booking } from "@/lib/schedule";
@@ -9,6 +15,10 @@ import { WeekCalendar, type WeekCalendarProps } from "./WeekCalendar";
  * math is deterministic regardless of the machine running the tests.
  * Week under test: Monday 2026-08-10 → Sunday 2026-08-16.
  */
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ session: null, refreshCallbacks: {} }),
+}));
+
 const WEEK_START = { year: 2026, month: 8, day: 10 };
 const TIME_ZONE = "Africa/Accra";
 
@@ -35,7 +45,10 @@ interface Handlers {
   onReschedule: Mock<WeekCalendarProps["onReschedule"]>;
 }
 
-function renderCalendar(bookings: Booking[] = [booking()], handlers: Partial<Handlers> = {}) {
+function renderCalendar(
+  bookings: Booking[] = [booking()],
+  handlers: Partial<Handlers> = {},
+) {
   const props: Handlers = {
     onPrevWeek: vi.fn<() => void>(),
     onNextWeek: vi.fn<() => void>(),
@@ -131,13 +144,31 @@ describe("WeekCalendar", () => {
 
   it("keeps 03:00, 22:00 and 23:50 bookings visible and actionable", () => {
     renderCalendar([
-      booking({ id: "early", startAt: "2026-08-11T03:00:00Z", endAt: "2026-08-11T03:30:00Z" }),
-      booking({ id: "late", startAt: "2026-08-11T22:00:00Z", endAt: "2026-08-11T23:00:00Z" }),
-      booking({ id: "last", startAt: "2026-08-11T23:50:00Z", endAt: "2026-08-12T00:20:00Z" }),
+      booking({
+        id: "early",
+        startAt: "2026-08-11T03:00:00Z",
+        endAt: "2026-08-11T03:30:00Z",
+      }),
+      booking({
+        id: "late",
+        startAt: "2026-08-11T22:00:00Z",
+        endAt: "2026-08-11T23:00:00Z",
+      }),
+      booking({
+        id: "last",
+        startAt: "2026-08-11T23:50:00Z",
+        endAt: "2026-08-12T00:20:00Z",
+      }),
     ]);
-    expect(screen.getByRole("button", { name: /3:00 AM to 3:30 AM/ }).style.top).toBe("144px");
-    expect(screen.getByRole("button", { name: /10:00 PM to 11:00 PM/ }).style.top).toBe("1056px");
-    const parts = screen.getAllByRole("button", { name: /11:50 PM to 12:20 AM/ });
+    expect(
+      screen.getByRole("button", { name: /3:00 AM to 3:30 AM/ }).style.top,
+    ).toBe("144px");
+    expect(
+      screen.getByRole("button", { name: /10:00 PM to 11:00 PM/ }).style.top,
+    ).toBe("1056px");
+    const parts = screen.getAllByRole("button", {
+      name: /11:50 PM to 12:20 AM/,
+    });
     expect(parts).toHaveLength(2);
     expect(parts[0]!.style.top).toBe("1128px");
     expect(parts[1]!.style.top).toBe("0px");
@@ -174,7 +205,9 @@ describe("WeekCalendar", () => {
 
     fireEvent.keyDown(tuesday, { key: "Enter" });
     expect(tuesday.contains(document.activeElement)).toBe(true);
-    expect(document.activeElement?.getAttribute("aria-label")).toContain("Confirmed");
+    expect(document.activeElement?.getAttribute("aria-label")).toContain(
+      "Confirmed",
+    );
   });
 
   it("opens the detail modal with client, service, time and status", () => {
@@ -195,9 +228,14 @@ describe("WeekCalendar", () => {
   });
 
   it("Complete calls the action handler and updates the modal status", async () => {
-    const completed = booking({ status: "completed", completedAt: "2026-08-11T10:30:00.000Z" });
+    const completed = booking({
+      status: "completed",
+      completedAt: "2026-08-11T10:30:00.000Z",
+    });
     const handlers = renderCalendar([booking()], {
-      onAction: vi.fn<WeekCalendarProps["onAction"]>().mockResolvedValue(completed),
+      onAction: vi
+        .fn<WeekCalendarProps["onAction"]>()
+        .mockResolvedValue(completed),
     });
 
     fireEvent.click(
@@ -219,7 +257,9 @@ describe("WeekCalendar", () => {
       await within(dialog).findByText("Completed", { selector: "span" }),
     ).toBeTruthy();
     // Terminal state: the action row is gone.
-    expect(within(dialog).queryByRole("button", { name: "Complete" })).toBeNull();
+    expect(
+      within(dialog).queryByRole("button", { name: "Complete" }),
+    ).toBeNull();
   });
 
   it("shows API errors from actions inline in the modal", async () => {
@@ -227,7 +267,11 @@ describe("WeekCalendar", () => {
       onAction: vi
         .fn<WeekCalendarProps["onAction"]>()
         .mockRejectedValue(
-          new ApiError(409, "invalid_status", "Only finished sessions can be completed."),
+          new ApiError(
+            409,
+            "invalid_status",
+            "Only finished sessions can be completed.",
+          ),
         ),
     });
 
@@ -247,9 +291,14 @@ describe("WeekCalendar", () => {
   });
 
   it("reschedule validates inputs, then calls the handler with a UTC instant", async () => {
-    const moved = booking({ startAt: "2026-08-12T14:00:00.000Z", endAt: "2026-08-12T15:30:00.000Z" });
+    const moved = booking({
+      startAt: "2026-08-12T14:00:00.000Z",
+      endAt: "2026-08-12T15:30:00.000Z",
+    });
     const handlers = renderCalendar([booking()], {
-      onReschedule: vi.fn<WeekCalendarProps["onReschedule"]>().mockResolvedValue(moved),
+      onReschedule: vi
+        .fn<WeekCalendarProps["onReschedule"]>()
+        .mockResolvedValue(moved),
     });
 
     fireEvent.click(
@@ -264,7 +313,9 @@ describe("WeekCalendar", () => {
     fireEvent.change(within(dialog).getByLabelText(/^Date/), {
       target: { value: "tomorrow" },
     });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save new time" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save new time" }),
+    );
     expect(
       within(dialog).getByText("Enter a date as YYYY-MM-DD, e.g. 2026-08-12"),
     ).toBeTruthy();
@@ -276,7 +327,9 @@ describe("WeekCalendar", () => {
     fireEvent.change(within(dialog).getByLabelText(/^Time/), {
       target: { value: "14:00" },
     });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save new time" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save new time" }),
+    );
 
     await waitFor(() =>
       expect(handlers.onReschedule).toHaveBeenCalledWith(
@@ -284,6 +337,8 @@ describe("WeekCalendar", () => {
         "2026-08-12T14:00:00.000Z",
       ),
     );
-    expect(await within(dialog).findByText("2:00 PM–3:30 PM (GMT)")).toBeTruthy();
+    expect(
+      await within(dialog).findByText("2:00 PM–3:30 PM (GMT)"),
+    ).toBeTruthy();
   });
 });

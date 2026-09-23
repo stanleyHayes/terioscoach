@@ -44,3 +44,41 @@ Notifications record relevant persisted workflow changes. Routine navigation, do
 - Chromium against both production builds, using isolated API fixtures: 1440px and 390px, read/reload persistence, mark-all, failed read recovery, Escape, viewport containment and no page errors. Fixtures did not read or mutate production client records.
 - Full-app lint is not clean on the starting main revision: admin `ServiceForm.tsx` native checkbox, both `auth.tsx` render-time clocks, portal `AgreementStep.tsx` synchronous effect state. These unrelated files were not changed by this notification work. Existing warnings also remain.
 - Actual MongoDB production delivery and deployment are not claimed verified by fixture tests.
+
+## September 2026 durable workflow update
+
+The verification counts above describe the September 17 revision, **not this update**. Current implementation has compilation/static checks only; test execution, real database checks, browser journeys and inbox delivery are reserved for the owner.
+
+Covered Mongo business writes now commit an allowlisted metadata event to `workflow_events` in the **same transaction**. Failed journal insertion rolls back the business write; provider or PDF failures happen later and cannot roll back a committed booking/signature. No historical events are bulk replayed on deployment. Startup rejects standalone Mongo; Atlas, a replica set or sharded cluster is required.
+
+| Mutation / implementation | Client | Practitioner | Destination / routing |
+|---|---|---|---|
+| Booking create, pending payment | Feed + email | Feed | Exact pending booking on Payments; assigned practitioner calendar detail |
+| Confirmation / reschedule | Feed + email | Feed + email | Session preparation / exact calendar booking; old and new times on reschedule |
+| Cancellation / unpaid expiry | Feed + email | Feed + email | Session / calendar; pending requests never described as confirmed |
+| Change request saved on booking | Feed receipt | Feed + email | Exact calendar booking displays request type, proposed time and reason; request reason is excluded from email/journal |
+| Participant declaration revised | Feed + signature-request email | Feed | Required documents for that booking |
+| Agreement wording / required service document assignment changed | Feed + signature-request email | Feed receipt | Relevant future booking's required documents |
+| Contextual agreement / SOW / guardian execution inserted | Feed receipt | Feed + email | Exact execution in portal Documents / practitioner client record |
+| Practitioner countersignature saved | Feed + email | Feed receipt | Exact executed document |
+| Form assigned / submitted | Assignment email / submission receipt, both feed | Assignment receipt / submission email, both feed | Exact form submission; booking practitioner wins, otherwise recorded assigning practitioner |
+| Shared document inserted / updated / hidden / deleted | Feed while shared or previously shared | Feed receipt | Exact document, or Documents list after withdrawal; private documents produce no client event |
+| Session notes shared / recording stored | Feed | Feed receipt | Session/client record; no clinical text or recording content copied into notices |
+| Payment pending / failed / refunded | Feed + email | Feed; material failure/refund email | Exact payment row; booking practitioner |
+| Reminder due | Feed + email | Feed + email | Exact role-appropriate room URL; booking reread before delivery |
+| Session completed / no-show | Feed | Feed | Session/client record |
+| Review created / edited / moderated | Feed | Feed; email on new submission | Reviews; comments excluded from journal |
+| Enquiry created | None to unverified sender | Feed + email | Enquiries; no enquiry message copied into journal |
+
+Document rejection/revision-request actions and explicit request-decline actions have no current domain/API operation; this update does not invent them. Existing reschedule/cancel actions resolve the persisted change request. Form templates and non-booking practice work use the existing practice-wide fallback only when no assigned practitioner exists. Guardian emails are contact declarations, never notification recipients; notices go to authenticated account holders.
+
+Recovery and delivery:
+
+- `workflow_events` records pending/due/attempts, queued, or dead-letter status. The worker retries event fan-out and signature archival independently of email; partial success is safe to replay. Ten failed fan-out attempts dead-letter the event with a generic error. Job retry policy remains five delivery attempts (1m, 5m, 15m, 1h backoffs).
+- A unique hash of event identity, recipient and kind deduplicates channel jobs. The existing event/recipient inbox index preserves read state. New committed transitions have new event IDs; replaying the same transition does not create new mail jobs or reset unread state.
+- Claimed jobs have expiring leases and claim tokens. Before provider sending, the exact rendered payload is frozen without releasing the lease. Reminders resolve the user's saved zone at first delivery, retain `renderedTimezone`, and re-use the frozen payload on retries. Cancelled, moved and expired sessions suppress obsolete reminders; replacement reminders use committed UTC starts.
+- Resend receives `Idempotency-Key: notification-<jobId>`. Provider acceptance before local acknowledgement is still a retry window. Resend documents a **24-hour** idempotency window; this is not an exactly-once promise. Inspect provider delivery history before operator replay outside that window. [Resend idempotency documentation](https://resend.com/docs/dashboard/emails/idempotency-keys).
+- Worker default is now 15 seconds (`NOTIFICATION_POLL_INTERVAL` remains configurable); both existing inboxes poll at 30 seconds and on open/focus. Healthy-operation visibility includes both worker and UI polling delays. Mailbox receipt, lag targets and provider delivery are unmeasured until the owner runs acceptance checks.
+- Event logs carry correlation IDs and failure counts, without signed answers or private notes. Delivery jobs retain attempts/status/error; `workflowctl` reports pending/dead-letter/failed counts. See the implementation runbook for single-ID replay and read-only audit commands.
+
+New coverage files include `notifications/workflow_test.go` (queue outage, replay/read-state preservation, recipient zones, cancellation, archive outage, provider acceptance/local-ack loss) and `mongodb/workflow_repository_test.go` (privacy allowlist and a disposable-replica-set atomicity test). These tests have been written and compiled, **not executed**.

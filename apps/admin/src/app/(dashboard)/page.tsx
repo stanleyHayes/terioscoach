@@ -209,6 +209,7 @@ function OverviewSnapshot() {
 }
 
 function SnapshotChart({ data }: { data: PracticeReport }) {
+  const { user } = useAuth();
   const peak = peakIncome(data.series);
   return (
     <Card className="grid gap-6 p-5 lg:grid-cols-[13rem_1fr] lg:items-end">
@@ -238,6 +239,7 @@ function SnapshotChart({ data }: { data: PracticeReport }) {
         <div className="mt-2 flex justify-between border-t border-border pt-2 text-[10px] font-medium text-ink-faint">
           <span>
             {new Date(data.from).toLocaleDateString("en-GB", {
+              timeZone: user?.timezone ?? "UTC",
               day: "numeric",
               month: "short",
             })}
@@ -245,7 +247,11 @@ function SnapshotChart({ data }: { data: PracticeReport }) {
           <span>
             {new Date(
               new Date(data.to).getTime() - 86400000,
-            ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            ).toLocaleDateString("en-GB", {
+              timeZone: user?.timezone ?? "UTC",
+              day: "numeric",
+              month: "short",
+            })}
           </span>
         </div>
         <table className="sr-only">

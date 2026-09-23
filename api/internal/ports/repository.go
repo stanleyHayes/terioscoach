@@ -22,6 +22,7 @@ type UserRepository interface {
 	// FindByID looks up by ID; misses return identity.ErrUserNotFound.
 	FindByID(ctx context.Context, id string) (identity.User, error)
 	UpdateProfile(ctx context.Context, userID, name string) (identity.User, error)
+	UpdateTimezone(ctx context.Context, userID, timezone string) (identity.User, error)
 	UpdatePassword(ctx context.Context, userID, passwordHash string) error
 	SetPasswordReset(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
 	ResetPassword(ctx context.Context, tokenHash, passwordHash string, now time.Time) (string, error)

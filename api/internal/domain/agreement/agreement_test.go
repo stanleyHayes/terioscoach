@@ -185,15 +185,15 @@ func TestCountersign(t *testing.T) {
 	}
 }
 
-func TestStatementOfWorkDocumentsAreFillInFormsWithoutClientSignatures(t *testing.T) {
+func TestStatementOfWorkRequiresSignedSubmission(t *testing.T) {
 	for _, key := range []string{"holistic_sow", "nurse_sow"} {
 		t.Run(key, func(t *testing.T) {
 			a, err := New("prac-1", key, "Statement of Work", "Terms.", false, fixedNow)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if RequiresClientSignature(key) {
-				t.Fatal("SOW documents should be excluded from client-signature requirements")
+			if !RequiresClientSignature(key) {
+				t.Fatal("SOW documents must be discovered as required signed forms")
 			}
 			if _, err := a.Sign("client-1", "Daniel", "daniel@example.com", "Daniel Baah", "booking-9", fixedNow); !errors.Is(err, ErrSignatureNotRequired) {
 				t.Fatalf("err = %v, want ErrSignatureNotRequired", err)

@@ -116,12 +116,13 @@ type RecordUploadInput struct {
 
 // StoreDocumentInput is a document the API produced itself.
 type StoreDocumentInput struct {
-	Kind        document.Kind
-	ClientID    string
-	Filename    string
-	Title       string
-	ContentType string
-	Data        []byte
+	ExecutionKey string
+	Kind         document.Kind
+	ClientID     string
+	Filename     string
+	Title        string
+	ContentType  string
+	Data         []byte
 }
 
 // DocumentService is the inbound port for the documents slice (BE-11).

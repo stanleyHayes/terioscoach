@@ -2,7 +2,6 @@ package booking
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -42,7 +41,7 @@ func newGatedRig(gate *stubGate) testRig {
 // bookingCount counts what actually reached storage.
 func bookingCount(t *testing.T, rig testRig) int {
 	t.Helper()
-	all, err := rig.bookings.ListByPractitioner(context.Background(), "prac-1", ports.BookingFilter{})
+	all, err := rig.bookings.ListByPractitioner(context.Background(), "prac-1", ports.BookingFilter{IncludePendingPayment: true})
 	if err != nil {
 		t.Fatalf("ListByPractitioner: %v", err)
 	}
@@ -51,17 +50,20 @@ func bookingCount(t *testing.T, rig testRig) int {
 
 // The gate has to be on the write path, not only in the portal wizard: a
 // client who posts straight at the API must be refused too.
-func TestBookingIsRefusedWithoutASignedAgreement(t *testing.T) {
+func TestBookingMayProceedBeforeDocumentsAreSigned(t *testing.T) {
 	gate := &stubGate{signed: map[string]bool{}}
 	rig := newGatedRig(gate)
 	svc, day := seedBookable(t, rig)
 
 	_, err := rig.svc.CreateBooking(context.Background(), "client-1", svc.ID, day.Add(9*time.Hour), "UTC")
-	if !errors.Is(err, agreement.ErrAgreementRequired) {
-		t.Fatalf("err = %v, want ErrAgreementRequired", err)
+	if err != nil {
+		t.Fatalf("CreateBooking=%v", err)
 	}
-	if got := bookingCount(t, rig); got != 0 {
-		t.Errorf("bookings stored = %d, want 0 — nothing may be written before the gate passes", got)
+	if gate.asked != 0 {
+		t.Fatal("documents must gate session entry, not checkout")
+	}
+	if got := bookingCount(t, rig); got != 1 {
+		t.Errorf("bookings stored = %d, want 1", got)
 	}
 }
 
@@ -83,7 +85,7 @@ func TestBookingProceedsOnceTheAgreementIsSigned(t *testing.T) {
 // A priced service must be refused before it ever reaches a payment
 // intent: charging for a session the practice would then have to refuse is
 // the failure mode this ordering exists to prevent.
-func TestPaidBookingIsRefusedBeforeAnyPaymentIsRequired(t *testing.T) {
+func TestCheckoutMayProceedBeforeDocumentsAreSigned(t *testing.T) {
 	gate := &stubGate{signed: map[string]bool{}}
 	rig := newGatedRig(gate)
 	svc, day := seedBookable(t, rig)
@@ -93,11 +95,14 @@ func TestPaidBookingIsRefusedBeforeAnyPaymentIsRequired(t *testing.T) {
 	}
 
 	_, err := rig.svc.CreateBooking(context.Background(), "client-1", svc.ID, day.Add(9*time.Hour), "UTC")
-	if !errors.Is(err, agreement.ErrAgreementRequired) {
-		t.Fatalf("err = %v, want ErrAgreementRequired", err)
+	if err != nil {
+		t.Fatalf("CreateBooking=%v", err)
 	}
-	if got := bookingCount(t, rig); got != 0 {
-		t.Errorf("bookings stored = %d, want 0", got)
+	if gate.asked != 0 {
+		t.Fatal("documents must gate session entry, not checkout")
+	}
+	if got := bookingCount(t, rig); got != 1 {
+		t.Errorf("bookings stored = %d, want 1", got)
 	}
 }
 

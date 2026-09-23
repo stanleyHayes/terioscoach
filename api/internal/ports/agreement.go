@@ -27,32 +27,43 @@ type AgreementPatch struct {
 
 // SignRequest is one client accepting one agreement.
 type SignRequest struct {
-	StatementOfWork *agreement.StatementOfWork
-	AgreementID     string
-	ClientID        string
-	ClientName      string
-	ClientEmail     string
-	SignedName      string
+	ConsentVersion   string
+	Acknowledged     bool
+	SignerRole       string
+	AgreementVersion int
+	StatementOfWork  *agreement.StatementOfWork
+	AgreementID      string
+	ClientID         string
+	ClientName       string
+	ClientEmail      string
+	SignedName       string
 	/** The booking the client was making, when the signature came from the
 	 * booking flow. Optional. */
 	BookingID string
 }
 
-// AgreementStatus answers "may this client book this service yet?" in one
-// round trip: the agreement the service requires, and whether it is signed.
+// AgreementStatus reports required documents and current client/guardian
+// execution. Checkout is independent; session entry also checks countersignatures.
 // Agreement is nil when the service needs no agreement at all.
 type AgreementStatus struct {
-	Agreement *agreement.Agreement
-	Signature *agreement.Signature
+	ConsentVersion       string
+	Fee                  string
+	GuardianConsentReady bool
+	Agreement            *agreement.Agreement
+	Signature            *agreement.Signature
 }
 
-// Signed reports whether nothing stands in the way of booking.
+// Signed reports whether this document has a current client/guardian execution.
 func (s AgreementStatus) Signed() bool {
-	return s.Agreement == nil || s.Signature != nil
+	return s.Agreement == nil || (s.Signature != nil && !s.Signature.SignedAt.IsZero() && s.Signature.AgreementVersion == s.Agreement.Version)
 }
 
 // AgreementService is the application service for agreements.
 type AgreementService interface {
+	GuardianConsent(ctx context.Context, practitionerID string) (agreement.Agreement, error)
+	GuardianConsentForService(ctx context.Context, serviceID string) (agreement.Agreement, error)
+	UpdateGuardianConsent(ctx context.Context, practitionerID, body string) (agreement.Agreement, error)
+	StatusesForBooking(ctx context.Context, id identity.Identity, bookingID string) ([]AgreementStatus, error)
 	List(ctx context.Context, practitionerID string, includeInactive bool) ([]agreement.Agreement, error)
 	Get(ctx context.Context, id string) (agreement.Agreement, error)
 	Create(ctx context.Context, practitionerID string, draft AgreementDraft) (agreement.Agreement, error)
@@ -85,8 +96,8 @@ type AgreementRepository interface {
 	Create(ctx context.Context, a agreement.Agreement) (agreement.Agreement, error)
 	Update(ctx context.Context, a agreement.Agreement) (agreement.Agreement, error)
 
-	// CreateSignature is idempotent by (clientID, agreementID): a repeat
-	// returns the signature already on file rather than a second one.
+	// CreateSignature preserves legacy (clientID, agreementID) uniqueness. New
+	// executions deduplicate by client, agreement, context, version and signer role.
 	CreateSignature(ctx context.Context, sig agreement.Signature) (agreement.Signature, error)
 	UpdateSignature(ctx context.Context, sig agreement.Signature) (agreement.Signature, error)
 	SignatureFor(ctx context.Context, clientID, agreementID string) (agreement.Signature, error)
@@ -125,4 +136,9 @@ type AgreementSignedNotice struct {
 	AgreementTitle string
 	SignedName     string
 	SignedAt       string
+}
+
+// BookingReadiness is checked before both ticket issuance and socket redemption.
+type BookingReadiness interface {
+	RequireBookingReady(context.Context, string) error
 }

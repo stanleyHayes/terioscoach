@@ -2,6 +2,7 @@ package agreements
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/xcreativs/terios/api/internal/adapters/pdf"
@@ -42,13 +43,28 @@ func (a *DocumentArchivist) ArchiveSignedAgreement(ctx context.Context, ag agree
 	if a == nil || a.documents == nil {
 		return
 	}
+	_, err := a.Archive(ctx, ag, sig)
+	if err != nil {
+		a.log.Error("archive signed agreement", "signatureId", sig.ID, "error", err)
+	}
+}
+
+func (a *DocumentArchivist) Archive(ctx context.Context, ag agreement.Agreement, sig agreement.Signature) (string, error) {
+	if a == nil || a.documents == nil {
+		return "", fmt.Errorf("archive media store unavailable")
+	}
+	key := "agreement-" + sig.ID
+	if sig.PractitionerSignedAt != nil {
+		key += "-countersigned"
+	}
 	stored, err := a.documents.StoreDocument(ctx, sig.ClientID, ports.StoreDocumentInput{
-		Kind:        document.KindSignedForm,
-		ClientID:    sig.ClientID,
-		Filename:    filename(sig),
-		Title:       sig.AgreementTitle,
-		ContentType: "application/pdf",
-		Data:        pdf.SignedAgreement(ag, sig),
+		ExecutionKey: key,
+		Kind:         document.KindSignedForm,
+		ClientID:     sig.ClientID,
+		Filename:     filename(sig),
+		Title:        sig.AgreementTitle,
+		ContentType:  "application/pdf",
+		Data:         pdf.SignedAgreement(ag, sig),
 	})
 	if err != nil {
 		// Loud, because a practice expecting a filed copy should be able to
@@ -59,11 +75,12 @@ func (a *DocumentArchivist) ArchiveSignedAgreement(ctx context.Context, ag agree
 			"agreement", sig.AgreementKey,
 			"error", err,
 		)
-		return
+		return "", err
 	}
 	a.log.Info("archived signed agreement",
 		"clientId", sig.ClientID,
 		"agreement", sig.AgreementKey,
 		"documentId", stored.ID,
 	)
+	return stored.ID, nil
 }

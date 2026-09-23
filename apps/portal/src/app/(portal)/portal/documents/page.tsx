@@ -1,4 +1,5 @@
 "use client";
+import { ExecutedDocuments } from "@/components/portal/ExecutedDocuments";
 
 import { Download, FolderOpen } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -42,6 +43,7 @@ export default function DocumentsPage() {
       title="Your documents"
       intro="Everything your practitioner has shared with you — plans, handouts and anything else worth keeping."
     >
+      <ExecutedDocuments />
       {action.error ? (
         <Card>
           <p role="alert" className="text-sm text-danger-ink">
@@ -63,7 +65,7 @@ export default function DocumentsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {documents.data.map((document) => (
-            <li key={document.id}>
+            <li id={`document-${document.id}`} key={document.id}>
               <Card className="terios-record-card">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -80,11 +82,14 @@ export default function DocumentsPage() {
                         ·
                       </span>
                       <time dateTime={document.createdAt}>
-                        {new Date(document.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {new Date(document.createdAt).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )}
                       </time>
                     </p>
                   </div>

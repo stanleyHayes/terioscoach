@@ -124,7 +124,7 @@ func (r *ServiceRepository) Update(ctx context.Context, svc catalog.Service) (ca
 	}
 	doc.ID = oid
 
-	res, err := r.coll.ReplaceOne(ctx, bson.M{"_id": oid}, doc)
+	res, err := replaceOneWithEvent(ctx, r.coll, bson.M{"_id": oid}, doc)
 	if err != nil {
 		return catalog.Service{}, fmt.Errorf("update service: %w", err)
 	}

@@ -88,6 +88,7 @@ type User struct {
 	PasswordHash           string
 	Role                   Role
 	Name                   string
+	Timezone               string
 	CreatedAt              time.Time
 	PasswordResetTokenHash string
 	PasswordResetExpiresAt time.Time

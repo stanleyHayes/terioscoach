@@ -91,6 +91,9 @@ func (c *Client) Send(ctx context.Context, msg ports.EmailMessage) error {
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	if msg.IdempotencyKey != "" {
+		req.Header.Set("Idempotency-Key", msg.IdempotencyKey)
+	}
 
 	res, err := c.http.Do(req)
 	if err != nil {

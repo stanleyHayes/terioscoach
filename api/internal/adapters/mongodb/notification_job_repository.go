@@ -2,8 +2,10 @@ package mongodb
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xcreativs/terios/api/internal/domain/notification"
@@ -22,9 +24,8 @@ const claimLease = 5 * time.Minute
 // notification_jobs collection.
 //
 // Claiming is a findAndModify per job rather than a plain query, so two
-// dispatcher instances (or a restarting one) can never both send the same
-// email: the write that stamps claimedAt is the atomic point, and only the
-// winner gets the document back.
+// dispatchers do not share a live lease. Expired leases can retry a provider
+// acceptance; the stable provider key reduces that duplicate-send window.
 type NotificationJobRepository struct {
 	coll *mongo.Collection
 	now  func() time.Time
@@ -43,19 +44,21 @@ func NewNotificationJobRepository(db *mongo.Database) *NotificationJobRepository
 // notificationJobDoc is the storage shape. bookingId is a plain string:
 // it also carries enquiry ids, which are not booking ObjectIDs.
 type notificationJobDoc struct {
-	ID        bson.ObjectID  `bson:"_id,omitempty"`
-	Kind      string         `bson:"kind"`
-	BookingID string         `bson:"bookingId,omitempty"`
-	Recipient string         `bson:"recipient"`
-	Data      map[string]any `bson:"data"`
-	DueAt     bson.DateTime  `bson:"dueAt"`
-	Status    string         `bson:"status"`
-	Attempts  int            `bson:"attempts"`
-	LastError string         `bson:"lastError,omitempty"`
-	ClaimedAt *bson.DateTime `bson:"claimedAt,omitempty"`
-	SentAt    *bson.DateTime `bson:"sentAt,omitempty"`
-	CreatedAt bson.DateTime  `bson:"createdAt"`
-	UpdatedAt bson.DateTime  `bson:"updatedAt"`
+	ClaimToken string         `bson:"claimToken,omitempty"`
+	EventKey   string         `bson:"eventKey,omitempty"`
+	ID         bson.ObjectID  `bson:"_id,omitempty"`
+	Kind       string         `bson:"kind"`
+	BookingID  string         `bson:"bookingId,omitempty"`
+	Recipient  string         `bson:"recipient"`
+	Data       map[string]any `bson:"data"`
+	DueAt      bson.DateTime  `bson:"dueAt"`
+	Status     string         `bson:"status"`
+	Attempts   int            `bson:"attempts"`
+	LastError  string         `bson:"lastError,omitempty"`
+	ClaimedAt  *bson.DateTime `bson:"claimedAt,omitempty"`
+	SentAt     *bson.DateTime `bson:"sentAt,omitempty"`
+	CreatedAt  bson.DateTime  `bson:"createdAt"`
+	UpdatedAt  bson.DateTime  `bson:"updatedAt"`
 }
 
 func newNotificationJobDoc(j notification.Job) notificationJobDoc {
@@ -75,6 +78,9 @@ func newNotificationJobDoc(j notification.Job) notificationJobDoc {
 		CreatedAt: bson.NewDateTimeFromTime(j.CreatedAt),
 		UpdatedAt: bson.NewDateTimeFromTime(j.UpdatedAt),
 	}
+	if event := j.Data["eventId"]; event != "" {
+		doc.EventKey = fmt.Sprintf("%x", sha256.Sum256([]byte(event+"|"+string(j.Kind)+"|"+strings.ToLower(j.Recipient))))
+	}
 	if j.SentAt != nil {
 		stamp := bson.NewDateTimeFromTime(*j.SentAt)
 		doc.SentAt = &stamp
@@ -90,17 +96,18 @@ func (d notificationJobDoc) toDomain() notification.Job {
 		}
 	}
 	job := notification.Job{
-		ID:        d.ID.Hex(),
-		Kind:      notification.Kind(d.Kind),
-		BookingID: d.BookingID,
-		Recipient: d.Recipient,
-		Data:      data,
-		DueAt:     d.DueAt.Time().UTC(),
-		Status:    notification.Status(d.Status),
-		Attempts:  d.Attempts,
-		LastError: d.LastError,
-		CreatedAt: d.CreatedAt.Time().UTC(),
-		UpdatedAt: d.UpdatedAt.Time().UTC(),
+		ClaimToken: d.ClaimToken,
+		ID:         d.ID.Hex(),
+		Kind:       notification.Kind(d.Kind),
+		BookingID:  d.BookingID,
+		Recipient:  d.Recipient,
+		Data:       data,
+		DueAt:      d.DueAt.Time().UTC(),
+		Status:     notification.Status(d.Status),
+		Attempts:   d.Attempts,
+		LastError:  d.LastError,
+		CreatedAt:  d.CreatedAt.Time().UTC(),
+		UpdatedAt:  d.UpdatedAt.Time().UTC(),
 	}
 	if d.SentAt != nil {
 		sent := d.SentAt.Time().UTC()
@@ -114,6 +121,13 @@ func (r *NotificationJobRepository) Create(ctx context.Context, job notification
 	doc := newNotificationJobDoc(job)
 	res, err := r.coll.InsertOne(ctx, doc)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) && doc.EventKey != "" {
+			var existing notificationJobDoc
+			if e := r.coll.FindOne(ctx, bson.M{"eventKey": doc.EventKey}).Decode(&existing); e != nil {
+				return notification.Job{}, e
+			}
+			return existing.toDomain(), nil
+		}
 		return notification.Job{}, fmt.Errorf("insert notification job: %w", err)
 	}
 	if oid, ok := res.InsertedID.(bson.ObjectID); ok {
@@ -133,15 +147,20 @@ func (r *NotificationJobRepository) Update(ctx context.Context, job notification
 	update := bson.M{
 		"$set": bson.M{
 			"dueAt":     doc.DueAt,
+			"data":      doc.Data,
 			"status":    doc.Status,
 			"attempts":  doc.Attempts,
 			"lastError": doc.LastError,
 			"updatedAt": doc.UpdatedAt,
 			"sentAt":    doc.SentAt,
 		},
-		"$unset": bson.M{"claimedAt": ""},
+		"$unset": bson.M{"claimedAt": "", "claimToken": ""},
 	}
-	res, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, update)
+	filter := bson.M{"_id": oid, "status": string(notification.StatusPending)}
+	if job.ClaimToken != "" {
+		filter["claimToken"] = job.ClaimToken
+	}
+	res, err := r.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return notification.Job{}, fmt.Errorf("update notification job: %w", err)
 	}
@@ -172,7 +191,7 @@ func (r *NotificationJobRepository) ClaimDue(ctx context.Context, now time.Time,
 			{"claimedAt": bson.M{"$lte": leaseCutoff}},
 		},
 	}
-	update := bson.M{"$set": bson.M{"claimedAt": bson.NewDateTimeFromTime(now)}}
+	update := bson.M{"$set": bson.M{"claimedAt": bson.NewDateTimeFromTime(now), "claimToken": bson.NewObjectID().Hex()}}
 	opts := options.FindOneAndUpdate().
 		SetSort(bson.D{{Key: "dueAt", Value: 1}}).
 		SetReturnDocument(options.After)
@@ -213,4 +232,32 @@ func (r *NotificationJobRepository) PendingByBooking(ctx context.Context, bookin
 		jobs = append(jobs, doc.toDomain())
 	}
 	return jobs, nil
+}
+
+// PrepareDelivery preserves the claim and atomically freezes the exact provider
+// payload. A later retry reuses the stored message, even after a preference or
+// template change. The worker must own the current lease before sending.
+func (r *NotificationJobRepository) PrepareDelivery(ctx context.Context, job notification.Job) (notification.Job, error) {
+	oid, err := bson.ObjectIDFromHex(job.ID)
+	if err != nil {
+		return notification.Job{}, notification.ErrJobNotFound
+	}
+	var doc notificationJobDoc
+	filter := bson.M{"_id": oid, "status": "pending", "claimToken": job.ClaimToken}
+	if err = r.coll.FindOne(ctx, filter).Decode(&doc); err != nil {
+		return notification.Job{}, err
+	}
+	if doc.Data["deliveryPrepared"] == "true" {
+		return doc.toDomain(), nil
+	}
+	data := newNotificationJobDoc(job).Data
+	filter["data.deliveryPrepared"] = bson.M{"$ne": "true"}
+	result, err := r.coll.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"data": data}})
+	if err != nil {
+		return notification.Job{}, err
+	}
+	if result.MatchedCount != 1 {
+		return notification.Job{}, notification.ErrJobNotFound
+	}
+	return job, nil
 }

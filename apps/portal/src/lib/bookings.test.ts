@@ -105,6 +105,7 @@ describe("createBooking", () => {
       serviceId: "s1",
       startAt: "2026-08-20T09:30:00Z",
       tz: "Africa/Accra",
+      participant: { name: "Client", under18: false, accurate: true },
     });
 
     const [url, init] = fetchMock.mock.calls[0];
@@ -119,6 +120,7 @@ describe("createBooking", () => {
         serviceId: "s1",
         startAt: "2026-08-20T09:30:00Z",
         tz: "Africa/Accra",
+        participant: { name: "Client", under18: false, accurate: true },
       }),
     });
     expect(result).toEqual(booking);
@@ -135,6 +137,7 @@ describe("createBooking", () => {
       serviceId: "s1",
       startAt: "2026-08-20T09:30:00Z",
       tz: "Africa/Accra",
+      participant: { name: "Client", under18: false, accurate: true },
     }).catch((e) => e);
 
     expect(error).toBeInstanceOf(ApiError);
@@ -298,5 +301,51 @@ describe("splitBookings", () => {
       "done",
       "noshow",
     ]);
+  });
+});
+
+describe("appointment lifecycle boundaries", () => {
+  it.each([
+    ["2026-08-20T09:29:59.999Z", "upcoming"],
+    ["2026-08-20T09:30:00Z", "inProgress"],
+    ["2026-08-20T10:14:59.999Z", "inProgress"],
+    ["2026-08-20T10:15:00Z", "past"],
+  ] as const)("classifies the instant %s as %s", (instant, group) => {
+    const result = splitBookings([booking], new Date(instant));
+    expect(result[group].map((item) => item.id)).toEqual([booking.id]);
+    expect(Object.values(result).flat()).toHaveLength(1);
+  });
+  it("keeps payment pending until the server expires it", () => {
+    const pending = { ...booking, status: "pending_payment" as const };
+    expect(
+      splitBookings([pending], new Date("2026-08-21T12:00:00Z")).pending,
+    ).toEqual([pending]);
+    const expired = {
+      ...pending,
+      status: "cancelled" as const,
+      paymentExpired: true,
+    };
+    expect(
+      splitBookings([expired], new Date("2026-08-21T12:00:00Z")).past,
+    ).toEqual([expired]);
+  });
+  it.each([
+    "America/New_York",
+    "America/Chicago",
+    "America/Los_Angeles",
+    "Pacific/Honolulu",
+    "Africa/Accra",
+    "UTC",
+  ])("display in %s cannot change grouping or the stored instant", (zone) => {
+    const original = booking.startAt;
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      dateStyle: "full",
+      timeStyle: "long",
+    }).format(new Date(original));
+    expect(
+      splitBookings([booking], new Date("2026-08-20T09:00:00Z")).upcoming,
+    ).toEqual([booking]);
+    expect(booking.startAt).toBe(original);
   });
 });
