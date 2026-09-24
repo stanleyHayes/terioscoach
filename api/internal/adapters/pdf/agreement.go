@@ -30,13 +30,15 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 			blocks = append(blocks, Spacer(18), Label("SUBMITTED AT"), Paragraph(sig.SubmittedAt.Format("2 January 2006 at 15:04 MST")))
 		}
 		if !sig.SignedAt.IsZero() {
-			for _, paragraph := range strings.Split(sig.AgreementBody, "\n\n") {
+			// Empty template fields are represented by the completed answers above.
+			// Keep additional terms, without printing a second unfilled form.
+			for _, paragraph := range strings.Split(sowTerms(sig.AgreementBody), "\n\n") {
 				if strings.TrimSpace(paragraph) != "" {
 					blocks = append(blocks, Paragraph(paragraph))
 				}
 			}
 			blocks = append(blocks, executionBlocks(a.Key, sig)...)
-			blocks = append(blocks, Label("DOCUMENT VERSION"), Paragraph(fmt.Sprintf("%d", sig.AgreementVersion)))
+			blocks = append(blocks, Label("DOCUMENT VERSION"), Paragraph(fmt.Sprintf("%d", sig.AgreementVersion)), electronicExecutionNotice())
 		} else {
 			blocks = append(blocks, Paragraph("Submitted — unsigned (legacy)"))
 		}
@@ -47,6 +49,10 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 		{Text: "TERIOS WELLNESS SPA", Style: Bold, Size: 13, SpaceAfter: 4},
 		{Text: "Holistic Health & Wellness Practice", Style: Italic, Size: 9, SpaceAfter: 20},
 		Title(a.Title),
+	}
+
+	if agreement.IsStatementOfWork(a.Key) {
+		blocks = append(blocks, Heading("Completed answers unavailable"), Paragraph("This historical record does not contain saved Statement of Work answers. The wording below is the recorded template, not a completed Statement of Work. Contact the practice to complete a new form; this record has not been changed."))
 	}
 
 	// The body's own shape is preserved: "## " marks a heading, a leading
@@ -75,12 +81,7 @@ func SignedAgreement(a agreement.Agreement, sig agreement.Signature) []byte {
 		Label("AGREEMENT VERSION"),
 		Paragraph(fmt.Sprintf("Version %d", sig.AgreementVersion)),
 		Spacer(10),
-		Block{
-			Text: "This agreement was accepted electronically. Signatures recorded above " +
-				"were executed in italics per electronic signature formatting standards and " +
-				"recorded against the version of the wording shown in this document.",
-			Size: 9, SpaceAfter: 0,
-		},
+		electronicExecutionNotice(),
 	)
 	return Build(blocks)
 }
@@ -188,4 +189,35 @@ func sowDateLabel(key string) string {
 		return "SERVICE START DATE"
 	}
 	return "EFFECTIVE DATE"
+}
+
+func electronicExecutionNotice() Block {
+	return Block{Text: "This agreement was accepted and executed electronically. The signatures recorded above are electronic signatures displayed in italicized format and are associated with the version of this agreement presented in this document.", Size: 9, SpaceAfter: 0}
+}
+
+// Remove only known empty form prompts. Nonempty values and additional terms
+// remain exactly as recorded. The immutable evidence snapshot is never edited.
+func sowTerms(body string) string {
+	var lines []string
+	for _, line := range strings.Split(body, "\n") {
+		prompt := strings.ToUpper(strings.TrimSpace(line))
+		blank := false
+		for _, label := range []string{"CLIENT NAME", "EFFECTIVE DATE", "SERVICE START DATE", "INITIAL TERM", "PACKAGE", "MONTHLY FEE"} {
+			if prompt == label || prompt == label+":" {
+				blank = true
+				break
+			}
+			if strings.HasPrefix(prompt, label+":") {
+				value := strings.TrimSpace(strings.TrimPrefix(prompt, label+":"))
+				if strings.HasPrefix(value, "[INSERT ") && strings.HasSuffix(value, "]") {
+					blank = true
+					break
+				}
+			}
+		}
+		if !blank {
+			lines = append(lines, line)
+		}
+	}
+	return strings.Join(lines, "\n")
 }

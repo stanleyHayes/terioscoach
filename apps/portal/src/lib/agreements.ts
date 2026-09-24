@@ -32,6 +32,7 @@ export interface StatementOfWork {
 }
 
 export interface AgreementSignature {
+  agreementKey?: string;
   archiveStatus?: "pending" | "archived";
   signerRole?: string;
   participantName?: string;

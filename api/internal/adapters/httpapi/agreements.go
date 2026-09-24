@@ -91,6 +91,7 @@ func newAgreementBody(a agreement.Agreement) agreementBody {
 }
 
 type agreementSignatureBody struct {
+	AgreementKey             string                     `json:"agreementKey"`
 	ArchiveStatus            string                     `json:"archiveStatus,omitempty"`
 	SignerRole               string                     `json:"signerRole,omitempty"`
 	ParticipantName          string                     `json:"participantName,omitempty"`
@@ -116,6 +117,7 @@ type agreementSignatureBody struct {
 
 func newAgreementSignatureBody(s agreement.Signature) agreementSignatureBody {
 	return agreementSignatureBody{
+		AgreementKey:  s.AgreementKey,
 		ArchiveStatus: s.ArchiveStatus,
 		SignerRole:    s.SignerRole, ParticipantName: s.ParticipantName, ConsentVersion: s.ConsentVersion, ContextID: s.ContextID,
 		StatementOfWork: s.StatementOfWork, SubmittedAt: s.SubmittedAt,

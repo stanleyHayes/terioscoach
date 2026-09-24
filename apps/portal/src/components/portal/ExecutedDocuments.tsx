@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
@@ -88,6 +89,30 @@ export function ExecutedDocuments() {
                 {item.consentVersion ? ` · ${item.consentVersion}` : ""}
               </p>
             )}
+            {!item.statementOfWork &&
+              (item.agreementKey === "nurse_sow" ||
+                item.agreementKey === "holistic_sow") && (
+                <div className="mt-3 space-y-2 text-sm text-ink-muted">
+                  <p className="font-semibold">
+                    Historical signature — form answers unavailable
+                  </p>
+                  <p>
+                    This PDF contains the template and signature recorded on the
+                    date above. It is not a completed Statement of Work. Any
+                    newer submission appears as a separate document.
+                  </p>
+                  <Link
+                    className="text-primary underline"
+                    href={
+                      item.bookingId
+                        ? `/portal/sessions/${item.bookingId}/documents`
+                        : "/portal/sessions"
+                    }
+                  >
+                    Review appointment documents
+                  </Link>
+                </div>
+              )}
             {item.statementOfWork && (
               <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <dt>Client name</dt>

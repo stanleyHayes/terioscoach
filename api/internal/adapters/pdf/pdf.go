@@ -311,7 +311,7 @@ func logoHeader() string {
 	var b strings.Builder
 	y := pageHeight - margin - 10
 	b.WriteString("q\n")
-	b.WriteString("0.38 0.60 0.33 scn\n")
+	b.WriteString("0.38 0.60 0.33 rg\n")
 	fmt.Fprintf(&b, "%.2f %.2f m\n", margin, y)
 	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+10, y+8)
 	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+18, y)

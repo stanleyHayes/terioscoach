@@ -220,33 +220,6 @@ export default function SessionsPage() {
         </Card>
       ) : (
         <>
-          {bookings &&
-            bookings.some(
-              (b) => b.status === "pending_payment" || b.status === "confirmed",
-            ) && (
-              <Card>
-                <h2 className="font-semibold">Prepare for your sessions</h2>
-                <ul>
-                  {bookings
-                    .filter(
-                      (b) =>
-                        b.status === "pending_payment" ||
-                        b.status === "confirmed",
-                    )
-                    .map((b) => (
-                      <li key={b.id}>
-                        <Link
-                          className="text-primary underline"
-                          href={`/portal/sessions/${b.id}/documents`}
-                        >
-                          {servicesById.get(b.serviceId)?.name ?? "Session"} —
-                          participant details and required documents
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
-              </Card>
-            )}
           {pending.length > 0 && (
             <section className="space-y-4" aria-label="Awaiting payment">
               <h2 className="font-display text-2xl">Awaiting payment</h2>
@@ -262,7 +235,7 @@ export default function SessionsPage() {
                   timeZone={timeZone}
                   actions={
                     <Link
-                      href="/portal/payments"
+                      href={`/portal/payments#booking-${booking.id}`}
                       className={buttonClasses({ size: "sm" })}
                     >
                       Review payment
@@ -282,12 +255,23 @@ export default function SessionsPage() {
                   serviceName={servicesById.get(booking.serviceId)?.name}
                   timeZone={timeZone}
                   actions={
-                    <Link
-                      href={`/portal/sessions/${booking.id}/room`}
-                      className={buttonClasses({ size: "sm" })}
-                    >
-                      Join video room
-                    </Link>
+                    <>
+                      <Link
+                        href={`/portal/sessions/${booking.id}/documents`}
+                        className={buttonClasses({
+                          size: "sm",
+                          variant: "secondary",
+                        })}
+                      >
+                        Required documents
+                      </Link>
+                      <Link
+                        href={`/portal/sessions/${booking.id}/room`}
+                        className={buttonClasses({ size: "sm" })}
+                      >
+                        Join video room
+                      </Link>
+                    </>
                   }
                 />
               ))}

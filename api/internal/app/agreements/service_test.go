@@ -555,3 +555,30 @@ func TestCountersignRejectsExistingClientOnlySignature(t *testing.T) {
 		t.Fatal("rejected countersignature was persisted")
 	}
 }
+
+// A newer completed SOW must download its own saved answers, while a legacy
+// signature remains a separate historical record and is never silently rewritten.
+func TestSOWDownloadKeepsHistoricalAndCompletedRecordsSeparate(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+	old := agreement.Signature{ID: "legacy-sow", AgreementID: "agr-sow", AgreementKey: "nurse_sow", AgreementTitle: "Nurse Coaching Statement of Work", AgreementVersion: 1, AgreementBody: "CLIENT NAME:\n\nMONTHLY FEE:", ClientID: "client-1", SignedName: "Example Signer", SignedAt: fixedNow}
+	completed := old
+	completed.ID = "completed-sow"
+	completed.ContextID = "booking:example:participant:1"
+	completed.StatementOfWork = &agreement.StatementOfWork{ClientName: "Example Participant", EffectiveDate: "2026-10-01", Package: "Six sessions", MonthlyFee: "USD 150.00"}
+	r.repo.signatures["old"] = old
+	r.repo.signatures["new"] = completed
+	caller := identity.Identity{UserID: "client-1", Role: identity.RoleClient}
+	for _, tc := range []struct{ id, want string }{{old.ID, "Completed answers unavailable"}, {completed.ID, "Example Participant"}} {
+		doc, err := r.svc.SignedDocument(ctx, caller, tc.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(doc.Data), tc.want) {
+			t.Errorf("%s missing %q", tc.id, tc.want)
+		}
+	}
+	if r.repo.signatures["old"].StatementOfWork != nil {
+		t.Fatal("historical record was rewritten")
+	}
+}
