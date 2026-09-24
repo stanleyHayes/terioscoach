@@ -1,11 +1,7 @@
 // Package pdf writes the one kind of PDF this system needs: a plain,
 // multi-page text document on A4, set in Helvetica.
 //
-// It is deliberately not a PDF library. A signed agreement is paragraphs,
-// headings and a signature block — no images, tables, colour or vector
-// work — and the whole of that fits in one readable file with no third-party
-// dependency in the tree and nothing to keep up to date. Anything richer
-// than this belongs in a real library, not in here.
+// Text and the embedded original Terios logo are rendered without runtime network access.
 //
 // The output targets PDF 1.4 with WinAnsiEncoding, which every reader and
 // every browser's built-in viewer opens without complaint.
@@ -19,10 +15,11 @@ import (
 
 // Page geometry, in PDF points (72 per inch). A4 with a 56pt margin.
 const (
-	pageWidth  = 595.28
-	pageHeight = 841.89
-	margin     = 56.0
-	textWidth  = pageWidth - 2*margin
+	pageWidth   = 595.28
+	pageHeight  = 841.89
+	margin      = 56.0
+	textWidth   = pageWidth - 2*margin
+	headerSpace = 88.0
 )
 
 // Style is one of the faces a line can be set in.
@@ -135,13 +132,13 @@ func layout(blocks []Block) []placedLine {
 func paginate(lines []placedLine) [][]placedLine {
 	var pages [][]placedLine
 	var current []placedLine
-	remaining := pageHeight - 2*margin
+	remaining := pageHeight - 2*margin - headerSpace
 
 	for _, line := range lines {
 		if line.gapAfter > remaining && len(current) > 0 {
 			pages = append(pages, current)
 			current = nil
-			remaining = pageHeight - 2*margin
+			remaining = pageHeight - 2*margin - headerSpace
 		}
 		current = append(current, line)
 		remaining -= line.gapAfter
@@ -292,7 +289,7 @@ func content(lines []placedLine) string {
 	var b strings.Builder
 	b.WriteString(logoHeader())
 	b.WriteString("BT\n")
-	y := pageHeight - margin - 34
+	y := pageHeight - margin - headerSpace
 	for _, line := range lines {
 		if line.text != "" {
 			fmt.Fprintf(&b, "%s %.2f Tf\n", line.style.fontRef(), line.size)
@@ -305,37 +302,20 @@ func content(lines []placedLine) string {
 	return b.String()
 }
 
-// logoHeader draws the compact Terios letterhead using PDF primitives so
-// agreement PDFs carry the brand without introducing an image dependency.
+// logoHeader places the original artwork at its native aspect ratio.
 func logoHeader() string {
-	var b strings.Builder
-	y := pageHeight - margin - 10
-	b.WriteString("q\n")
-	b.WriteString("0.38 0.60 0.33 rg\n")
-	fmt.Fprintf(&b, "%.2f %.2f m\n", margin, y)
-	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+10, y+8)
-	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+18, y)
-	fmt.Fprintf(&b, "%.2f %.2f l\n", margin+10, y-8)
-	b.WriteString("f\n")
-	b.WriteString("Q\n")
-	b.WriteString("BT\n")
-	b.WriteString("/F2 15 Tf\n")
-	fmt.Fprintf(&b, "1 0 0 1 %.2f %.2f Tm\n", margin+28, y-5)
-	b.WriteString("(TERIOS) Tj\n")
-	b.WriteString("/F1 7 Tf\n")
-	fmt.Fprintf(&b, "1 0 0 1 %.2f %.2f Tm\n", margin+28, y-16)
-	b.WriteString("(WELLNESS SPA) Tj\n")
-	b.WriteString("ET\n")
-	return b.String()
+	const width = 112.0
+	height := width * float64(logoHeight) / float64(logoWidth)
+	return fmt.Sprintf("q\n%.2f 0 0 %.2f %.2f %.2f cm\n/Logo Do\nQ\n", width, height, margin, pageHeight-margin-height)
 }
 
 // write assembles the object graph, the cross-reference table and the
 // trailer into the finished file.
 func write(pages [][]placedLine) []byte {
 	// Object numbering: 1 catalog, 2 pages, 3, 4, and 5 fonts, then a
-	// page object and a content stream for each page.
-	const firstPageObj = 6
-	total := 5 + 2*len(pages)
+	// logo image, then a page object and a content stream for each page.
+	const firstPageObj = 7
+	total := 6 + 2*len(pages)
 
 	var buf bytes.Buffer
 	offsets := make([]int, total+1)
@@ -360,12 +340,14 @@ func write(pages [][]placedLine) []byte {
 	object(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
 	object(5, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>")
 
+	object(6, fmt.Sprintf("<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length %d >>\nstream\n%s\nendstream", logoWidth, logoHeight, len(logoPixels), logoPixels))
+
 	for i, page := range pages {
 		pageObj := firstPageObj + 2*i
 		streamObj := pageObj + 1
 		object(pageObj, fmt.Sprintf(
 			"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] "+
-				"/Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents %d 0 R >>",
+				"/Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> /XObject << /Logo 6 0 R >> >> /Contents %d 0 R >>",
 			pageWidth, pageHeight, streamObj))
 
 		stream := content(page)

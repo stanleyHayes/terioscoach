@@ -30,7 +30,7 @@ func TestBuildProducesAParseableFile(t *testing.T) {
 
 func TestBuildIncludesTeriosLetterhead(t *testing.T) {
 	out := Build([]Block{Title("Agreement")})
-	for _, want := range []string{"(TERIOS) Tj", "(WELLNESS SPA) Tj", "0.38 0.60 0.33 rg"} {
+	for _, want := range []string{"/Subtype /Image", "/ColorSpace /DeviceRGB", "/Logo 6 0 R", "/Logo Do"} {
 		if !bytes.Contains(out, []byte(want)) {
 			t.Errorf("letterhead is missing %q", want)
 		}
