@@ -162,6 +162,27 @@ func TestProviderAcceptanceBeforeLocalAcknowledgementReusesFrozenPayload(t *test
 		t.Fatal("duplicate feed after lost acknowledgement")
 	}
 }
+// Practitioner-facing email lands in the practice inbox; the in-app copy stays
+// on the practitioner's account, and client email is untouched.
+func TestPractitionerEmailGoesToPracticeInbox(t *testing.T) {
+	ctx := context.Background()
+	r := newTestRig(t)
+	practice, _ := notification.New(notification.KindActionRequired, "admin@terioscoach.com", map[string]string{"title": "Form submitted", "link": "/clients/c1", "audience": "practitioner", "recipientId": "p1"}, fixedNow, fixedNow)
+	practice, _ = r.jobs.Create(ctx, practice)
+	client, _ := notification.New(notification.KindActionRequired, "client@example.com", map[string]string{"title": "Agreement countersigned", "link": "/portal/documents", "audience": "client", "recipientId": "c1"}, fixedNow, fixedNow)
+	client, _ = r.jobs.Create(ctx, client)
+	if !r.svc.deliver(ctx, practice) || !r.svc.deliver(ctx, client) {
+		t.Fatal("delivery failed")
+	}
+	sent := r.mailer.Sent()
+	if len(sent) != 2 || sent[0].To != "practice@terioscoach.com" || sent[1].To != "client@example.com" {
+		t.Fatalf("sent to %+v", sent)
+	}
+	items, _ := r.inApp.ListForRecipient(ctx, "admin@terioscoach.com", 10)
+	if len(items) != 1 {
+		t.Fatal("practitioner in-app copy moved off their account")
+	}
+}
 func TestArchiveFailureKeepsExecutionEventRecoverable(t *testing.T) {
 	ctx := context.Background()
 	r := newTestRig(t)

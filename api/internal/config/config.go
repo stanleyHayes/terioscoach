@@ -31,7 +31,7 @@ type Config struct {
 	ResendFrom   string
 
 	// Notifications (BE-09).
-	// PracticeEmail receives practice-facing alerts (new enquiries).
+	// PracticeEmail receives every practitioner-facing email.
 	PracticeEmail string
 	// PortalURL and DashboardURL are what the emails link to.
 	PortalURL    string

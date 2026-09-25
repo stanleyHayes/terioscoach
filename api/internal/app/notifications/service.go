@@ -40,7 +40,7 @@ type Service struct {
 	retry            notification.RetryPolicy
 	lead             time.Duration
 	timezone         string
-	// practiceEmail receives practice-facing alerts (new enquiries).
+	// practiceEmail receives every practitioner-facing email.
 	practiceEmail string
 	// report receives failures that cannot be returned to the caller,
 	// because the caller is a business action that already succeeded. The
@@ -68,7 +68,7 @@ type Options struct {
 	Retry notification.RetryPolicy
 	// DefaultTimezone presents times when a notice does not carry one.
 	DefaultTimezone string
-	// PracticeEmail is where practice-facing alerts (new enquiries) go.
+	// PracticeEmail receives every practitioner-facing email.
 	PracticeEmail string
 	// Report receives queueing and delivery failures. Nil discards them,
 	// which is only ever right in a test.
@@ -404,6 +404,7 @@ func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
 		job = frozen
 		msg = ports.EmailMessage{To: job.Recipient, Subject: job.Data["renderedSubject"], HTML: job.Data["renderedHTML"], Text: job.Data["renderedText"]}
 	}
+	msg.To = s.deliveryAddress(job)
 	msg.IdempotencyKey = "notification-" + job.ID
 	if err := s.mailer.Send(ctx, msg); err != nil {
 		s.report(fmt.Errorf("send notification %s (%s): %w", job.ID, job.Kind, err))
@@ -427,6 +428,18 @@ func (s *Service) deliver(ctx context.Context, job notification.Job) bool {
 		s.report(fmt.Errorf("persist notification sent %s: %w", job.ID, err))
 	}
 	return true
+}
+
+// deliveryAddress is where a job's email is sent. Practitioner-facing email
+// goes to the practice inbox (PRACTICE_EMAIL) when one is configured, so the
+// practice reads every alert in one mailbox rather than at a login address
+// that may not receive mail. The job's Recipient is left alone: it keys the
+// in-app copy to the practitioner's own account.
+func (s *Service) deliveryAddress(job notification.Job) string {
+	if job.Data["audience"] == "practitioner" && s.practiceEmail != "" {
+		return s.practiceEmail
+	}
+	return job.Recipient
 }
 
 // recordInApp persists a due event before email delivery. Immediate events

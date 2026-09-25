@@ -105,9 +105,10 @@ services:
         sync: false
       - key: RESEND_FROM
         value: Terios Wellness Spa <no-reply@terioscoach.com>
-      # Where practice-facing alerts go — new enquiries, mainly.
+      # Where every practitioner-facing email goes (forms, signatures,
+      # bookings, enquiries). In-app alerts stay on the practitioner's account.
       - key: PRACTICE_EMAIL
-        sync: false
+        value: hello@terioscoach.com
       - key: REMINDER_LEAD
         value: 24h
       # How often the outbox is drained. Shorter is not better: every poll
