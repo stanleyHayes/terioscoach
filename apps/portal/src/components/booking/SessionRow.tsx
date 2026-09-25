@@ -29,7 +29,7 @@ export function SessionRow({
 }: SessionRowProps) {
   const meta = bookingStatusMeta[booking.status];
   return (
-    <div className="terios-record-card relative flex flex-col gap-4 overflow-hidden rounded-[1.5rem] border border-border/70 bg-surface-raised p-5 pl-7 shadow-[0_14px_50px_rgba(31,41,34,.04)] sm:flex-row sm:items-center sm:justify-between">
+    <div className="terios-record-card relative flex flex-col gap-4 overflow-hidden rounded-[1.5rem] border border-border/70 bg-surface-raised p-5 pl-7 shadow-[0_14px_50px_rgba(31,41,34,.04)] xl:flex-row xl:items-center xl:justify-between">
       <span
         aria-hidden="true"
         className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-primary"
@@ -55,7 +55,12 @@ export function SessionRow({
         </p>
       </div>
       {actions ? (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        /* Phones: a 2-column grid of full-width, 44px targets whose labels
+           may wrap, so nothing is clipped. Wider: one wrapping row, moved
+           beside the details only once there is room for all four actions. */
+        <div className="grid grid-cols-2 gap-2 [&>*]:h-auto [&>*]:min-h-11 [&>*]:w-full [&>*]:whitespace-normal [&>*]:py-2 [&>*]:text-center [&>*]:leading-tight [&>*:only-child]:col-span-2 sm:flex sm:flex-wrap sm:items-center sm:[&>*]:h-9 sm:[&>*]:min-h-0 sm:[&>*]:w-auto sm:[&>*]:whitespace-nowrap sm:[&>*]:py-0 xl:justify-end">
+          {actions}
+        </div>
       ) : null}
     </div>
   );
