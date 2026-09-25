@@ -13,12 +13,13 @@ import {
   mondayOfWeek,
   todayCivil,
   wallClockToUtcIso,
-  PRACTICE_TIMEZONE,
   type Booking,
 } from "@/lib/schedule";
 import CalendarPage from "./page";
 
-let accountTimezone = "Africa/Accra";
+/** The signed-in practitioner's saved zone in these fixtures. */
+const ACCOUNT_TIMEZONE = "Africa/Accra";
+let accountTimezone = ACCOUNT_TIMEZONE;
 vi.mock("@/lib/api", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/api")>();
   return {
@@ -108,7 +109,7 @@ vi.mock("@/lib/schedule", async (importOriginal) => {
 
 function booking(overrides: Partial<Booking> = {}): Booking {
   // Placed inside the current week so it always renders on the grid.
-  const monday = mondayOfWeek(todayCivil(PRACTICE_TIMEZONE));
+  const monday = mondayOfWeek(todayCivil(ACCOUNT_TIMEZONE));
   const tuesday = addDaysCivil(monday, 1);
   const key = dateKey(tuesday);
   return {
@@ -126,7 +127,7 @@ function booking(overrides: Partial<Booking> = {}): Booking {
 }
 
 /** Expected from/to bounds for the currently visible week. */
-function currentWeekRange(timeZone = PRACTICE_TIMEZONE) {
+function currentWeekRange(timeZone = ACCOUNT_TIMEZONE) {
   const monday = mondayOfWeek(todayCivil(timeZone));
   return {
     from: wallClockToUtcIso(dateKey(monday), "00:00", timeZone)!,
@@ -168,7 +169,7 @@ describe("CalendarPage", () => {
     fireEvent.click(
       screen.getByRole("combobox", { name: "Appointment timezone" }),
     );
-    fireEvent.click(screen.getByRole("option", { name: /America\/New York/ }));
+    fireEvent.click(screen.getByRole("option", { name: /Eastern Time \(US\)/ }));
 
     await waitFor(() =>
       expect(listBookingsMock).toHaveBeenLastCalledWith(
@@ -323,7 +324,7 @@ describe("CalendarPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
 
     const nextMonday = addDaysCivil(
-      mondayOfWeek(todayCivil(PRACTICE_TIMEZONE)),
+      mondayOfWeek(todayCivil(ACCOUNT_TIMEZONE)),
       7,
     );
     await waitFor(() =>
@@ -334,12 +335,12 @@ describe("CalendarPage", () => {
           from: wallClockToUtcIso(
             dateKey(nextMonday),
             "00:00",
-            PRACTICE_TIMEZONE,
+            ACCOUNT_TIMEZONE,
           )!,
           to: wallClockToUtcIso(
             dateKey(addDaysCivil(nextMonday, 7)),
             "00:00",
-            PRACTICE_TIMEZONE,
+            ACCOUNT_TIMEZONE,
           )!,
         },
       ),

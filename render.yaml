@@ -47,7 +47,7 @@ services:
       - key: TRUSTED_PROXY_HOPS
         value: "1"
       - key: DEFAULT_TIMEZONE
-        value: Africa/Accra
+        value: America/New_York
 
       # ---- Origins ----
       # Public, admin and portal origins, comma-separated, exact, no trailing

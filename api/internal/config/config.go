@@ -150,7 +150,7 @@ func Load() (Config, error) {
 		DashboardURL:             getEnv("DASHBOARD_URL", "https://practice.terioscoach.com"),
 		ReminderLead:             getEnvDuration("REMINDER_LEAD", notification.DefaultReminderLead),
 		NotificationPollInterval: getEnvDuration("NOTIFICATION_POLL_INTERVAL", 15*time.Second),
-		DefaultTimezone:          getEnv("DEFAULT_TIMEZONE", "Africa/Accra"),
+		DefaultTimezone:          getEnv("DEFAULT_TIMEZONE", "America/New_York"),
 		CloudinaryCloudName:      os.Getenv("CLOUDINARY_CLOUD_NAME"),
 		CloudinaryAPIKey:         os.Getenv("CLOUDINARY_API_KEY"),
 		CloudinaryAPISecret:      os.Getenv("CLOUDINARY_API_SECRET"),

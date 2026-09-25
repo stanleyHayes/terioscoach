@@ -168,7 +168,7 @@ describe("scheduleApi", () => {
       callbacks,
       {
         method: "POST",
-        body: { startAt: "2026-08-12T14:00:00.000Z", tz: "Africa/Accra" },
+        body: { startAt: "2026-08-12T14:00:00.000Z", tz: "America/New_York" },
       },
     );
   });

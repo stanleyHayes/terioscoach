@@ -21,12 +21,13 @@ import { serverNow, synchronizeClock } from "./server-clock";
  */
 
 import { authedRequest, type RefreshCallbacks, type Session } from "@/lib/api";
+import { DEFAULT_TIME_ZONE } from "@/lib/timezones";
 
-/** Practice wall clock; mirrors the contract's `tz` default. */
-export const PRACTICE_TIMEZONE = "Africa/Accra";
+/** Practice wall clock: US Eastern, the practice default time zone. */
+export const PRACTICE_TIMEZONE = DEFAULT_TIME_ZONE;
 
 export const SUPPORTED_TIME_ZONES = [
-  { value: "America/New_York", label: "Eastern Time" },
+  { value: "America/New_York", label: "Eastern Time (US)" },
   { value: "America/Chicago", label: "Central Time" },
   { value: "America/Denver", label: "Mountain Time" },
   { value: "America/Los_Angeles", label: "Pacific Time" },

@@ -1,40 +1,23 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { accountApi } from "@/lib/api";
-import { BrandedSelect } from "./ChoiceControls";
-import { TextInput } from "./TextInput";
+import { DEFAULT_TIME_ZONE, DEFAULT_TIME_ZONE_LABEL } from "@/lib/timezones";
+import { Button } from "./Button";
+import { TimezonePicker } from "./TimezonePicker";
 
-/** Account preference: never silently save a browser-detected zone. */
+/** Account preference: a new account starts on US Eastern time, confirmed
+ * with one tap; never silently save a browser-detected zone. */
 export function TimezonePreference({
   onSaved,
 }: {
   onSaved?: (zone: string) => void;
 }) {
   const auth = useAuth();
-  const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const [message, setMessage] = useState("");
-  const options = useMemo(() => {
-    const zones = Array.from(
-      new Set([
-        "UTC",
-        auth.user?.timezone ?? "UTC",
-        ...Intl.supportedValuesOf("timeZone"),
-      ]),
-    );
-    return zones
-      .filter(
-        (zone) =>
-          zone === auth.user?.timezone ||
-          zone
-            .toLowerCase()
-            .replaceAll("_", " ")
-            .includes(search.toLowerCase()),
-      )
-      .map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") }));
-  }, [search, auth.user?.timezone]);
+  const current = auth.user?.timezone ?? "";
   async function save(zone: string) {
     if (!auth.session || saving.current) return;
     saving.current = true;
@@ -62,27 +45,29 @@ export function TimezonePreference({
   }
   return (
     <div className="space-y-3">
-      <TextInput
-        label="Search timezones"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="City or region"
-      />
-      <BrandedSelect
+      <TimezonePicker
         label="Appointment timezone"
-        value={auth.user?.timezone ?? ""}
-        options={options}
+        value={current || DEFAULT_TIME_ZONE}
         onChange={(zone) => void save(zone)}
         disabled={busy || !auth.session}
-        placeholder="Choose and confirm your timezone"
       />
+      {!current ? (
+        <Button
+          fullWidth
+          loading={busy}
+          disabled={!auth.session}
+          onClick={() => void save(DEFAULT_TIME_ZONE)}
+        >
+          Continue with {DEFAULT_TIME_ZONE_LABEL}
+        </Button>
+      ) : null}
       <p role="status" className="text-sm text-ink-muted">
         {busy
           ? "Saving timezone…"
           : message ||
-            (auth.user?.timezone
+            (current
               ? "Appointments use this timezone on every device."
-              : "Choose your timezone before scheduling. Existing appointments will not move.")}
+              : `${DEFAULT_TIME_ZONE_LABEL} is the practice default. Search above to choose another. Existing appointments will not move.`)}
       </p>
     </div>
   );

@@ -89,7 +89,7 @@ func NewService(
 	}
 	timezone := opts.DefaultTimezone
 	if timezone == "" {
-		timezone = "Africa/Accra"
+		timezone = "America/New_York"
 	}
 	report := opts.Report
 	if report == nil {

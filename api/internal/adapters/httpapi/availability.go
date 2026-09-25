@@ -10,8 +10,9 @@ import (
 	"github.com/xcreativs/terios/api/internal/ports"
 )
 
-// defaultSlotsTimezone matches the contract default for the slots route.
-const defaultSlotsTimezone = "Africa/Accra"
+// defaultSlotsTimezone is the practice default (US Eastern) for a slots
+// request that names no zone.
+const defaultSlotsTimezone = "America/New_York"
 
 // WithScheduling mounts the /v1/availability routes backed by the
 // scheduling port. Rules and time-off are practitioner-only; slot

@@ -10,8 +10,9 @@ import (
 	"github.com/xcreativs/terios/api/internal/ports"
 )
 
-// defaultBookingTimezone matches the availability contract default.
-const defaultBookingTimezone = "Africa/Accra"
+// defaultBookingTimezone is the practice default (US Eastern) for a booking
+// request that names no zone.
+const defaultBookingTimezone = "America/New_York"
 
 // WithBooking mounts the /v1/bookings routes backed by the booking port.
 // Creating and listing "mine" is client-only; the calendar list and
